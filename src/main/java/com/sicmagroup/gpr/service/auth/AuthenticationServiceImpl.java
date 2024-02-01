@@ -1,0 +1,736 @@
+package com.sicmagroup.gpr.service.auth;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sicmagroup.gpr.api.auth.AuthenticationRequest;
+import com.sicmagroup.gpr.api.auth.AuthenticationResponse;
+import com.sicmagroup.gpr.api.auth.UpdatePwdRequest;
+import com.sicmagroup.gpr.api.auth.UpdateRequest;
+import com.sicmagroup.gpr.api.config.setting.InstitutionRequest;
+import com.sicmagroup.gpr.api.config.user.AddEmailReceiver;
+import com.sicmagroup.gpr.api.config.user.RegisterRequest;
+import com.sicmagroup.gpr.domain.dto.AlertDto;
+import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
+import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
+import com.sicmagroup.gpr.domain.dto.CollectionChannelDto;
+import com.sicmagroup.gpr.domain.dto.ExistingSolutionDto;
+import com.sicmagroup.gpr.domain.dto.ExistingSolutionResponse;
+import com.sicmagroup.gpr.domain.dto.ExternalRecourseDto;
+import com.sicmagroup.gpr.domain.dto.LanguageDto;
+import com.sicmagroup.gpr.domain.dto.ObjetDto;
+import com.sicmagroup.gpr.domain.dto.PosteDto;
+import com.sicmagroup.gpr.domain.dto.ProductDto;
+import com.sicmagroup.gpr.domain.dto.ServicePointDto;
+import com.sicmagroup.gpr.domain.dto.UserDto;
+import com.sicmagroup.gpr.domain.dto.claimResponse.ObjetResponse;
+import com.sicmagroup.gpr.domain.dto.claimResponse.PosteResponse;
+import com.sicmagroup.gpr.domain.dto.claimResponse.ServicePointResponse;
+import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
+import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.Role;
+import com.sicmagroup.gpr.domain.model.CategorieObjet;
+import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.CollectionChannel;
+import com.sicmagroup.gpr.domain.model.ExistingSolution;
+import com.sicmagroup.gpr.domain.model.ExternalRecourse;
+import com.sicmagroup.gpr.domain.model.Language;
+import com.sicmagroup.gpr.domain.model.Objet;
+import com.sicmagroup.gpr.domain.model.Poste;
+import com.sicmagroup.gpr.domain.model.Product;
+import com.sicmagroup.gpr.domain.model.ServicePoint;
+import com.sicmagroup.gpr.domain.model.Setting;
+import com.sicmagroup.gpr.domain.model.Solution;
+import com.sicmagroup.gpr.domain.model.Suggestion;
+import com.sicmagroup.gpr.domain.model.User;
+import com.sicmagroup.gpr.repository.CategorieObjetRepository;
+import com.sicmagroup.gpr.repository.ClaimRepository;
+import com.sicmagroup.gpr.repository.CollectionChannelRespository;
+import com.sicmagroup.gpr.repository.ExistingSolutionRepository;
+import com.sicmagroup.gpr.repository.ExternalRecourseRepository;
+import com.sicmagroup.gpr.repository.LanguageRepository;
+import com.sicmagroup.gpr.repository.ObjetRepository;
+import com.sicmagroup.gpr.repository.PosteRepository;
+import com.sicmagroup.gpr.repository.ProductRepository;
+import com.sicmagroup.gpr.repository.ServicePointRepository;
+import com.sicmagroup.gpr.repository.SuggestionRepository;
+import com.sicmagroup.gpr.repository.UserRepository;
+import com.sicmagroup.gpr.service.claim.ClaimService;
+import com.sicmagroup.gpr.service.faq.FaqServiceImpl;
+import com.sicmagroup.gpr.service.jwt.JwtServiceImpl;
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
+import com.sicmagroup.gpr.utils.Constante;
+import com.sicmagroup.gpr.utils.Utils;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class AuthenticationServiceImpl implements AuthenticationService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtServiceImpl jwtServiceImpl;
+    private final AuthenticationManager authenticationManager;
+    private final ModelMapper modelMapper;
+    private final PosteRepository posteRepository;
+    private final ServicePointRepository servicePointRepository;
+    private final ProductRepository productRepository;
+    private final ObjetRepository objetRepository;
+    private final LanguageRepository languageRepository;
+    private final CollectionChannelRespository collectionChannelRespository;
+    private final ExternalRecourseRepository externalRecourseRepository;
+    private final ClaimRepository claimRepository;
+    private final SuggestionRepository suggestionRepository;
+    private final FaqServiceImpl faqServiceImpl;
+    private final ExistingSolutionRepository existingSolutionRepository;
+    private final CategorieObjetRepository categorieObjetRepository;
+    private final SettingServiceImpl settingServiceImpl;
+
+
+    @Override
+    public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException {
+        Poste poste = posteRepository.findById(request.getPosteId()).get();
+        ServicePoint servicePoint = servicePointRepository.findById(request.getServicePointId()).get();
+
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new AuthenticationException("Error this email already exist");
+        }
+
+        User user = User.builder()
+                .firstandlastname(request.getFirstAndLastName())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .additionalrole(Role.valueOf(request.getAdditionalRole()))
+                .tel(request.getTel())
+                .poste(poste)
+                .servicePoint(servicePoint)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        String code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+
+        while (userRepository.findByCode(code).isPresent()) {
+            code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+        }
+        user.setCode(code);
+        if (request.getAdditionalRole() == null) {
+            user.setAdditionalrole(Role.MOLDUE);
+        } else {
+            user.setAdditionalrole(Role.valueOf(request.getAdditionalRole()));
+        }
+
+        user = userRepository.save(user);
+        // HashMap<String, Object> extras = new HashMap<>();
+        // extras.put("additionalRole", user.getAdditionalrole());
+        // extras.put("habilitations", user.getHabilitations());
+        String jwtToken = jwtServiceImpl.generateToken(user);
+
+        UserDto userDto = UserDto
+                .builder()
+                .id(user.getId())
+                .firstAndLastName(user.getFirstandlastname())
+                .email(user.getEmail())
+                .code(user.getCode())
+                .additionalRole(user.getAdditionalrole())
+                .posteDto(convertToResponse(poste))
+                .servicePointDto(convertToResponse(servicePoint))
+                .build();
+        HashMap<String, Object> content = new HashMap<String, Object>();
+        content.put("user", userDto);
+        content.put("token", jwtToken);
+        return AuthenticationResponse.builder()
+                .response(ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(content)
+                        .build())
+                .build();
+    }
+
+    @Override
+    public AuthenticationResponse authenticate(AuthenticationRequest request) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+
+        // HashMap<String, Object> extras = new HashMap<>();
+        // extras.put("additionalRole", user.getAdditionalrole());
+        // extras.put("habilitations", user.getHabilitations());
+        String jwtToken = jwtServiceImpl.generateToken(user);
+
+        UserDto userDto = convertToDto(user);
+        // get setting info
+        // servicePopint
+        List<ServicePoint> allServicePoints = servicePointRepository.findByIsDeleted(false);
+        List<ServicePointDto> allServicePointDtos = allServicePoints.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // poste
+        List<Poste> allPostes = posteRepository.findByIsDeleted(false);
+        List<PosteDto> allPosteDtos = allPostes.stream().map(this::convertToDto).collect(Collectors.toList());
+        // Product
+        List<Product> allProducts = productRepository.findByIsDeleted(false);
+        List<ProductDto> allProductDtos = allProducts.stream().map(this::convertToDto).collect(Collectors.toList());
+        // objet
+        List<Objet> allObjets = objetRepository.findByIsDeleted(false);
+        List<ObjetResponse> allObjetDtos = allObjets.stream().map(this::convertToResponse).collect(Collectors.toList());
+        // language
+        List<Language> allLanguages = languageRepository.findByIsDeleted(false);
+        List<LanguageDto> allLanguageDtos = allLanguages.stream().map(this::convertToDto).collect(Collectors.toList());
+        // collectionChannel
+        List<CollectionChannel> allCollectionChannels = collectionChannelRespository.findByIsDeleted(false);
+        List<CollectionChannelDto> allCollectionChannelDtos = allCollectionChannels.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // ExternalRecourse
+        List<ExternalRecourse> allExternalRecourses = externalRecourseRepository.findByIsDeleted(false);
+        List<ExternalRecourseDto> allExternalRecourseDtos = allExternalRecourses.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // User
+        List<User> allUsers = userRepository.findByIsDeleted(false);
+        List<UserDto> allUserDtos = allUsers.stream().map(this::convertToDto).collect(Collectors.toList());
+        // existing solutions
+        List<ExistingSolutionResponse> allExistingSolutions = existingSolutionRepository.findAll().stream()
+                .map(this::convertToResponse).collect(Collectors.toList());
+        // categorie objet
+        List<CategorieObjetDto> allCategorieObjetDtos = categorieObjetRepository.findAll().stream()
+                .map(this::convertToDto).collect(Collectors.toList());
+        //institution
+        // Settings
+         HashMap<String, Object> settings = new HashMap<String, Object>();
+        try {
+            Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            
+            InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(), InstitutionRequest.class);
+            settings.put("institution", institutionRequest);
+                
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+       
+        settings.put("servicePoints", allServicePointDtos);
+        settings.put("postes", allPosteDtos);
+        settings.put("products", allProductDtos);
+        settings.put("objets", allObjetDtos);
+        settings.put("languages", allLanguageDtos);
+        settings.put("collectionChannels", allCollectionChannelDtos);
+        settings.put("externalRecourses", allExternalRecourseDtos);
+        settings.put("users", allUserDtos);
+        settings.put("help", faqServiceImpl.getHelp());
+        settings.put("presolution", allExistingSolutions);
+        settings.put("categorie_objet", allCategorieObjetDtos);
+        settings.put("others", settingServiceImpl.getAll());
+
+         // recuperer le contenu du fichier data
+        try {
+            // Le fichier d'entrée
+            File file = new File("data.txt");
+            // Créer l'objet File Reader
+            FileReader fr = new FileReader(file);
+            // Créer l'objet BufferedReader
+            BufferedReader br = new BufferedReader(fr);
+            StringBuffer sb = new StringBuffer();
+            String line;
+            while ((line = br.readLine()) != null) {
+                // ajoute la ligne au buffer
+                sb.append(line);
+                sb.append("\n");
+            }
+            fr.close();
+            settings.put("data", sb.toString());
+
+        } catch (IOException e) {
+            settings.put("data", "");
+            e.printStackTrace();
+        }
+        settingServiceImpl.updateLicence();
+
+        HashMap<String, Object> content = new HashMap<String, Object>();
+        content.put("user", userDto);
+        content.put("token", jwtToken);
+        content.put("settings", settings);
+        return AuthenticationResponse.builder()
+                .response(ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(content)
+                        .build())
+                .build();
+    }
+
+         private ExistingSolutionResponse convertToResponse(ExistingSolution exSolution) {
+        ExistingSolutionResponse existingSolutionResponse = modelMapper.map(exSolution, ExistingSolutionResponse.class);
+        return existingSolutionResponse;
+    }
+
+     private ObjetResponse convertToResponse(Objet objet) {
+        ObjetResponse objetResponse = modelMapper.map(objet, ObjetResponse.class);
+        if (objet.getExistingSolutions() != null) {
+            objetResponse.setExistingSolutions(
+                    objet.getExistingSolutions().stream().map(this::convertToResponse).collect(Collectors.toList()));
+        }
+
+        if (objet.getCategorie() != null) {
+            objetResponse.setCategorie(null);
+            objetResponse.setCategorie(convertToDto(objet.getCategorie()));
+        }
+
+        return objetResponse;
+    }
+
+
+    private CategorieObjetDto convertToDto(CategorieObjet categorieObjet) {
+        CategorieObjetDto dto = modelMapper.map(categorieObjet, CategorieObjetDto.class);
+        return dto;
+    }
+
+    private ExistingSolutionDto convertToDto(ExistingSolution solution) {
+        ExistingSolutionDto existingSolutionDto = modelMapper.map(solution, ExistingSolutionDto.class);
+        existingSolutionDto.setObjetDto(convertToDto(solution.getObjet()));
+        return existingSolutionDto;
+    }
+
+    private UserDto convertToDto(User user) {
+        UserDto userDto = modelMapper.map(user, UserDto.class);
+        userDto.setPosteDto(convertToResponse(user.getPoste()));
+        userDto.setServicePointDto(convertToResponse(user.getServicePoint()));
+        return userDto;
+    }
+
+    private ServicePointDto convertToDto(ServicePoint servicepoint1) {
+        ServicePointDto servicePointDto = modelMapper.map(servicepoint1, ServicePointDto.class);
+        return servicePointDto;
+    }
+
+    private PosteDto convertToDto(Poste poste1) {
+        PosteDto posteDto = modelMapper.map(poste1, PosteDto.class);
+        return posteDto;
+    }
+
+    private PosteResponse convertToResponse(Poste poste1) {
+        PosteResponse posteResponse = modelMapper.map(poste1, PosteResponse.class);
+        return posteResponse;
+    }
+
+    private ServicePointResponse convertToResponse(ServicePoint servicepoint1) {
+        ServicePointResponse servicePointResponse = modelMapper.map(servicepoint1, ServicePointResponse.class);
+        return servicePointResponse;
+    }
+
+    private ProductDto convertToDto(Product product) {
+        ProductDto productDto = modelMapper.map(product, ProductDto.class);
+        return productDto;
+    }
+
+    private ObjetDto convertToDto(Objet objet) {
+        ObjetDto objetDto = new ObjetDto();
+        if (objet.getCategorie() != null) {
+            objetDto.setCategorie(objet.getCategorie().getId());
+        }
+
+        objetDto.setCreatedAt(objet.getCreatedAt());
+        objetDto.setUpdatedAt(objet.getUpdatedAt());
+        objetDto.setDescription(objet.getDescription());
+        objetDto.setLibelle(objet.getLibelle());
+        objetDto.setRisqueLevel(objet.getRisqueLevel());
+        objetDto.setProcessingTime(objet.getProcessingTime());
+        objetDto.setId(objet.getId());
+        return objetDto;
+    }
+
+    private LanguageDto convertToDto(Language language) {
+        LanguageDto languageDto = modelMapper.map(language, LanguageDto.class);
+        return languageDto;
+    }
+
+    private CollectionChannelDto convertToDto(CollectionChannel collectionChannel) {
+        CollectionChannelDto collectionChannelDto = modelMapper.map(collectionChannel, CollectionChannelDto.class);
+        return collectionChannelDto;
+    }
+
+    private ExternalRecourseDto convertToDto(ExternalRecourse externalRecourse) {
+        ExternalRecourseDto externalRecourseDto = modelMapper.map(externalRecourse, ExternalRecourseDto.class);
+        return externalRecourseDto;
+    }
+
+    private User convertFromDtoToEntity(UserDto userDto) {
+        User user = modelMapper.map(userDto, User.class);
+
+        if (user.getId() != null) {
+            // ServicePoint oldServicePoint = serviceImpl.getById(servicePointDto.getId());
+
+        } else {
+
+        }
+        return user;
+    }
+
+    private Poste convertFromDtoToEntity(PosteDto posteDto) {
+        Poste poste = modelMapper.map(posteDto, Poste.class);
+
+        if (poste.getId() != null) {
+            // ServicePoint oldServicePoint = serviceImpl.getById(servicePointDto.getId());
+            poste.setUpdatedAt(LocalDateTime.now());
+
+            if (posteDto.isDeleted()) {
+                poste.setDeleted(posteDto.isDeleted());
+                poste.setDeletedAt(LocalDateTime.now());
+            }
+
+        } else {
+            poste.setCreatedAt(LocalDateTime.now());
+            poste.setDeleted(false);
+        }
+        return poste;
+    }
+
+    private ServicePoint convertFromDtoToEntity(ServicePointDto servicePointDto) {
+        ServicePoint servicePoint = modelMapper.map(servicePointDto, ServicePoint.class);
+
+        if (servicePointDto.getId() != null) {
+            // ServicePoint oldServicePoint = serviceImpl.getById(servicePointDto.getId());
+            servicePoint.setUpdatedAt(LocalDateTime.now());
+
+            if (servicePointDto.isDeleted()) {
+                servicePoint.setDeleted(servicePointDto.isDeleted());
+                servicePoint.setDeletedAt(LocalDateTime.now());
+            }
+
+        } else {
+            servicePoint.setCreatedAt(LocalDateTime.now());
+            servicePoint.setDeleted(false);
+        }
+        return servicePoint;
+    }
+
+    @Override
+    public List<User> getAll() {
+        return userRepository.findByIsDeleted(false);
+    }
+
+    @Override
+    public List<User> getAllDeleted() {
+        return userRepository.findByIsDeleted(true);
+    }
+
+    @Override
+    public User getById(Long id) throws NotFoundException {
+        return userRepository.findById(id).orElseThrow(() -> new NotFoundException());
+    }
+
+    @Override
+    public User getDeletedById(Long id, boolean deleted) throws NotFoundException {
+        return userRepository.findByIdAndIsDeleted(id, deleted).orElseThrow(() -> new NotFoundException());
+    }
+
+    @Override
+    public User updateUser(Long id, RegisterRequest userDto) throws NotFoundException {
+        User userOld = userRepository.findById(id).orElseThrow(() -> new NotFoundException());
+        Poste poste = posteRepository.findById(userDto.getPosteId()).get();
+        ServicePoint servicePoint = servicePointRepository.findById(userDto.getServicePointId()).get();
+        User user = User.builder()
+                .id(userDto.getId())
+                .firstandlastname(userDto.getFirstAndLastName())
+                .email(userDto.getEmail())
+                .additionalrole(Role.valueOf(userDto.getAdditionalRole()))
+                .tel(userDto.getTel())
+                .poste(poste)
+                .servicePoint(servicePoint)
+                .build();
+        if (userDto.getPassword() != null && !userDto.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(userDto.getPassword()));
+        } else {
+            user.setPassword(userOld.getPassword());
+        }
+
+        user.setUpdatedAt(LocalDateTime.now());
+        user.setCreatedAt(userOld.getCreatedAt());
+        if (userOld.getCode() == null || userOld.getCode() == "") {
+            String code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+
+            while (userRepository.findByCode(code).isPresent()) {
+                code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+            }
+            user.setCode(code);
+        } else {
+            user.setCode(userOld.getCode());
+        }
+
+        user = userRepository.save(user);
+        return user;
+    }
+
+    @Override
+    public User deleteTempUser(Long id) throws NotFoundException {
+        User userOld = userRepository.getReferenceById(id);
+        userOld.setDeleted(true);
+        userOld.setDeletedAt(LocalDateTime.now());
+        userOld = userRepository.save(userOld);
+        return userOld;
+    }
+
+    @Override
+    public void deleteUser(User user) throws Exception {
+        if (!user.getPoste().getHabilitations().contains("H12")) {
+            try {
+                userRepository.delete(user);
+            } catch (Exception e) {
+                throw new Exception(
+                        "Impossible de supprimer cet utilisateur car il intervient dans plusieurs opérations.");
+            }
+        } else {
+            List<User> users = userRepository.findAll();
+            boolean existAnotherAdmin = false;
+            for (User userL : users) {
+                if (userL != user && userL.getPoste().getHabilitations().contains("H12")) {
+                    existAnotherAdmin = true;
+                    break;
+                }
+            }
+
+            if (existAnotherAdmin) {
+                try {
+                    userRepository.delete(user);
+                } catch (Exception e) {
+                    throw new Exception(
+                            "Impossible de supprimer cet utilisateur car il intervient dans plusieurs opérations.");
+                }
+            } else {
+                throw new Exception(
+                        "Impossible de supprimer cet utilisateur car il est le seul en mesure de configurer l'outil.");
+            }
+        }
+
+    }
+
+    @Override
+    public List<User> getUsersByRoles(List<Role> roles) {
+        return userRepository.findByAdditionalroleIn(roles);
+    }
+
+    @Override
+    public User getByEmail(String email) throws Exception {
+        return userRepository.findByEmail(email).orElseThrow(() -> new Exception("Utilisateur introuvable"));
+    }
+
+    @Override
+    public void updateAccountUser(UpdateRequest request) throws Exception {
+        User user = userRepository.findById(request.getId())
+                .orElseThrow(() -> new Exception("Utilisateur introuvable"));
+
+        user.setFirstandlastname(request.getFirstname());
+        user.setEmail(request.getEmail());
+        user.setTel(request.getPhone());
+
+        user.setUpdatedAt(LocalDateTime.now());
+
+        userRepository.save(user);
+
+        // SecurityContextHolder.getContext().getAuthentication().setAuthenticated(false);
+
+    }
+
+    @Override
+    public void updateAccountPwdUser(UpdatePwdRequest request) throws Exception {
+        User user = userRepository.findById(request.getId())
+                .orElseThrow(() -> new Exception("Utilisateur introuvable"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new Exception("Ancien mot de passe invalide.");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        user.setUpdatedAt(LocalDateTime.now());
+
+        userRepository.save(user);
+
+    }
+
+    private List<AlertDto> alertClaimAndDenun(ClaimType type) {
+
+        List<ClaimStatus> lStatus = Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED);
+        if (type == ClaimType.DENUNCIACION) {
+            lStatus = Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                    ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT);
+        }
+        List<Claim> allClaims = claimRepository.findByTypeAndStatusNotIn(type, lStatus);
+        boolean isOneSolutionMeasured = false;
+        List<AlertDto> claimAlertDtos = new ArrayList<>();
+        AlertDto alertDto = AlertDto.builder().build();
+        // List<Claim> TmpallClaims = allClaims;
+        for (Claim claim : allClaims) {
+            // vérifier s'il y a au moins une solution ne pas prendre en compte
+
+            if (!claim.getSolutions().isEmpty() && type == ClaimType.CLAIM) {
+                for (Solution solution : claim.getSolutions()) {
+                    if (solution.getSatisfactionMeasure() != null) {
+                        // allClaims.remove(claim);
+                        isOneSolutionMeasured = true;
+                        break;
+                    }
+                }
+            }
+            if (!isOneSolutionMeasured) {
+                LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+                if (LocalDateTime.now().isAfter(calculateDate)) {
+                    Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
+                    Long days = hoursRetard / 24;
+                    Long hours = hoursRetard % 24;
+                    alertDto = AlertDto
+                            .builder()
+                            .claimClient(claim.getClientFirstAndLastName())
+                            .claimCode(claim.getCode())
+                            .claimId(claim.getId())
+                            .retardDay(days + " jr(s) " + hours + " heure(s)")
+                            .declenchedDate(calculateDate)
+                            .receiptDateTime(claim.getReceiptDateTime())
+                            .type(type)
+                            .build();
+                    claimAlertDtos.add(alertDto);
+                }
+            }
+        }
+
+        return claimAlertDtos;
+    }
+
+    @Override
+    public HashMap<String, Object> getDashboard() {
+        List<Claim> claims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+        List<Claim> denuns = claimRepository.findByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+        List<Suggestion> suggestions = suggestionRepository
+                .findByStatusNot(ClaimStatus.TEMP_SAVED);
+        List<ClaimStatus> treatClaimStatus = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED,
+                ClaimStatus.UNSATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION, ClaimStatus.PARTIAL_SATISFIED);
+        HashMap<String, Object> dashboard = new HashMap<String, Object>();
+        dashboard.put("claims", claims.size());
+        dashboard.put("denuns", denuns.size());
+        dashboard.put("suggest", suggestions.size());
+        dashboard.put("claimsAffected", 0);
+        dashboard.put("claimsTreat", 0);
+        // TOTAL Claim + DEnun + Suggest
+        dashboard.put("plainteSuggest", claims.size() + denuns.size() + suggestions.size());
+        // nombre de claim affecté
+        int value = 0;
+        int totalSatisfied = 0;
+        for (Claim claim : claims) {
+            if (claim.getStatus().equals(ClaimStatus.AFFECTED)) { // claim affected
+                value = (int) dashboard.get("claimsAffected");
+                dashboard.replace("claimsAffected", value + 1);
+            } else if (treatClaimStatus.contains(claim.getStatus())) { // claimtreat
+                value = (int) dashboard.get("claimsTreat");
+                dashboard.replace("claimsTreat", value + 1);
+                if (claim.getStatus().equals(ClaimStatus.SATISFIED)) {
+                    totalSatisfied++;
+                }
+            }
+        }
+        // taux satisfaction
+        dashboard.put("tauxSatisfaction",
+                Utils.parseDouble(Utils.percentCalculator(Long.valueOf(totalSatisfied), Long.valueOf(claims.size()))));
+        List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
+        retardClaims.addAll(alertClaimAndDenun(ClaimType.DENUNCIACION));
+        dashboard.put("claimDenunRetard", retardClaims);
+        dashboard.put("TotalclaimDenunRetard", retardClaims.size());
+
+        return dashboard;
+    }
+
+    @Override
+    public List<User> getEmailReceivers() {
+        return userRepository.findByIsEmailReceiver(true);
+    }
+
+    @Override
+    public User addEmailReceivers(AddEmailReceiver choosedIds) throws Exception {
+        if (choosedIds.getPoste().equals("RA")) {
+            User user = userRepository.findById(choosedIds.getIds())
+                    .orElseThrow(() -> new Exception("Utilisateur sélectionné introuvable"));
+            // verification existence d'un ancien RA pour le point de service de l'user
+            Optional<User> existingRa = userRepository.findByIsEmailReceiverAndIsRaAndServicePoint(true, true,
+                    user.getServicePoint());
+            if (!existingRa.isPresent()) {
+                user.setEmailReceiver(true);
+                user.setRa(true);
+                user.setCoodonateur(false);
+                user.setTitre(choosedIds.getPoste());
+                user = userRepository.save(user);
+                return user;
+            } else {
+                throw new Exception(
+                        "Un RA a déjà été selectionné pour le point de service " + user.getServicePoint().getLibelle());
+            }
+
+        } else if (choosedIds.getPoste().equals("COORDONNATEUR")) {
+            User user = userRepository.findById(choosedIds.getIds())
+                    .orElseThrow(() -> new Exception("Utilisateur sélectionné introuvable"));
+            user.setEmailReceiver(true);
+            user.setRa(false);
+            user.setCoodonateur(true);
+            user.setTitre(choosedIds.getPoste());
+            user = userRepository.save(user);
+            return user;
+        } else {
+            // DE, PILOTE, AUTRE, etc
+            User user = userRepository.findById(choosedIds.getIds())
+                    .orElseThrow(() -> new Exception("Utilisateur sélectionné introuvable"));
+            user.setEmailReceiver(true);
+            user.setRa(false);
+            user.setCoodonateur(false);
+            user.setTitre(choosedIds.getPoste());
+            user = userRepository.save(user);
+            return user;
+        }
+
+    }
+
+    @Override
+    public void removeEmailReceiver(Long id) throws Exception {
+        User user = userRepository.findById(id).orElseThrow(() -> new Exception("Utilisateur sélectionné introuvable"));
+        user.setEmailReceiver(false);
+        user.setRa(false);
+        user.setCoodonateur(false);
+        user = userRepository.save(user);
+    }
+
+    @Override
+    public List<User> getEmailReceiversForNotif(ServicePoint servicePointIndexe) {
+        List<User> emailReceivers = this.getEmailReceivers();
+        List<User> receivers = new ArrayList<>();
+
+        for (User user : emailReceivers) {
+            if (user.isRa() && user.getServicePoint().getId() == servicePointIndexe.getId()) {
+                receivers.add(user);
+            } else if (!user.isRa()) {
+                receivers.add(user);
+            }
+        }
+        System.err.println(receivers);
+        return receivers;
+    }
+}

@@ -1,0 +1,45 @@
+server.port=9195
+spring.jpa.hibernate.ddl-auto=update
+spring.datasource.url=jdbc:mysql://89.117.37.251:3306/assilassime_gps?useSSL=false&serverTimezone=Africa/Porto-Novo&useUnicode=true&characterEncoding=UTF-8
+spring.datasource.username=admin_assilassime
+spring.datasource.password=assilassime
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+#gps_assilassime_admin
+#tT37#1f+>NJ=
+
+## MULTIPART (MultipartProperties)
+# Enable multipart uploads
+spring.servlet.multipart.enabled=true
+# Threshold after which files are written to disk.
+spring.servlet.multipart.file-size-threshold=2KB
+# Max file size.
+spring.servlet.multipart.max-file-size=200MB
+# Max Request Size
+spring.servlet.multipart.max-request-size=250MB
+
+## File Storage Properties
+# All files uploaded through the REST API will be stored in this directory
+file.upload-dir=/Users/Dell/uploads-gps
+
+spring.mail.host=ssl0.ovh.net
+spring.mail.port=465
+spring.mail.username=reclamations@assilassime.org
+spring.mail.password=Ass123456@
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
+
+
+server.ssl.key-store=/etc/letsencrypt/live/gprserver.com/keystore.p12
+server.ssl.key-store-password=gps-assilassime
+server.ssl.key-store-type=PKCS12
+server.ssl.key-alias=tomcat
+
+#ssl
+# server.ssl.enabled=true
+# server.ssl.key-store=/home/gprserver.com/cert.p12
+# server.ssl.key-store-type=PKCS12
+# server.ssl.key-store-password=qwerty_sicma
+# server.ssl.key-alias=1
