@@ -49,10 +49,11 @@ public class ChatServiceImpl implements ChatService {
         }
         User user = userRepository.findById(request.getCreatorId())
                 .orElseThrow(() -> new Exception("Compte utilisateur invalide"));
-        if (user.getAdditionalrole().equals(Role.MEMBRE_CGR) || user.getAdditionalrole().equals(Role.PR_CGR)) {
+        // if (user.getAdditionalrole().equals(Role.MEMBRE_CGR) || user.getAdditionalrole().equals(Role.PR_CGR)) {
             if (Arrays.asList(ClaimStatus.SAVED,
             ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED).contains(claim.getStatus()) ) {
-                List<User> members = userRepository.findByAdditionalroleIn(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
+                // List<User> members = userRepository.findByAdditionalroleIn(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
+                List<User> members = Arrays.asList(user);
                 Chat chat = Chat
                         .builder()
                         .claim(claim)
@@ -113,10 +114,10 @@ public class ChatServiceImpl implements ChatService {
                 throw new Exception("Status de la réclamation invalide");
                 // TODO: Save this in log
             }
-        } else {
-            throw new Exception("Utilisateur non autorisé. Cette action sera répertoriée.");
-            // TODO: Save this in log
-        }
+        // } else {
+        //     throw new Exception("Utilisateur non autorisé. Cette action sera répertoriée.");
+        //     // TODO: Save this in log
+        // }
 
     }
 

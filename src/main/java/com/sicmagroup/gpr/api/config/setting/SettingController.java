@@ -124,44 +124,6 @@ public class SettingController {
 
     }
 
-    @PostMapping(value = "/others/institution/maj")
-    public ResponseEntity<ApiResponseDto> majInstitution(@RequestBody InstitutionRequest request) {
-        ObjectMapper Obj = new ObjectMapper();
-        try {
-            // Getting organisation object as a json string
-            String jsonStr = Obj.writeValueAsString(request);
-            UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
-                    .libelle(Constante.INSTITUTION_SLUG)
-                    .value(jsonStr)
-                    .build();
-            Setting setting = serviceImpl.update(majSettingRequest);
-            ApiResponseDto apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(setting)
-                    .build();
-            return ResponseEntity.ok(apiResponseDto);
-        }
-
-        // Catch block to handle exceptions
-        catch (IOException e) {
-            ApiResponseDto apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-        } catch (Exception e) {
-            ApiResponseDto apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-        }
-
-    }
-
     @PutMapping(value = "/others/{app-slug}")
     public ResponseEntity<ApiResponseDto> configUpdate(@RequestParam(value = "app-slug") String slug,
             @RequestBody UpdateSettingRequest request) {
@@ -200,6 +162,216 @@ public class SettingController {
         } catch (IOException e) {
             e.printStackTrace();
             return e.getMessage();
+        }
+
+    }
+
+    @PostMapping(value = "/others/mail/create")
+    public ResponseEntity<ApiResponseDto> configMail(@RequestBody MailRequest request) {
+        ObjectMapper Obj = new ObjectMapper();
+
+        try {
+            Setting settingOld = serviceImpl.getbySlug(Constante.MAIL_SLUG);
+            String jsonStr = Obj.writeValueAsString(request);
+            UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
+                    .libelle(Constante.MAIL_SLUG)
+                    .value(jsonStr)
+                    .build();
+            Setting setting = serviceImpl.update(majSettingRequest);
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(request)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }
+
+        // Catch block to handle exceptions
+        catch (IOException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            if (e.getMessage().equals("The choosen setting doesn't exist")) {
+                // Getting organisation object as a json string
+                String jsonStr;
+                try {
+                    jsonStr = Obj.writeValueAsString(request);
+                    AddSettingRequest addSettingRequest = AddSettingRequest.builder()
+                            .libelle(Constante.MAIL_SLUG)
+                            .value(jsonStr)
+                            .build();
+                    Setting setting = serviceImpl.save(addSettingRequest);
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(request)
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (JsonProcessingException e1) {
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+
+            } else {
+                ApiResponseDto apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
+
+        }
+
+    }
+
+    @PostMapping(value = "/others/sms/create")
+    public ResponseEntity<ApiResponseDto> configSms(@RequestBody SmsRequest request) {
+        ObjectMapper Obj = new ObjectMapper();
+
+        try {
+            Setting settingOld = serviceImpl.getbySlug(Constante.SMS_SLUG);
+            String jsonStr = Obj.writeValueAsString(request);
+            UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
+                    .libelle(Constante.SMS_SLUG)
+                    .value(jsonStr)
+                    .build();
+            Setting setting = serviceImpl.update(majSettingRequest);
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(request)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }
+
+        // Catch block to handle exceptions
+        catch (IOException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            if (e.getMessage().equals("The choosen setting doesn't exist")) {
+                // Getting organisation object as a json string
+                String jsonStr;
+                try {
+                    jsonStr = Obj.writeValueAsString(request);
+                    AddSettingRequest addSettingRequest = AddSettingRequest.builder()
+                            .libelle(Constante.SMS_SLUG)
+                            .value(jsonStr)
+                            .build();
+                    Setting setting = serviceImpl.save(addSettingRequest);
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(request)
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (JsonProcessingException e1) {
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+
+            } else {
+                ApiResponseDto apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
+
+        }
+
+    }
+
+    @PostMapping(value = "/others/bot/create")
+    public ResponseEntity<ApiResponseDto> botSms(@RequestBody BotRequest request) {
+        ObjectMapper Obj = new ObjectMapper();
+
+        try {
+            Setting settingOld = serviceImpl.getbySlug(Constante.BOT_SLUG);
+            String jsonStr = Obj.writeValueAsString(request);
+            UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
+                    .libelle(Constante.BOT_SLUG)
+                    .value(jsonStr)
+                    .build();
+            Setting setting = serviceImpl.update(majSettingRequest);
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(request)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }
+
+        // Catch block to handle exceptions
+        catch (IOException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            if (e.getMessage().equals("The choosen setting doesn't exist")) {
+                // Getting organisation object as a json string
+                String jsonStr;
+                try {
+                    jsonStr = Obj.writeValueAsString(request);
+                    AddSettingRequest addSettingRequest = AddSettingRequest.builder()
+                            .libelle(Constante.BOT_SLUG)
+                            .value(jsonStr)
+                            .build();
+                    Setting setting = serviceImpl.save(addSettingRequest);
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(request)
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (JsonProcessingException e1) {
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+
+            } else {
+                ApiResponseDto apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
+
         }
 
     }

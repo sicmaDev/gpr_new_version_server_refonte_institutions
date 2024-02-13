@@ -28,7 +28,10 @@ import com.sicmagroup.gpr.api.auth.AuthenticationRequest;
 import com.sicmagroup.gpr.api.auth.AuthenticationResponse;
 import com.sicmagroup.gpr.api.auth.UpdatePwdRequest;
 import com.sicmagroup.gpr.api.auth.UpdateRequest;
+import com.sicmagroup.gpr.api.config.setting.BotRequest;
 import com.sicmagroup.gpr.api.config.setting.InstitutionRequest;
+import com.sicmagroup.gpr.api.config.setting.MailRequest;
+import com.sicmagroup.gpr.api.config.setting.SmsRequest;
 import com.sicmagroup.gpr.api.config.user.AddEmailReceiver;
 import com.sicmagroup.gpr.api.config.user.RegisterRequest;
 import com.sicmagroup.gpr.domain.dto.AlertDto;
@@ -222,10 +225,23 @@ public class AuthenticationServiceImpl implements AuthenticationService {
          HashMap<String, Object> settings = new HashMap<String, Object>();
         try {
             Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
+            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             
             InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(), InstitutionRequest.class);
             settings.put("institution", institutionRequest);
+
+            MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+            settings.put("mail", mailRequest);
+
+            SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+            settings.put("sms", smsRequest);
+
+            BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
+            
+            settings.put("bot", botRequest);
                 
         } catch (Exception e) {
             // TODO Auto-generated catch block
