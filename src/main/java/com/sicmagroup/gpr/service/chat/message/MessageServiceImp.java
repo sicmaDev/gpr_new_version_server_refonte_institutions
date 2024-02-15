@@ -44,6 +44,7 @@ import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.repository.chat.MessageRepository;
 import com.sicmagroup.gpr.repository.chat.UserVoteRepository;
 import com.sicmagroup.gpr.repository.chat.VoteRepository;
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
@@ -62,6 +63,7 @@ public class MessageServiceImp implements MessageService {
     private final MessageRepository messageRepository;
     private final VoteRepository voteRepository;
     private final SolutionRepository solutionRepository;
+    private final SettingServiceImpl settingServiceImpl;
 
     @Override
     public Message send(NewMessageRequest request) throws Exception {
@@ -335,7 +337,7 @@ public class MessageServiceImp implements MessageService {
                         "Nous vous invitons à communiquer la solution au pilote pour mesurer sa satisfaction ";
 
                 Utils.sendmail(pilote.get(0).getEmail(), "Réclamation traitée",
-                        messageStr, null, "reclamations@assilassime.org");
+                        messageStr, null, " ", settingServiceImpl);
             }
         }
 

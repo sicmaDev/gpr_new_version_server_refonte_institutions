@@ -18,6 +18,7 @@ import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class ScheduledTask {
     private final ClaimServiceImpl claimService;
     private final AuthenticationServiceImpl authServiceImpl;
     private final LogServiceImpl logServiceImpl;
+    private final SettingServiceImpl settingServiceImpl;
 
     @Scheduled(fixedDelay = 86400000)
     public void alertNotifier() {
@@ -41,7 +43,7 @@ public class ScheduledTask {
             Utils.sendmail(usersToContact, " Notification retard de traitement", claimAlertDtos.size()
                     + " Réclamations ont un retard de traitement. Connectez-vous à la plateforme de gps pour proposer des solutions adéquates à ces réclamations.",
                     null,
-                    "reclamations@assilassime.org");
+                    " ", settingServiceImpl);
         } catch (Exception e) {
             if (e != null) {
                 Log log2 = Log
@@ -65,7 +67,7 @@ public class ScheduledTask {
             Utils.sendmail(usersToContact, " Notification retard de traitement", claimAlertDtos.size()
                     + " Dénonciation ont un retard de traitement. Connectez-vous à la plateforme de gps pour proposer des solutions adéquates à ces dénonciations.",
                     null,
-                    "reclamations@assilassime.org");
+                    " ", settingServiceImpl);
         } catch (Exception e) {
             Log log2 = Log
                     .builder()
