@@ -20,6 +20,7 @@ public class LicenceDto {
     private String company;
     private String activationRequest;
     private String fullname;
+    private long id;
     private String email;
     private String updatedAt;
 }

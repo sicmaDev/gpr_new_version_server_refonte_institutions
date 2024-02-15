@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 public class LicenceControl {
     private boolean isActif;
     private long dayBefore;
+    private long id;
     private long maxPoste;
     private String message;
 }

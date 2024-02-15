@@ -461,7 +461,7 @@ public class Utils {
                 LocalDateTime createdAt = Utils.convertStrWithTToLocalDateTime(licenseResponse.getCreatedAt());
 
                 LocalDateTime calculateDate = createdAt.plusDays(totalJours);
-                Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
+                Long hoursRetard = LocalDateTime.now().until(calculateDate, ChronoUnit.HOURS);
 
                 if (hoursRetard > 0) {
                     // La licence n'est pas encore expirée, hoursRetard contient le nombre d'heures.
