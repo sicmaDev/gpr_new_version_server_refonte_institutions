@@ -458,8 +458,9 @@ public class Utils {
                 String[] splitARequest = activationRequest.split(",");
                 String[] splitInfo = splitARequest[1].split(":");
                 int totalJours = Integer.parseInt(splitInfo[0]);
+                LocalDateTime createdAt = Utils.convertStrWithTToLocalDateTime(licenseResponse.getCreatedAt());
 
-                LocalDateTime calculateDate = licenseResponse.getCreatedAt().plusDays(totalJours);
+                LocalDateTime calculateDate = createdAt.plusDays(totalJours);
                 Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
 
                 if (hoursRetard > 0) {
