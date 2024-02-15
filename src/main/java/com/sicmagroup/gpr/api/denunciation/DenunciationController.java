@@ -42,6 +42,7 @@ import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
 import com.sicmagroup.gpr.domain.dto.ClaimDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.ExistingSolutionResponse;
+import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SatisfactionMeasureDto;
 import com.sicmagroup.gpr.domain.dto.SolutionDto;
 import com.sicmagroup.gpr.domain.dto.chat.ChatDto;
@@ -233,8 +234,9 @@ public class DenunciationController {
             // System.out.println(connectedUser.getPoste().getHabilitations());
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.SAVED,
                     ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
-                    
-            if (connectedUser.getAdditionalrole().equals(Role.MEMBRE_CA) || connectedUser.getAdditionalrole().equals(Role.DE)) {
+
+            if (connectedUser.getAdditionalrole().equals(Role.MEMBRE_CA)
+                    || connectedUser.getAdditionalrole().equals(Role.DE)) {
                 allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims);
             }
         } else {
@@ -243,9 +245,8 @@ public class DenunciationController {
                     ClaimType.DENUNCIACION, ClaimStatus.SAVED, connectedUser,
                     Arrays.asList(ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
-                    
-                allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims);
-            
+            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims);
+
         }
         List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
 
@@ -302,31 +303,49 @@ public class DenunciationController {
     public ResponseEntity<ApiResponseDto> saveClaim(@RequestPart("denun") String denunRequest,
             @RequestPart(name = "files", required = false) MultipartFile[] files, HttpServletRequest request2)
             throws JsonMappingException, JsonProcessingException {
-        ApiResponseDto apiResponseDto;
-        ObjectMapper mapper = new ObjectMapper();
-        DenunRequest denunRequest2 = mapper.readValue(denunRequest, DenunRequest.class);
+        ApiResponseDto apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                ObjectMapper mapper = new ObjectMapper();
+                DenunRequest denunRequest2 = mapper.readValue(denunRequest, DenunRequest.class);
 
-        try {
-            SaveDenunRequest saveRequest = SaveDenunRequest.builder().claimRequest(denunRequest2).files(files)
-                    .remoteAddress(request2.getRemoteAddr()).build();
-            Claim claim = service.saveClaim(saveRequest, ClaimType.DENUNCIACION);
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(convertToDto(claim))
-                    .build();
-            return ResponseEntity.ok(apiResponseDto);
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
-                    .build();
-            if (e.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                try {
+                    SaveDenunRequest saveRequest = SaveDenunRequest.builder().claimRequest(denunRequest2).files(files)
+                            .remoteAddress(request2.getRemoteAddr()).build();
+                    Claim claim = service.saveClaim(saveRequest, ClaimType.DENUNCIACION);
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(convertToDto(claim))
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                            .build();
+                    if (e.getMessage().contains("not found")) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                    } else {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                    }
+                }
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
             }
+
+        } else {
+
+            return ResponseEntity.ok(apiResponseDto);
         }
     }
 
@@ -335,31 +354,49 @@ public class DenunciationController {
     public ResponseEntity<ApiResponseDto> saveTempClaim(@RequestPart("denun") String denunRequest,
             @RequestPart(name = "files", required = false) MultipartFile[] files, HttpServletRequest request2)
             throws JsonMappingException, JsonProcessingException {
-        ApiResponseDto apiResponseDto;
-        ObjectMapper mapper = new ObjectMapper();
-        ClaimRequest denunRequest2 = mapper.readValue(denunRequest, ClaimRequest.class);
-        try {
-            SaveRequest saveRequest = SaveRequest.builder().claimRequest(denunRequest2).files(files)
-                    .remoteAddress(request2.getRemoteAddr()).build();
+        ApiResponseDto apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                ObjectMapper mapper = new ObjectMapper();
+                ClaimRequest denunRequest2 = mapper.readValue(denunRequest, ClaimRequest.class);
+                try {
+                    SaveRequest saveRequest = SaveRequest.builder().claimRequest(denunRequest2).files(files)
+                            .remoteAddress(request2.getRemoteAddr()).build();
 
-            Claim claim = service.saveTempClaim(saveRequest, ClaimType.DENUNCIACION);
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(convertToDto(claim))
-                    .build();
-            return ResponseEntity.ok(apiResponseDto);
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            if (e.getMessage() != null && e.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                    Claim claim = service.saveTempClaim(saveRequest, ClaimType.DENUNCIACION);
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(convertToDto(claim))
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                    } else {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                    }
+                }
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
             }
+
+        } else {
+
+            return ResponseEntity.ok(apiResponseDto);
         }
 
     }
@@ -367,95 +404,117 @@ public class DenunciationController {
     @PutMapping("/affectTreatment")
     public ResponseEntity<ApiResponseDto> affectTreatmentTo(@RequestBody AffectTreatmentRequest request,
             HttpServletRequest request2) {
-        ApiResponseDto apiResponseDto;
+        ApiResponseDto apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
 
-        Claim claim = new Claim();
+                Claim claim = new Claim();
 
-        try {
-            claim = service.getById(request.getClaimId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-        User affectedBy = new User();
-        try {
-            affectedBy = authService.getById(request.getAffectorId());
-            if (!affectedBy.canAffectTreatment() && !affectedBy.getAdditionalrole().equals(Role.PILOTE)) {
-                throw new Exception("L'utilisateur n'est pas habilité à effectuer cette action");
+                try {
+                    claim = service.getById(request.getClaimId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+                User affectedBy = new User();
+                try {
+                    affectedBy = authService.getById(request.getAffectorId());
+                    if (!affectedBy.canAffectTreatment() && !affectedBy.getAdditionalrole().equals(Role.PILOTE)) {
+                        throw new Exception("L'utilisateur n'est pas habilité à effectuer cette action");
+                    }
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+                User affectedTo = new User();
+                try {
+                    affectedTo = authService.getById(request.getAffectToId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+                if (claim.getObjet().getRisqueLevel() == GravityLevel.GRAVE && !affectedTo.canTreatHighRiskClaim()) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .message(
+                                            "L'utilisateur choisi n'est pas habilité à traiter des dénonciations à risque "
+                                                    + GravityLevel.GRAVE.name())
+                                    .title("Opération non autorisée").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MOYEN
+                        && !affectedTo.canTreatMiddleRiskClaim()) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .message(
+                                            "L'utilisateur choisi n'est pas habilité à traiter des dénonciations à risque "
+                                                    + GravityLevel.MOYEN.name())
+                                    .title("Opération non autorisée").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MINEUR
+                        && !affectedTo.canTreatMinorRiskClaim()) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .message(
+                                            "L'utilisateur choisi n'est pas habilité à traiter des dénonciations à risque "
+                                                    + GravityLevel.MINEUR.name())
+                                    .title("Opération non autorisée").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+
+                try {
+                    claim = service.affectTreatmentToUser(claim, affectedTo, affectedBy, request.getAffectedAnonymous(),
+                            request2.getRemoteAddr());
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(convertToDto(claim))
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+            } else {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
             }
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-        User affectedTo = new User();
-        try {
-            affectedTo = authService.getById(request.getAffectToId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-        if (claim.getObjet().getRisqueLevel() == GravityLevel.GRAVE && !affectedTo.canTreatHighRiskClaim()) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder()
-                            .message("L'utilisateur choisi n'est pas habilité à traiter des dénonciations à risque "
-                                    + GravityLevel.GRAVE.name())
-                            .title("Opération non autorisée").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-        } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MOYEN && !affectedTo.canTreatMiddleRiskClaim()) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder()
-                            .message("L'utilisateur choisi n'est pas habilité à traiter des dénonciations à risque "
-                                    + GravityLevel.MOYEN.name())
-                            .title("Opération non autorisée").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-        } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MINEUR && !affectedTo.canTreatMinorRiskClaim()) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder()
-                            .message("L'utilisateur choisi n'est pas habilité à traiter des dénonciations à risque "
-                                    + GravityLevel.MINEUR.name())
-                            .title("Opération non autorisée").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-        }
 
-        try {
-            claim = service.affectTreatmentToUser(claim, affectedTo, affectedBy, request.getAffectedAnonymous(),
-                    request2.getRemoteAddr());
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(convertToDto(claim))
-                    .build();
+        } else {
+
             return ResponseEntity.ok(apiResponseDto);
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
-
     }
 
     @PutMapping("/treatDenun")
@@ -463,77 +522,101 @@ public class DenunciationController {
         ApiResponseDto apiResponseDto;
         Claim claim = new Claim();
         User treator = new User();
+        apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                try {
+                    claim = service.getById(request.getClaimId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("Réclamation introuvable")
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
 
-        try {
-            claim = service.getById(request.getClaimId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("Réclamation introuvable").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-
-        try {
-            treator = authService.getById(request.getTreatorId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("Réclamation introuvable").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-        if (claim.getObjet().getRisqueLevel() == GravityLevel.GRAVE &&
-        (!treator.getAdditionalrole().equals(Role.MEMBRE_CGR) &&
-                !treator.getAdditionalrole().equals(Role.PR_CGR) &&
-                !treator.getAdditionalrole().equals(Role.DE)) && !treator.canTreatHighRiskClaim()) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(
-                            ErrorResponse.builder().message("Vous n'êtes pas hailité à traiter cette réclamation GRAVE")
+                try {
+                    treator = authService.getById(request.getTreatorId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("Réclamation introuvable")
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+                if (claim.getObjet().getRisqueLevel() == GravityLevel.GRAVE &&
+                        (!treator.getAdditionalrole().equals(Role.MEMBRE_CGR) &&
+                                !treator.getAdditionalrole().equals(Role.PR_CGR) &&
+                                !treator.getAdditionalrole().equals(Role.DE))
+                        && !treator.canTreatHighRiskClaim()) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(
+                                    ErrorResponse.builder()
+                                            .message("Vous n'êtes pas hailité à traiter cette réclamation GRAVE")
+                                            .title("Habilitation manquante").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
+                } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MOYEN &&
+                        (!treator.getAdditionalrole().equals(Role.MEMBRE_CGR) &&
+                                !treator.getAdditionalrole().equals(Role.PR_CGR) &&
+                                !treator.getAdditionalrole().equals(Role.DE))
+                        && !treator.canTreatMiddleRiskClaim()) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .message("Vous n'êtes pas hailité à traiter cette réclamation à risque MOYEN")
                                     .title("Habilitation manquante").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
-        } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MOYEN && 
-        (!treator.getAdditionalrole().equals(Role.MEMBRE_CGR) &&
-                !treator.getAdditionalrole().equals(Role.PR_CGR) &&
-                !treator.getAdditionalrole().equals(Role.DE)) && !treator.canTreatMiddleRiskClaim()) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder()
-                            .message("Vous n'êtes pas hailité à traiter cette réclamation à risque MOYEN")
-                            .title("Habilitation manquante").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
-        } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MINEUR && !treator.canTreatMinorRiskClaim()) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder()
-                            .message("Vous n'êtes pas hailité à traiter cette réclamation à risque MINEUR")
-                            .title("Habilitation manquante").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
-        }
-        try {
-            claim = service.treatClaim(claim, treator, request);
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(convertToDto(claim))
-                    .build();
+                            .build();
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
+                } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MINEUR
+                        && !treator.canTreatMinorRiskClaim()) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .message("Vous n'êtes pas hailité à traiter cette réclamation à risque MINEUR")
+                                    .title("Habilitation manquante").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
+                }
+                try {
+                    claim = service.treatClaim(claim, treator, request);
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(convertToDto(claim))
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+            } else {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
+            }
+
+        } else {
+
             return ResponseEntity.ok(apiResponseDto);
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
     }
 
@@ -620,186 +703,242 @@ public class DenunciationController {
     @PutMapping(value = "/unapprouvedSolution")
     public ResponseEntity<ApiResponseDto> unApprouvedSolution(@RequestBody UnApprouvedRequest request) {
         ApiResponseDto apiResponseDto = new ApiResponseDto();
+        apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                Claim claim = new Claim();
+                try {
+                    claim = service.getById(request.getClaimId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
 
-        Claim claim = new Claim();
-        try {
-            claim = service.getById(request.getClaimId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                if (claim.getStatus() != ClaimStatus.TO_APPROUVED) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
+                                    .title("Opération impossible").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+                Solution solution = new Solution();
+
+                try {
+                    solution = solutionServiceImpl.getById(request.getSolutionId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+
+                User unapprouver = new User();
+
+                try {
+                    unapprouver = authService.getById(request.getUnApprouverId());
+
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+
+                claim = service.unApprouvedSolution(claim, solution, unapprouver, request.getMotifDesaprobation());
+
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(convertToDto(claim))
+                        .build();
+
+                return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
+            } else {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
+            }
+
+        } else {
+
+            return ResponseEntity.ok(apiResponseDto);
         }
-
-        if (claim.getStatus() != ClaimStatus.TO_APPROUVED) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
-                            .title("Opération impossible").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-        Solution solution = new Solution();
-
-        try {
-            solution = solutionServiceImpl.getById(request.getSolutionId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-
-        User unapprouver = new User();
-
-        try {
-            unapprouver = authService.getById(request.getUnApprouverId());
-
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-
-        claim = service.unApprouvedSolution(claim, solution, unapprouver, request.getMotifDesaprobation());
-
-        apiResponseDto = ApiResponseDto
-                .builder()
-                .status(true)
-                .content(convertToDto(claim))
-                .build();
-
-        return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
     }
 
     @PutMapping(value = "/approuvedSolution")
     public ResponseEntity<ApiResponseDto> approuvedSolution(@RequestBody ApprouvedRequest request) {
         ApiResponseDto apiResponseDto = new ApiResponseDto();
+        apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                Claim claim = new Claim();
+                try {
+                    claim = service.getById(request.getClaimId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
 
-        Claim claim = new Claim();
-        try {
-            claim = service.getById(request.getClaimId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                if (claim.getStatus() != ClaimStatus.TO_APPROUVED) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
+                                    .title("Opération impossible").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+                Solution solution = new Solution();
+
+                try {
+                    solution = solutionServiceImpl.getById(request.getSolutionId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+
+                User approuver = new User();
+
+                try {
+                    approuver = authService.getById(request.getApprouverId());
+
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+
+                claim = service.approuvedSolution(claim, solution, approuver);
+
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(convertToDto(claim))
+                        .build();
+
+                return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
+            } else {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
+            }
+
+        } else {
+
+            return ResponseEntity.ok(apiResponseDto);
         }
-
-        if (claim.getStatus() != ClaimStatus.TO_APPROUVED) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
-                            .title("Opération impossible").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-        Solution solution = new Solution();
-
-        try {
-            solution = solutionServiceImpl.getById(request.getSolutionId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-
-        User approuver = new User();
-
-        try {
-            approuver = authService.getById(request.getApprouverId());
-
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-
-        claim = service.approuvedSolution(claim, solution, approuver);
-
-        apiResponseDto = ApiResponseDto
-                .builder()
-                .status(true)
-                .content(convertToDto(claim))
-                .build();
-
-        return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
     }
 
-        @PutMapping("/transmit_to")
+    @PutMapping("/transmit_to")
     public ResponseEntity<ApiResponseDto> transmitClaim(@RequestBody TransmissionRequest request) {
         ApiResponseDto apiResponseDto = new ApiResponseDto();
-        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                .getPrincipal();
-        User connectedUser = User.builder().build();
-        try {
-            connectedUser = authService.getByEmail(collectorDetails.getUsername());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message("Utilisateur introuvable").title("NOT FOUND EXCEPTION")
-                            .build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
+        apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                        .getPrincipal();
+                User connectedUser = User.builder().build();
+                try {
+                    connectedUser = authService.getByEmail(collectorDetails.getUsername());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                    .title("NOT FOUND EXCEPTION")
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
 
-        
-        Claim claim = new Claim();
-        try {
-            claim = service.getById(request.getClaimId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-        if(claim.getCollector() != connectedUser){
-              apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message("Vous n'êtes pas le collecteur de cette réclamation.").title("Opération invalide")
-                            .build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-        }
-        try {
-            claim = service.transmitClaim(claim);
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(convertToDto(claim))
-                    .build();
+                Claim claim = new Claim();
+                try {
+                    claim = service.getById(request.getClaimId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+                if (claim.getCollector() != connectedUser) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .message("Vous n'êtes pas le collecteur de cette réclamation.")
+                                    .title("Opération invalide")
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+                try {
+                    claim = service.transmitClaim(claim);
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(convertToDto(claim))
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+            } else {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
+            }
+
+        } else {
+
             return ResponseEntity.ok(apiResponseDto);
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         }
     }
-
 
     // @PutMapping(value = "/classedDenun")
     // public ResponseEntity<ApiResponseDto> classedClaim(
@@ -1047,7 +1186,7 @@ public class DenunciationController {
         return claimDto;
     }
 
-     private ChatDto convertToDto(Chat chat) {
+    private ChatDto convertToDto(Chat chat) {
         ChatDto chatDto = modelMapper.map(chat, ChatDto.class);
         if (chat.getMessages() != null && !chat.getMessages().isEmpty()) {
             chatDto.setMessages(chat.getMessages().stream().map(this::convertToDto).collect(Collectors.toList()));
@@ -1106,7 +1245,6 @@ public class DenunciationController {
         return userVoteDto;
     }
 
-
     private SolutionDto convertToDto(Solution solution) {
         SolutionDto solutionDto = modelMapper.map(solution, SolutionDto.class);
         if (solution.getSatisfactionMeasure() != null) {
@@ -1145,14 +1283,13 @@ public class DenunciationController {
         return productResponse;
     }
 
-  
     private ObjetResponse convertToResponse(Objet objet) {
         ObjetResponse objetResponse = modelMapper.map(objet, ObjetResponse.class);
-        if(objet.getExistingSolutions() != null){
-             objetResponse.setExistingSolutions(
-                objet.getExistingSolutions().stream().map(this::convertToResponse).collect(Collectors.toList()));
+        if (objet.getExistingSolutions() != null) {
+            objetResponse.setExistingSolutions(
+                    objet.getExistingSolutions().stream().map(this::convertToResponse).collect(Collectors.toList()));
         }
-       
+
         if (objet.getCategorie() != null) {
             objetResponse.setCategorie(null);
             objetResponse.setCategorie(convertToDto(objet.getCategorie()));
@@ -1161,15 +1298,16 @@ public class DenunciationController {
         return objetResponse;
     }
 
-      private ExistingSolutionResponse convertToResponse(ExistingSolution exSolution) {
+    private ExistingSolutionResponse convertToResponse(ExistingSolution exSolution) {
         ExistingSolutionResponse existingSolutionResponse = modelMapper.map(exSolution, ExistingSolutionResponse.class);
         return existingSolutionResponse;
     }
 
-      private CategorieObjetDto convertToDto(CategorieObjet categorieObjet) {
+    private CategorieObjetDto convertToDto(CategorieObjet categorieObjet) {
         CategorieObjetDto dto = modelMapper.map(categorieObjet, CategorieObjetDto.class);
         return dto;
     }
+
     private LanguageResponse convertToResponse(Language language) {
         LanguageResponse languageResponse = modelMapper.map(language, LanguageResponse.class);
         return languageResponse;

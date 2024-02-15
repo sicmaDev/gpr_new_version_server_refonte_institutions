@@ -22,6 +22,7 @@ import com.sicmagroup.gpr.domain.dto.LicenceDto;
 import com.sicmagroup.gpr.domain.dto.LicenseResponse;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
+import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -87,59 +88,7 @@ public class AuthenticationController {
     @PostMapping("/infoLicense")
     public ResponseEntity<ApiResponseDto> infoLicence() {
         String license = "";
-        try {
-            // Le fichier d'entrée
-            File file = new File("data.txt");
-            // Créer l'objet File Reader
-            FileReader fr = new FileReader(file);
-            // Créer l'objet BufferedReader
-            BufferedReader br = new BufferedReader(fr);
-            StringBuffer sb = new StringBuffer();
-            String line;
-            while ((line = br.readLine()) != null) {
-                // ajoute la ligne au buffer
-                sb.append(line);
-                sb.append("\n");
-            }
-            fr.close();
-
-            license = sb.toString();
-            if (license != "") {
-                ObjectMapper mapper = new ObjectMapper();
-                LicenceDto licenseResponse = mapper.readValue(license, LicenceDto.class);
-                ApiResponseDto apiResponseDto = new ApiResponseDto();
-                apiResponseDto.setContent(licenseResponse);
-                apiResponseDto.setStatus(true);
-                return ResponseEntity.ok(apiResponseDto);
-
-            } else {
-                ApiResponseDto apiResponseDto = ApiResponseDto
-                        .builder()
-                        .status(false)
-                        .content(ErrorResponse.builder().message(
-                                "Une erreur est survenue à la lecture du fichier")
-                                .title("Une erreur est survenue à la lecture du fichier")
-                                .build())
-                        .build();
-
-                return ResponseEntity.ok(apiResponseDto);
-            }
-
-
-        } catch (IOException e) {
-
-            ApiResponseDto apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(
-                            "Une erreur est survenue à la lecture du fichier")
-                            .title("Une erreur est survenue à la lecture du fichier")
-                            .build())
-                    .build();
-
-            e.printStackTrace();
-            return ResponseEntity.ok(apiResponseDto);
-        }
+        return ResponseEntity.ok(Utils.verifyLicence());
 
     }
 
