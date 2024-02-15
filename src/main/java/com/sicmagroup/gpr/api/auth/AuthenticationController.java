@@ -1,5 +1,10 @@
 package com.sicmagroup.gpr.api.auth;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -9,8 +14,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
+import com.sicmagroup.gpr.domain.dto.LicenceDto;
+import com.sicmagroup.gpr.domain.dto.LicenseResponse;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 
@@ -19,7 +28,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -46,7 +54,7 @@ public class AuthenticationController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponseDto);
         }
 
-         return ResponseEntity.ok(apiResponseDto);
+        return ResponseEntity.ok(apiResponseDto);
 
     }
 
@@ -57,9 +65,10 @@ public class AuthenticationController {
             authenticationServiceImpl.updateAccountPwdUser(request);
             apiResponseDto.setContent("Success");
             apiResponseDto.setStatus(true);
-           
+
         } catch (Exception e) {
-            apiResponseDto.setContent(ErrorResponse.builder().message(e.getMessage()).title("Une erreur est survenue").build());
+            apiResponseDto.setContent(
+                    ErrorResponse.builder().message(e.getMessage()).title("Une erreur est survenue").build());
             apiResponseDto.setStatus(false);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponseDto);
         }
@@ -67,12 +76,71 @@ public class AuthenticationController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
-    @GetMapping(value="/dashboard")
+    @GetMapping(value = "/dashboard")
     public ResponseEntity<ApiResponseDto> getDashboard() {
-         ApiResponseDto apiResponseDto = new ApiResponseDto();
-            apiResponseDto.setContent(authenticationServiceImpl.getDashboard());
-            apiResponseDto.setStatus(true);
+        ApiResponseDto apiResponseDto = new ApiResponseDto();
+        apiResponseDto.setContent(authenticationServiceImpl.getDashboard());
+        apiResponseDto.setStatus(true);
         return ResponseEntity.ok(apiResponseDto);
     }
-    
+
+    @PostMapping("/infoLicense")
+    public ResponseEntity<ApiResponseDto> infoLicence() {
+        String license = "";
+        try {
+            // Le fichier d'entrée
+            File file = new File("data.txt");
+            // Créer l'objet File Reader
+            FileReader fr = new FileReader(file);
+            // Créer l'objet BufferedReader
+            BufferedReader br = new BufferedReader(fr);
+            StringBuffer sb = new StringBuffer();
+            String line;
+            while ((line = br.readLine()) != null) {
+                // ajoute la ligne au buffer
+                sb.append(line);
+                sb.append("\n");
+            }
+            fr.close();
+
+            license = sb.toString();
+            if (license != "") {
+                ObjectMapper mapper = new ObjectMapper();
+                LicenceDto licenseResponse = mapper.readValue(license, LicenceDto.class);
+                ApiResponseDto apiResponseDto = new ApiResponseDto();
+                apiResponseDto.setContent(licenseResponse);
+                apiResponseDto.setStatus(true);
+                return ResponseEntity.ok(apiResponseDto);
+
+            } else {
+                ApiResponseDto apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message(
+                                "Une erreur est survenue à la lecture du fichier")
+                                .title("Une erreur est survenue à la lecture du fichier")
+                                .build())
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
+            }
+
+
+        } catch (IOException e) {
+
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message(
+                            "Une erreur est survenue à la lecture du fichier")
+                            .title("Une erreur est survenue à la lecture du fichier")
+                            .build())
+                    .build();
+
+            e.printStackTrace();
+            return ResponseEntity.ok(apiResponseDto);
+        }
+
+    }
+
 }

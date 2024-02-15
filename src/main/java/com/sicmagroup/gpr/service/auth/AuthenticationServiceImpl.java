@@ -23,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.api.auth.AuthenticationRequest;
 import com.sicmagroup.gpr.api.auth.AuthenticationResponse;
@@ -38,6 +39,7 @@ import com.sicmagroup.gpr.domain.dto.AlertDto;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
 import com.sicmagroup.gpr.domain.dto.CollectionChannelDto;
+import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.ExistingSolutionDto;
 import com.sicmagroup.gpr.domain.dto.ExistingSolutionResponse;
 import com.sicmagroup.gpr.domain.dto.ExternalRecourseDto;
@@ -111,7 +113,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final CategorieObjetRepository categorieObjetRepository;
     private final SettingServiceImpl settingServiceImpl;
 
-
     @Override
     public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException {
         Poste poste = posteRepository.findById(request.getPosteId()).get();
@@ -120,57 +121,124 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new AuthenticationException("Error this email already exist");
         }
+        int totalUser = 0;
+        String license = "";
+        try {
+            // Le fichier d'entrée
+            File file = new File("data.txt");
+            // Créer l'objet File Reader
+            FileReader fr = new FileReader(file);
+            // Créer l'objet BufferedReader
+            BufferedReader br = new BufferedReader(fr);
+            StringBuffer sb = new StringBuffer();
+            String line;
+            while ((line = br.readLine()) != null) {
+                // ajoute la ligne au buffer
+                sb.append(line);
+                sb.append("\n");
+            }
+            fr.close();
 
-        User user = User.builder()
-                .firstandlastname(request.getFirstAndLastName())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .additionalrole(Role.valueOf(request.getAdditionalRole()))
-                .tel(request.getTel())
-                .poste(poste)
-                .servicePoint(servicePoint)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+            license = sb.toString();
+            if (license != "") {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode licenseObj = mapper.readTree("" + license + "");
 
-        String code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+                String activationRequest = licenseObj.get("activationRequest").asText();
+                String[] splitARequest = activationRequest.split(",");
+                String[] splitInfo = splitARequest[1].split(":");
+                totalUser = Integer.parseInt(splitInfo[1]);
+            }
 
-        while (userRepository.findByCode(code).isPresent()) {
-            code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+            // settings.put("data", sb.toString());
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        user.setCode(code);
-        if (request.getAdditionalRole() == null) {
-            user.setAdditionalrole(Role.MOLDUE);
-        } else {
-            user.setAdditionalrole(Role.valueOf(request.getAdditionalRole()));
-        }
 
-        user = userRepository.save(user);
-        // HashMap<String, Object> extras = new HashMap<>();
-        // extras.put("additionalRole", user.getAdditionalrole());
-        // extras.put("habilitations", user.getHabilitations());
-        String jwtToken = jwtServiceImpl.generateToken(user);
+        if (license != "" && totalUser != 0) {
 
-        UserDto userDto = UserDto
-                .builder()
-                .id(user.getId())
-                .firstAndLastName(user.getFirstandlastname())
-                .email(user.getEmail())
-                .code(user.getCode())
-                .additionalRole(user.getAdditionalrole())
-                .posteDto(convertToResponse(poste))
-                .servicePointDto(convertToResponse(servicePoint))
-                .build();
-        HashMap<String, Object> content = new HashMap<String, Object>();
-        content.put("user", userDto);
-        content.put("token", jwtToken);
-        return AuthenticationResponse.builder()
-                .response(ApiResponseDto
+            long totalActuUser = userRepository.count();
+            if (totalActuUser < totalUser) {
+                // possible de créer un nouvel user
+                User user = User.builder()
+                        .firstandlastname(request.getFirstAndLastName())
+                        .email(request.getEmail())
+                        .password(passwordEncoder.encode(request.getPassword()))
+                        .additionalrole(Role.valueOf(request.getAdditionalRole()))
+                        .tel(request.getTel())
+                        .poste(poste)
+                        .servicePoint(servicePoint)
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+                String code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+
+                while (userRepository.findByCode(code).isPresent()) {
+                    code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+                }
+                user.setCode(code);
+                if (request.getAdditionalRole() == null) {
+                    user.setAdditionalrole(Role.MOLDUE);
+                } else {
+                    user.setAdditionalrole(Role.valueOf(request.getAdditionalRole()));
+                }
+
+                user = userRepository.save(user);
+                // HashMap<String, Object> extras = new HashMap<>();
+                // extras.put("additionalRole", user.getAdditionalrole());
+                // extras.put("habilitations", user.getHabilitations());
+                String jwtToken = jwtServiceImpl.generateToken(user);
+
+                UserDto userDto = UserDto
                         .builder()
-                        .status(true)
-                        .content(content)
-                        .build())
-                .build();
+                        .id(user.getId())
+                        .firstAndLastName(user.getFirstandlastname())
+                        .email(user.getEmail())
+                        .code(user.getCode())
+                        .additionalRole(user.getAdditionalrole())
+                        .posteDto(convertToResponse(poste))
+                        .servicePointDto(convertToResponse(servicePoint))
+                        .build();
+                HashMap<String, Object> content = new HashMap<String, Object>();
+                content.put("user", userDto);
+                content.put("token", jwtToken);
+                return AuthenticationResponse.builder()
+                        .response(ApiResponseDto
+                                .builder()
+                                .status(true)
+                                .content(content)
+                                .build())
+                        .build();
+            } else {
+                // bloquer la création d'user
+                return AuthenticationResponse.builder()
+                        .response(ApiResponseDto
+                                .builder()
+                                .status(false)
+                                .content(ErrorResponse.builder().message(
+                                        "Limite de compte utilisateur atteint. Contactez nous sur info@sicmagroup.com pour faire une demande d'augmentation.")
+                                        .title("Limite de compte utilisateur atteint. Contactez nous sur info@sicmagroup.com pour faire une demande d'augmentation.")
+                                        .build())
+                                .build())
+                        .build();
+            }
+
+        } else {
+            // lincence n'existe pas donc peut pas créer d'utilisateur
+            return AuthenticationResponse.builder()
+            .response(ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message(
+                            "Configurer votre institution avant d'effectuer cette action")
+                            .title("Configurer votre institution avant d'effectuer cette action")
+                            .build())
+                    .build())
+            .build();
+        }
+
     }
 
     @Override
@@ -220,17 +288,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         // categorie objet
         List<CategorieObjetDto> allCategorieObjetDtos = categorieObjetRepository.findAll().stream()
                 .map(this::convertToDto).collect(Collectors.toList());
-        //institution
+        // institution
         // Settings
-         HashMap<String, Object> settings = new HashMap<String, Object>();
+        HashMap<String, Object> settings = new HashMap<String, Object>();
         try {
             Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
             Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
             Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
             Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
-            
-            InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(), InstitutionRequest.class);
+
+            InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(),
+                    InstitutionRequest.class);
             settings.put("institution", institutionRequest);
 
             MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
@@ -240,14 +309,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             settings.put("sms", smsRequest);
 
             BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
-            
+
             settings.put("bot", botRequest);
-                
+
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-       
+
         settings.put("servicePoints", allServicePointDtos);
         settings.put("postes", allPosteDtos);
         settings.put("products", allProductDtos);
@@ -261,8 +330,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         settings.put("categorie_objet", allCategorieObjetDtos);
         settings.put("others", settingServiceImpl.getAll());
 
-         // recuperer le contenu du fichier data
-         settingServiceImpl.updateLicence();
+        // recuperer le contenu du fichier data
+        settingServiceImpl.updateLicence();
         try {
             // Le fichier d'entrée
             File file = new File("data.txt");
@@ -284,7 +353,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             settings.put("data", "");
             e.printStackTrace();
         }
-       
 
         HashMap<String, Object> content = new HashMap<String, Object>();
         content.put("user", userDto);
@@ -299,12 +367,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
     }
 
-         private ExistingSolutionResponse convertToResponse(ExistingSolution exSolution) {
+    private ExistingSolutionResponse convertToResponse(ExistingSolution exSolution) {
         ExistingSolutionResponse existingSolutionResponse = modelMapper.map(exSolution, ExistingSolutionResponse.class);
         return existingSolutionResponse;
     }
 
-     private ObjetResponse convertToResponse(Objet objet) {
+    private ObjetResponse convertToResponse(Objet objet) {
         ObjetResponse objetResponse = modelMapper.map(objet, ObjetResponse.class);
         if (objet.getExistingSolutions() != null) {
             objetResponse.setExistingSolutions(
@@ -318,7 +386,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         return objetResponse;
     }
-
 
     private CategorieObjetDto convertToDto(CategorieObjet categorieObjet) {
         CategorieObjetDto dto = modelMapper.map(categorieObjet, CategorieObjetDto.class);
