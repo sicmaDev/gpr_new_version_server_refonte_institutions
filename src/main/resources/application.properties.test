@@ -25,7 +25,7 @@ file.upload-dir=/Users/Dell/uploads-gps
 
 spring.mail.host=ssl0.ovh.net
 spring.mail.port=465
-spring.mail.username=reclamations@assilassime.org
+spring.mail.username= 
 spring.mail.password=Ass123456@
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true

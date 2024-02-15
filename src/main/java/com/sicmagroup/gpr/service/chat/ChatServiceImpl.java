@@ -26,6 +26,7 @@ import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.UserRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.SensitiveConstante;
 import com.sicmagroup.gpr.utils.Utils;
 
@@ -39,6 +40,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserRepository userRepository;
     private final ChatRepository repository;
     private final LogServiceImpl logServiceImpl;
+    private final SettingServiceImpl settingServiceImpl;
 
     @Override
     public Chat init(ChatInitRequest request) throws Exception {
@@ -90,7 +92,7 @@ public class ChatServiceImpl implements ChatService {
                             + "...\n\n" +
                             "Nous vous invitons à rejoindre cette session afin de procéder à son traitement.";
                     Utils.sendmail(members, "Démarrage d'une session", message, null,
-                            "reclamations@assilassime.org");
+                            " ", settingServiceImpl);
                 } catch (Exception e) {
                     if (e != null) {
                         Log log2 = Log
@@ -185,8 +187,8 @@ public class ChatServiceImpl implements ChatService {
                     "Vous êtes invité à intervenir dans les discussions à propos de la réclamation : "
                     + chat.getClaim().getCode() + " \n\n" +
                     "Connectez vous sur la plateforme GPRAssilassimé.";
-            // Utils.sendmail(guest.getEmail(), "Invitation chat", message, null, SensitiveConstante.USERNAME);
-            // Utils.sendSms(Arrays.asList(guest), message);
+            Utils.sendmail(guest.getEmail(), "Invitation chat", message, null, "", settingServiceImpl);
+            Utils.sendSms(Arrays.asList(guest), message, settingServiceImpl);
         } catch (Exception e) {
             e.printStackTrace();
             // TODO: save in log
@@ -231,7 +233,7 @@ public class ChatServiceImpl implements ChatService {
                     "Vous avez exclus de la discussion sur le traitement de la réclamation : "
                     + chat.getClaim().getCode() + " \n\n" +
                     "Contactez le Président du Comité de Gestion des Réclamations s'il s'agit d'une erreur.";
-            // Utils.sendmail(guest.getEmail(), "Ejection du chat", message, null, SensitiveConstante.USERNAME);
+            Utils.sendmail(guest.getEmail(), "Ejection du chat", message, null, "", settingServiceImpl);
             // Utils.sendSms(Arrays.asList(guest), message);
         } catch (Exception e) {
             e.printStackTrace();

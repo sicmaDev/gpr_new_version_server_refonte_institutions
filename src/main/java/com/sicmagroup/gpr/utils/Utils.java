@@ -24,13 +24,17 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.scheduling.annotation.Async;
 import org.yaml.snakeyaml.util.UriEncoder;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sicmagroup.gpr.api.config.setting.MailRequest;
+import com.sicmagroup.gpr.api.config.setting.SmsRequest;
 import com.sicmagroup.gpr.domain.dto.reports.RgbColor;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.LogTarget;
 import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.model.Log;
+import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
-
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 
 public class Utils {
 
@@ -95,41 +99,44 @@ public class Utils {
     }
 
     @Async
-    public static Future<String> sendmail(String to, String subject, String body, String cc, String from) {
+    public static Future<String> sendmail(String to, String subject, String body, String cc, String from,
+            SettingServiceImpl settingServiceImpl) {
         SimpleMailMessage message = new SimpleMailMessage();
         JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
-
-        
+        ObjectMapper objectMapper = new ObjectMapper();
 
         try {
+            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+            if (mail != null) {
+                MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+                // System.out.println("try b");
+                mailSenderr.setHost(mailRequest.getHost());
+                mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
+                mailSenderr.setUsername(mailRequest.getUser());
+                mailSenderr.setPassword(mailRequest.getPwd());
 
-            // System.out.println("try b");
-            mailSenderr.setHost(SensitiveConstante.HOST);
-            mailSenderr.setPort(SensitiveConstante.PORT);
-            mailSenderr.setUsername(SensitiveConstante.USERNAME);
-            mailSenderr.setPassword(SensitiveConstante.PASSWORD);
+                Properties props = mailSenderr.getJavaMailProperties();
+                props.put("mail.transport.protocol", "smtp");
+                props.put("mail.smtp.auth", "true");
+                props.put("mail.smtp.ssl.enable", "true");
+                props.put("mail.smtp.starttls.enable", "true");
+                props.put("mail.debug", "true");
 
-            Properties props = mailSenderr.getJavaMailProperties();
-            props.put("mail.transport.protocol", "smtp");
-            props.put("mail.smtp.auth", "true");
-              props.put("mail.smtp.ssl.enable", "true");
-            props.put("mail.smtp.starttls.enable", "true");
-            props.put("mail.debug", "true");
+                if (cc != "" && cc != null) {
+                    String[] listCc = cc.split(",");
+                    message.setCc(listCc);
+                }
 
-            if (cc != "" && cc != null) {
-                String[] listCc = cc.split(",");
-                message.setCc(listCc);
+                message.setTo(to);
+                message.setSubject(subject);
+                message.setText(body);
+                message.setFrom(mailRequest.getUser());
+
+                mailSenderr.send(message);
             }
 
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(body);
-            message.setFrom(from);
-            
-            mailSenderr.send(message);
-            
         } catch (Exception e) {
-            
+
             e.printStackTrace();
         }
 
@@ -138,50 +145,51 @@ public class Utils {
     }
 
     @Async
-    public static Future<String> sendmail(List<User> usersTo, String subject, String body, String cc, String from) throws Exception {
+    public static Future<String> sendmail(List<User> usersTo, String subject, String body, String cc, String from,
+            SettingServiceImpl settingServiceImpl) throws Exception {
         SimpleMailMessage message = new SimpleMailMessage();
         JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
+        ObjectMapper objectMapper = new ObjectMapper();
         // from = "darrell.kidjo@sicmagroup.com";
         try {
 
-            // System.out.println("try b");
-            // mailSenderr.setHost("sandbox.smtp.mailtrap.io");
-            // mailSenderr.setPort(2525);
-            // mailSenderr.setUsername("e8fdeeb7950989");
-            // mailSenderr.setPassword("84b6c005e8f5de");
+            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+            if (mail != null) {
 
-            mailSenderr.setHost(SensitiveConstante.HOST);
-            mailSenderr.setPort(SensitiveConstante.PORT);
-            mailSenderr.setUsername(SensitiveConstante.USERNAME);
-            mailSenderr.setPassword(SensitiveConstante.PASSWORD);
+                MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+                // System.out.println("try b");
+                mailSenderr.setHost(mailRequest.getHost());
+                mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
+                mailSenderr.setUsername(mailRequest.getUser());
+                mailSenderr.setPassword(mailRequest.getPwd());
 
-            Properties props = mailSenderr.getJavaMailProperties();
-            props.put("mail.transport.protocol", "smtp");
-            props.put("mail.smtp.auth", "true");
-            props.put("mail.smtp.ssl.enable", "true");
-            props.put("mail.debug", "true");
-            mailSenderr.setJavaMailProperties(props);
+                Properties props = mailSenderr.getJavaMailProperties();
+                props.put("mail.transport.protocol", "smtp");
+                props.put("mail.smtp.auth", "true");
+                props.put("mail.smtp.ssl.enable", "true");
+                props.put("mail.debug", "true");
+                mailSenderr.setJavaMailProperties(props);
 
-            if (cc != "" && cc != null) {
-                String[] listCc = cc.split(",");
-                message.setCc(listCc);
+                if (cc != "" && cc != null) {
+                    String[] listCc = cc.split(",");
+                    message.setCc(listCc);
+                }
+                List<String> emails = usersTo.stream().map(user -> user.getEmail()).collect(Collectors.toList());
+                System.out.println(emails);
+                System.out.println(emails.iterator().next());
+                String[] recipients = emails.toArray(new String[0]);
+                System.out.println("recipients");
+
+                message.setTo(recipients);
+                message.setSubject(subject);
+                message.setText(body);
+                message.setFrom(mailRequest.getUser());
+                mailSenderr.send(message);
             }
-            List<String> emails = usersTo.stream().map(user -> user.getEmail()).collect(Collectors.toList());
-             System.out.println(emails);
-            System.out.println(emails.iterator().next());
-             String[] recipients = emails.toArray(new String[0]);
-            System.out.println("recipients");
-           
-            message.setTo("reclamations@assilassime.org");
-            message.setSubject(subject);
-            message.setText(body);
-            message.setFrom(from);
-            mailSenderr.send(message);
         } catch (Exception e) {
             throw e;
             // e.printStackTrace();
-            
-            
+
         }
 
         return null;
@@ -252,64 +260,84 @@ public class Utils {
     }
 
     @Async
-    public static Future<Boolean> sendSms(List<User> usersTo, String message) throws IOException {
-        String baseUrl = "http://www.wassasms.com/wassasms/api/web/v3/sends?";
-        String token = "SZhs_fSrSqDn8eITgs77ym17ttv1G8ig";
-        String sender = "gps";
-        String dlrUrl = "";
-        message = UriEncoder.encode(message);
-        HttpURLConnection con;
-        for (User to : usersTo) {
-            baseUrl += "access-token=" + token + "&sender=" + sender + "&receiver=" + to.getTel() + "&text=" + message;
-            try {
-                URL url = new URL(baseUrl);
-                con = (HttpURLConnection) url.openConnection();
-                con.setRequestMethod("GET");
-                int status = con.getResponseCode();
-                if (status >= 200 && status <= 299) {
-                    BufferedReader in = new BufferedReader(
-                            new InputStreamReader(con.getInputStream()));
-                    String inputLine;
-                    StringBuffer content = new StringBuffer();
-                    while ((inputLine = in.readLine()) != null) {
-                        content.append(inputLine);
-                    }
-                    in.close();
-                    System.out.println("sms send");
-                    System.out.println(content);
-                } else {
-                    BufferedReader in = new BufferedReader(
-                            new InputStreamReader(con.getErrorStream()));
-                    String inputLine;
-                    StringBuffer content = new StringBuffer();
-                    while ((inputLine = in.readLine()) != null) {
-                        content.append(inputLine);
-                    }
-                    in.close();
-                      System.out.println("sms not send");
-                    System.out.println(content);
+    public static Future<Boolean> sendSms(List<User> usersTo, String message, SettingServiceImpl settingServiceImpl)
+            throws Exception {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            if (sms != null) {
+                SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                String baseUrl = smsRequest.getUrl();// "http://www.wassasms.com/wassasms/api/web/v3/sends?";
+                String token = smsRequest.getValMdp();// "SZhs_fSrSqDn8eITgs77ym17ttv1G8ig";
+                String sender = smsRequest.getValEmetteur();// "gps";
+                String dlrUrl = "";
+                message = UriEncoder.encode(message);
+                HttpURLConnection con;
+                for (User to : usersTo) {
 
+                    baseUrl += smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender
+                            + "&"
+                            + smsRequest.getLibDestinataire() + "=" + to.getTel() + "&" + smsRequest.getLibMessage() + "="
+                            + message;
+                    URL url = new URL(baseUrl);
+                    con = (HttpURLConnection) url.openConnection();
+                    con.setRequestMethod("GET");
+                    int status = con.getResponseCode();
+                    if (status >= 200 && status <= 299) {
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(con.getInputStream()));
+                        String inputLine;
+                        StringBuffer content = new StringBuffer();
+                        while ((inputLine = in.readLine()) != null) {
+                            content.append(inputLine);
+                        }
+                        in.close();
+                        System.out.println("sms send");
+                        System.out.println(content);
+                    } else {
+                        BufferedReader in = new BufferedReader(
+                                new InputStreamReader(con.getErrorStream()));
+                        String inputLine;
+                        StringBuffer content = new StringBuffer();
+                        while ((inputLine = in.readLine()) != null) {
+                            content.append(inputLine);
+                        }
+                        in.close();
+                        System.out.println("sms not send");
+                        System.out.println(content);
+
+                    }
                 }
-            } catch (IOException e) {
-               throw e;
             }
 
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception ex) {
+            throw ex;
         }
 
         return null;
     }
 
     @Async
-    public static Future<Boolean> sendSms(String number, String message) throws IOException {
-        String baseUrl = "http://www.wassasms.com/wassasms/api/web/v3/sends?";
-        String token = "SZhs_fSrSqDn8eITgs77ym17ttv1G8ig";
-        String sender = "gps";
-        String dlrUrl = "";
-        message = UriEncoder.encode(message);
-        HttpURLConnection con;
-    
-            baseUrl += "access-token=" + token + "&sender=" + sender + "&receiver=" + number + "&text=" + message;
-            try {
+    public static Future<Boolean> sendSms(String number, String message, SettingServiceImpl settingServiceImpl)
+            throws Exception {
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            if (sms != null) {
+                SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                String baseUrl = smsRequest.getUrl();// "http://www.wassasms.com/wassasms/api/web/v3/sends?";
+                String token = smsRequest.getValMdp();// "SZhs_fSrSqDn8eITgs77ym17ttv1G8ig";
+                String sender = smsRequest.getValEmetteur();// "gps";
+                String dlrUrl = "";
+                message = UriEncoder.encode(message);
+                HttpURLConnection con;
+
+                baseUrl += smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender + "&"
+                        + smsRequest.getLibDestinataire() + "=" + number + "&" + smsRequest.getLibMessage() + "="
+                        + message;
                 URL url = new URL(baseUrl);
                 con = (HttpURLConnection) url.openConnection();
                 con.setRequestMethod("GET");
@@ -334,31 +362,33 @@ public class Utils {
                         content.append(inputLine);
                     }
                     in.close();
-                      System.out.println("sms not send");
+                    System.out.println("sms not send");
                     System.out.println(content);
 
                 }
-            } catch (IOException e) {
-               throw e;
             }
 
-        
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception ex) {
+            throw ex;
+        }
 
         return null;
     }
 
     public static Double percentCalculator(Long value, Long total) {
-        if(total != 0){
+        if (total != 0) {
             return (((Double) value.doubleValue() / total) * 100);
-        } 
+        }
         return 0.0;
-        
+
     }
 
     public static Double parseDouble(Double toParse) {
         DecimalFormat decimalFormat = new DecimalFormat("#.##");
         String str = decimalFormat.format(toParse);
-        System.out.println(str); 
+        System.out.println(str);
         return Double.parseDouble(str.replace(",", "."));
     }
 
@@ -366,7 +396,7 @@ public class Utils {
         List<RgbColor> listColor = new ArrayList<>();
         Random random = new Random();
         for (int i = 0; i < total; i++) {
-            listColor.add(new RgbColor(random.nextInt(250),random.nextInt(225),
+            listColor.add(new RgbColor(random.nextInt(250), random.nextInt(225),
                     random.nextInt(200)));
         }
         return listColor;

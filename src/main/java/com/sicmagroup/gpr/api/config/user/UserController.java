@@ -42,6 +42,7 @@ import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.chat.ChatServiceImpl;
 import com.sicmagroup.gpr.service.chat.message.MessageServiceImp;
 import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -58,10 +59,7 @@ public class UserController {
 
     private final AuthenticationServiceImpl authenticationServiceImpl;
     private final ModelMapper modelMapper;
-    private final ClaimServiceImpl claimServiceImpl;
-    private final ChatRepository chatRepository;
-    private final MessageRepository messageRepository;
-    private final UserRepository userRepository;
+    private final SettingServiceImpl settingServiceImpl;
 
     @GetMapping("/list/{deleted}")
     public ResponseEntity<ApiResponseDto> getAll(@PathVariable(name = "deleted", required = false) boolean deleted) {
@@ -291,20 +289,20 @@ public class UserController {
         }
     }
 
-    @GetMapping(value = "/path")
-    public String getMethodName() {
-        User user;
-        try {
-            user = authenticationServiceImpl.getById(2L);
-            Utils.sendSms(Arrays.asList(user),"Essaie sms backend");
+    // @GetMapping(value = "/path")
+    // public String getMethodName() {
+    //     User user;
+    //     try {
+    //         user = authenticationServiceImpl.getById(2L);
+    //         Utils.sendSms(Arrays.asList(user),"Essaie sms backend", settingServiceImpl);
            
-        } catch (Exception ex) {
-            // TODO Auto-generated catch block
-            ex.printStackTrace();
-        }
+    //     } catch (Exception ex) {
+    //         // TODO Auto-generated catch block
+    //         ex.printStackTrace();
+    //     }
 
-        return new String();
-    }
+    //     return new String();
+    // }
 
     private UserDto convertToDto(User user) {
         UserDto userDto = modelMapper.map(user, UserDto.class);

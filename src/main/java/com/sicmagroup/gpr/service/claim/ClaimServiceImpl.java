@@ -58,6 +58,7 @@ import com.sicmagroup.gpr.service.objet.ObjetServcieImpl;
 import com.sicmagroup.gpr.service.product.ProductServiceImpl;
 import com.sicmagroup.gpr.service.satisfactionMeasure.SatifactionMeasureServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.SensitiveConstante;
 import com.sicmagroup.gpr.utils.Utils;
@@ -82,6 +83,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final LogServiceImpl logServiceImpl;
     private final ExistingSolutionRepository existingSolutionRepository;
     private final ChatRepository chatRepository;
+    private final SettingServiceImpl settingServiceImpl;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -255,7 +257,7 @@ public class ClaimServiceImpl implements ClaimService {
                 "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour nos clients.";
         try {
             Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
-                    "reclamations@assilassime.org");
+                    " ", settingServiceImpl);
         } catch (Exception e) {
             if (e != null) {
                 Log log2 = Log
@@ -276,7 +278,7 @@ public class ClaimServiceImpl implements ClaimService {
         try {
             Utils.sendSms(usersToContact,
                     "Nouvelle réclamation enregistrée de niveau de gravité "
-                            + claim.getObjet().getRisqueLevel().name());
+                            + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
         } catch (Exception e) {
             Log log2 = Log
                     .builder()
@@ -549,7 +551,7 @@ public class ClaimServiceImpl implements ClaimService {
                 "Veuillez prendre les mesures nécessaires pour examiner et traiter cette réclamation dans les plus brefs délais";
         try {
             Utils.sendmail(affectedTo.getEmail(), "Affectation de la réclamation", message, null,
-                    "reclamations@assilassime.org");
+                    " ", settingServiceImpl);
         } catch (Exception e) {
             if (e != null) {
                 Log log2 = Log
@@ -569,7 +571,7 @@ public class ClaimServiceImpl implements ClaimService {
         }
         try {
             Utils.sendSms(Arrays.asList(affectedTo), "Une nouvelle réclamation de niveau de gravité "
-                    + claim.getObjet().getRisqueLevel().name() + " vous a été affectée");
+                    + claim.getObjet().getRisqueLevel().name() + " vous a été affectée", settingServiceImpl);
         } catch (Exception e) {
             Log log2 = Log
                     .builder()
@@ -662,7 +664,7 @@ public class ClaimServiceImpl implements ClaimService {
                     "Nous vous invitons à examiner attentivement cette solution et à l'approuver ou la désaprouver ";
 
             Utils.sendmail(claim.getTreatmentAffectedBy().getEmail(), "Proposition de solution à la " + type + "",
-                    message, null, "reclamations@assilassime.org");
+                    message, null, " ", settingServiceImpl);
         } else {
             claim.setStatus(ClaimStatus.TREAT);
             solution2.setStatus(SolutionStatus.APPROVED);
@@ -687,7 +689,7 @@ public class ClaimServiceImpl implements ClaimService {
                         "Nous vous invitons à communiquer la solution au pilote pour mesurer sa satisfaction ";
 
                 Utils.sendmail(pilote.get(0).getEmail(), "" + type + " traitée",
-                        message, null, "reclamations@assilassime.org");
+                        message, null, " ", settingServiceImpl);
             }
 
         }
@@ -739,7 +741,7 @@ public class ClaimServiceImpl implements ClaimService {
                 List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
 
                 try {
-                    Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null, "reclamations@assilassime.org");
+                    Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null, " ", settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -751,7 +753,7 @@ public class ClaimServiceImpl implements ClaimService {
                 List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CA, Role.DE));
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null,
-                            "reclamations@assilassime.org");
+                            " ", settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -769,7 +771,7 @@ public class ClaimServiceImpl implements ClaimService {
 
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
-                            "reclamations@assilassime.org");
+                            " ", settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -782,7 +784,7 @@ public class ClaimServiceImpl implements ClaimService {
                 List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CA, Role.DE));
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
-                            "reclamations@assilassime.org");
+                            " ", settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -831,7 +833,7 @@ public class ClaimServiceImpl implements ClaimService {
                 "Nous vous invitons à examiner attentivement le commentaire laissé puis de proposer une nouvelle solution.";
         try {
             Utils.sendmail(cgrMembers, "Solution désapprouvée",
-                    message, null, "reclamations@assilassime.org");
+                    message, null, " ", settingServiceImpl);
         } catch (Exception e) {
             if (e != null) {
                 Log log2 = Log
@@ -876,7 +878,7 @@ public class ClaimServiceImpl implements ClaimService {
                 + claim.getCode() + "\n\n";
 
         Utils.sendmail(claim.getTreatmentAffectedTo().getEmail(), "Solution approuvée",
-                message, null, "reclamations@assilassime.org");
+                message, null, " ", settingServiceImpl);
         return claim;
     }
 
@@ -1114,7 +1116,7 @@ public class ClaimServiceImpl implements ClaimService {
         try {
             Utils.sendmail(authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint()),
                     " Notification d'enregistrement de réclamation", message, null,
-                    "reclamations@assilassime.org");
+                    " ", settingServiceImpl);
         } catch (Exception e) {
             if (e != null) {
                 Log log2 = Log
@@ -1318,7 +1320,7 @@ public class ClaimServiceImpl implements ClaimService {
         try {
 
             Utils.sendSms(claim.getTel(),
-                    "Cher(e) bénéficiaire, Votre réclamation a été prise en compte. Nous vous recontacterons dès que possible avec une solution.");
+                    "Cher(e) bénéficiaire, Votre réclamation a été prise en compte. Nous vous recontacterons dès que possible avec une solution.", settingServiceImpl);
 
         } catch (Exception ex) {
             // TODO Auto-generated catch block
@@ -1733,7 +1735,7 @@ public class ClaimServiceImpl implements ClaimService {
                             "Cordialement,\n" +
                             "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
                             "Poste : " + claim.getCollector().getPoste().getLibelle();
-                    Utils.sendmail(pilote, "TRANSMISSION DE TRAITEMENT", message, null, SensitiveConstante.USERNAME);
+                    Utils.sendmail(pilote, "TRANSMISSION DE TRAITEMENT", message, null, "", settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -1741,7 +1743,7 @@ public class ClaimServiceImpl implements ClaimService {
                 try {
                     String message = "La réclamation " + claim.getCode()
                             + " vous a été transmis pour prise en charge. Merci de la prendre en charge.";
-                    Utils.sendSms(pilote, message);
+                    Utils.sendSms(pilote, message, settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
