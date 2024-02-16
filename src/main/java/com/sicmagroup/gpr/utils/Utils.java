@@ -473,7 +473,7 @@ public class Utils {
                     Double consommation = (totalJours * 0.3);
                     if (daysRemaining <= (consommation.longValue()))
                         licenceControl
-                                .setMessage("Il reste " + daysRemaining + " jr(s) avant expiration de la licence");
+                                .setMessage("Votre licence expire dans  " + daysRemaining + " jr(s) !");
                     else
                         licenceControl.setMessage("");
                     apiResponseDto.setStatus(true);
@@ -486,7 +486,7 @@ public class Utils {
                     licenceControl.setActif(false);
                     licenceControl.setDayBefore(-daysElapsed);
                     licenceControl.setMaxPoste(Long.parseLong(splitInfo[1]));
-                    licenceControl.setMessage("Votre licence à expirer depuis " + daysElapsed + " jr(s).");
+                    licenceControl.setMessage("Votre licence à expirer depuis " + daysElapsed + " jr(s) !");
                     apiResponseDto.setStatus(true);
                     apiResponseDto.setContent(licenceControl);
 
