@@ -1,15 +1,15 @@
 package com.sicmagroup.gpr.utils;
 
 public class Constante {
-    public static final boolean DEVMODE = true;
+    public static final boolean DEVMODE = false;
 
-    public static final String PROD_PATH_PIECE_JOINTES = "/assilassime/preuve/";
-    public static final String PROD_PATH_AUDIO = "/assilassime/claim_audio/";
-    public static final String PROD_PATH_RESSOURCE = "/assilassime/documents/";
+    public static final String PROD_PATH_PIECE_JOINTES = "/gpr/preuve/";
+    public static final String PROD_PATH_AUDIO = "/gpr/claim_audio/";
+    public static final String PROD_PATH_RESSOURCE = "/gpr/documents/";
 
-    public static final String TEST_PATH_PIECE_JOINTES = "/home/api-gpr/depot/assilassime/preuves/";
-    public static final String TEST_PATH_AUDIO = "/home/api-gpr/depot/assilassime/claim_audio/";
-    public static final String TEST_PATH_RESSOURCE = "/home/api-gpr/depot/assilassime/documents/";
+    public static final String TEST_PATH_PIECE_JOINTES = "/home/api-gpr/depot/gpr/preuves/";
+    public static final String TEST_PATH_AUDIO = "/home/api-gpr/depot/gpr/claim_audio/";
+    public static final String TEST_PATH_RESSOURCE = "/home/api-gpr/depot/gpr/documents/";
 
 
     public static final String INSTITUTION_SLUG = "app-institution";

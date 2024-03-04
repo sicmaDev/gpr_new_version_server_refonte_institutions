@@ -1,13 +1,11 @@
-server.port=9195
+server.port=9002
 spring.jpa.hibernate.ddl-auto=update
-spring.datasource.url = jdbc:mysql://localhost:3306/assilassime_gps?useSSL=false&serverTimezone=Africa/Porto-Novo&useUnicode=true&characterEncoding=UTF-8
-# spring.datasource.url=jdbc:mysql://89.117.37.251:3306/assilassime_gps
-spring.datasource.username=gps_db_admin
-spring.datasource.password=Assilassime@gps2023
+spring.datasource.url = jdbc:mysql://mysql-db:3306/gpr_sicma_db?useSSL=false&serverTimezone=Africa/Porto-Novo&useUnicode=true&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+spring.datasource.username=gpr_sicma_db_user
+spring.datasource.password=eirPejd7@[9oao}+eT3
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
-#gps_assilassime_admin
 #tT37#1f+>NJ=
 
 ## MULTIPART (MultipartProperties)
@@ -27,10 +25,6 @@ spring.servlet.multipart.max-request-size=250MB
 spring.web.resources.add-mappings=true
 
 
-#server.ssl.key-store=/etc/letsencrypt/live/gprserver.com/keystore.p12
-#server.ssl.key-store-password=gps-assilassime
-#server.ssl.key-store-type=PKCS12
-#server.ssl.key-alias=tomcat
 
 
 #ssl

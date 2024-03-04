@@ -11,6 +11,7 @@ import com.sicmagroup.gpr.api.Media.MediaResponse;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
+import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.model.Claim;
@@ -52,7 +53,7 @@ public class SuggestionController {
     private final SuggestionServiceImpl service;
     private final ModelMapper modelMapper;
     private final AuthenticationServiceImpl authService;
-        private final MediaServiceImpl mediaService;
+    private final MediaServiceImpl mediaService;
 
     @GetMapping(value = "/all")
     public ResponseEntity<ApiResponseDto> getAllSuggestion() {
@@ -67,7 +68,7 @@ public class SuggestionController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
-        @GetMapping(value = "/list")
+    @GetMapping(value = "/list")
     public ResponseEntity<ApiResponseDto> getList() {
         ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
         List<Suggestion> suggestions = service.getAllByStatusNot(ClaimStatus.TEMP_SAVED);
@@ -85,9 +86,9 @@ public class SuggestionController {
     public ResponseEntity<ApiResponseDto> getTreaTableList(@PathVariable ClaimStatus status) {
         ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
         List<Suggestion> suggestions = new ArrayList<>();
-        
-        if(status == ClaimStatus.TEMP_SAVED){
-             UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+
+        if (status == ClaimStatus.TEMP_SAVED) {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
                     .getPrincipal();
             User collector;
             try {
@@ -102,7 +103,7 @@ public class SuggestionController {
                         .build();
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
             }
-            
+
         } else {
             suggestions = service.getAllByStatusIn(Arrays.asList(status));
         }
@@ -122,32 +123,51 @@ public class SuggestionController {
             @RequestPart(name = "files", required = false) MultipartFile[] files)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto;
-        ObjectMapper mapper = new ObjectMapper();
-        SuggestionRequest suggestionRequest = mapper.readValue(suggestionStr, SuggestionRequest.class);
-        SuggestionAddRequest suggestionAddRequest = SuggestionAddRequest
-                .builder()
-                .suggestionRequest(suggestionRequest)
-                .files(files)
-                .build();
-        try {
-            Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.SAVED);
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(convertToDto(suggestion))
-                    .build();
-            return ResponseEntity.ok(apiResponseDto);
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
-                    .build();
-            if (e.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                ObjectMapper mapper = new ObjectMapper();
+                SuggestionRequest suggestionRequest = mapper.readValue(suggestionStr, SuggestionRequest.class);
+                SuggestionAddRequest suggestionAddRequest = SuggestionAddRequest
+                        .builder()
+                        .suggestionRequest(suggestionRequest)
+                        .files(files)
+                        .build();
+                try {
+                    Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.SAVED);
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(convertToDto(suggestion))
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                            .build();
+                    if (e.getMessage().contains("not found")) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                    } else {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                    }
+                }
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
             }
+
+        } else {
+
+            return ResponseEntity.ok(apiResponseDto);
         }
 
     }
@@ -158,88 +178,125 @@ public class SuggestionController {
             @RequestPart(name = "files", required = false) MultipartFile[] files)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto;
-        ObjectMapper mapper = new ObjectMapper();
-         System.out.println("suggestionStr");
-        System.out.println(suggestionStr);
-        SuggestionRequest suggestionRequest = mapper.readValue(suggestionStr, SuggestionRequest.class);
+        apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                ObjectMapper mapper = new ObjectMapper();
+                // System.out.println("suggestionStr");
+                // System.out.println(suggestionStr);
+                SuggestionRequest suggestionRequest = mapper.readValue(suggestionStr, SuggestionRequest.class);
 
-        SuggestionAddRequest suggestionAddRequest = SuggestionAddRequest
-                .builder()
-                .suggestionRequest(suggestionRequest)
-                .files(files)
-                .build();
-        try {
-            Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.TEMP_SAVED);
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(convertToDto(suggestion))
-                    .build();
-            return ResponseEntity.ok(apiResponseDto);
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
-                    .build();
-            if (e.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                SuggestionAddRequest suggestionAddRequest = SuggestionAddRequest
+                        .builder()
+                        .suggestionRequest(suggestionRequest)
+                        .files(files)
+                        .build();
+                try {
+                    Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.TEMP_SAVED);
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(convertToDto(suggestion))
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                            .build();
+                    if (e.getMessage().contains("not found")) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                    } else {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                    }
+                }
             } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
             }
+
+        } else {
+
+            return ResponseEntity.ok(apiResponseDto);
         }
     }
 
     @PutMapping(value = "/treatSuggestion")
     public ResponseEntity<ApiResponseDto> treatSuggestion(@RequestBody TreatSuggestionRequest request) {
         ApiResponseDto apiResponseDto;
+        apiResponseDto = Utils.verifyLicence();
+        ;
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+                User treator;
+                try {
+                    treator = authService.getById(request.getTreatorId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                            .build();
 
-        User treator;
-        try {
-            treator = authService.getById(request.getTreatorId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
-                    .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
 
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
 
+                Suggestion suggestion;
+
+                try {
+                    suggestion = service.getById(request.getId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                            .build();
+
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+
+                try {
+                    suggestion = service.treatSuggestion(suggestion, treator, request);
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                            .build();
+
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(convertToDto(suggestion))
+                        .build();
+                return ResponseEntity.ok(apiResponseDto);
+            } else {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
+            }
+
+        } else {
+
+            return ResponseEntity.ok(apiResponseDto);
         }
-
-        Suggestion suggestion;
-
-        try {
-            suggestion = service.getById(request.getId());
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
-                    .build();
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-
-        try {
-            suggestion = service.treatSuggestion(suggestion, treator, request);
-        } catch (Exception e) {
-            apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
-                    .build();
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
-
-        apiResponseDto = ApiResponseDto
-                .builder()
-                .status(true)
-                .content(convertToDto(suggestion))
-                .build();
-        return ResponseEntity.ok(apiResponseDto);
     }
 
     @GetMapping("/getFilesBy/{suggestionId}")
@@ -253,7 +310,8 @@ public class SuggestionController {
             apiResponseDto = ApiResponseDto
                     .builder()
                     .status(false)
-                    .content(ErrorResponse.builder().message("Suggestion not found").title("NOT FOUND EXCEPTION").build())
+                    .content(ErrorResponse.builder().message("Suggestion not found").title("NOT FOUND EXCEPTION")
+                            .build())
                     .build();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
@@ -272,27 +330,26 @@ public class SuggestionController {
 
     private SuggestionDto convertToDto(Suggestion suggestion) {
         SuggestionDto suggestionDto = modelMapper.map(suggestion, SuggestionDto.class);
-        if(suggestion.getCreatedAt() != null){
+        if (suggestion.getCreatedAt() != null) {
             suggestionDto.setCreatedAt(suggestion.getCreatedAt().toString());
             // System.out.println(suggestionDto.getCreatedAt());
         }
-        if(suggestion.getUpdatedAt() != null){
+        if (suggestion.getUpdatedAt() != null) {
             suggestionDto.setUpdatedAt(suggestion.getUpdatedAt().toString());
             // System.out.println(suggestionDto.getUpdatedAt());
         }
 
-        if(suggestion.getReceiptDateTime() != null){
+        if (suggestion.getReceiptDateTime() != null) {
             suggestionDto.setReceiptDateTime(suggestion.getReceiptDateTime().toString());
         }
-        
-        if(suggestion.getTreatAt() != null){
+
+        if (suggestion.getTreatAt() != null) {
             suggestionDto.setTreatAt(suggestion.getTreatAt().toString());
         }
-        
-        
-        
+
         return suggestionDto;
     }
+
     private MediaResponse convertToResponse(Media media) {
         MediaResponse mediaResponse = modelMapper.map(media, MediaResponse.class);
         mediaResponse.setSize(media.getSize());

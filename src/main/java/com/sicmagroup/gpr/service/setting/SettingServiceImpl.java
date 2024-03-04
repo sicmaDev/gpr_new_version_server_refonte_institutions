@@ -94,7 +94,7 @@ public class SettingServiceImpl implements SettingService {
             JsonNode licenseObj = mapper.readTree(""+license+"");
             // System.out.println(licenseObj.get("clients").get(0));
             if(licenseObj != null && license != ""){
-                String url = "https://gpr-lm.herokuapp.com/api/v1/license/updateLicenceClientSide";
+                String url = "https://lm.gprserver.com/api/v1/license/updateLicenceClientSide";
                 RestTemplate restTemplate = new RestTemplate();
                 LicenseResponse licenseResponse = new LicenseResponse();
                 Client client = new Client(0, licenseObj.get("company").asText(), licenseObj.get("company").asText(), licenseObj.get("email").asText(), licenseObj.get("activationRequest").asText(),  LocalDateTime.now(),  LocalDateTime.now());

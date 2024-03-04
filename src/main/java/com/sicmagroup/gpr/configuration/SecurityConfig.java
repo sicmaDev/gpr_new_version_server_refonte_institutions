@@ -39,7 +39,7 @@ public class SecurityConfig {
                                 .cors(cors -> corsConfigurationSource())
                                 .authorizeHttpRequests(registry -> registry
                                                 // public endpoints
-                                                .requestMatchers("/api/v1/auth/authenticate", "/ws/**", "/api/v1/session**", "/api/v1/message/**", "/**")
+                                                .requestMatchers("/api/v1/auth/authenticate", "/api/v1/auth/infoLicense", "/ws/**", "/api/v1/session**", "/api/v1/message/**", "/**")
                                                 
                                                 .permitAll()
                                                 // .requestMatchers("/api/v1/auth/update",
@@ -61,8 +61,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/claim/measureSatisfaction",
                                                                 "/api/v1/claim/classedClaim", "/api/v1/claim/litigate",
                                                                 "/api/v1/claim/listAssuranceSatisfaction")
-                                                .hasAnyAuthority("H5", "MEMBRE_CGR", "PR_CGR", "PILOTE")
-                                                .requestMatchers("/api/v1/chat/**").hasAnyAuthority("MEMBRE_CGR", "PR_CGR")
+                                                .hasAnyAuthority("H5", "PILOTE")
+                                                .requestMatchers("/api/v1/chat/**").hasAnyAuthority("H2", "H3", "H4")
                                                 .requestMatchers("/api/v1/claim/list/**").hasAuthority("H1")
                                                 // DENUNCIATION
                                                 .requestMatchers("/api/v1/denunciation/add",
@@ -77,11 +77,11 @@ public class SecurityConfig {
                                                                 "/api/v1/denunciation/approuvedSolution")
                                                 .hasAnyAuthority("H6", "DE")
                                                 .requestMatchers("/api/v1/denunciation/treatDenun/**")
-                                                .hasAnyAuthority("H2", "H3", "H4", "MEMBRE_CGR", "PR_CGR")
+                                                .hasAnyAuthority("H2", "H3", "H4")
                                                 .requestMatchers("/api/v1/denunciation/list/**").hasAuthority("H1")
                                                 // ALERT
                                                 .requestMatchers("/api/v1/alert/**")
-                                                .hasAnyAuthority("H13", "PR_CGR", "MEMBRE_CGR", "DE", "PILOTE")
+                                                .hasAnyAuthority("H13",  "DE", "PILOTE")
                                                 // .requestMatchers("/api/v1/report/**").hasAnyAuthority("h11")
                                                 // private endpoints
                                                 .anyRequest()
@@ -104,7 +104,8 @@ public class SecurityConfig {
                 // TODO spécifier l'URL du serveur prod
                 config.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:3001", "http://192.168.100.5:81", "http://192.168.100.5",
                 "http://localhost:9195", "http://localhost:8080", "http://196.168.30.157:81", "https://196.168.30.157", "http://196.168.30.157", "https://196.168.30.157:81", "https://196.168.30.157:443", "https://196.168.30.157:444",
-                 "http://localhost:81", "https://gpsassilassime.sicmagroup.com"));
+                 "http://localhost:81"));
+                // config.setAllowedOrigins(Arrays.asList("http://app-sicma:3002"));
                 // config.setAllowedOrigins(Arrays.asList("*"));
 
                 config.setAllowedMethods(Arrays.asList("*"));
