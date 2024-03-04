@@ -2,9 +2,9 @@
   "createdAt" : "2024-02-15T08:42:03.580508",
   "serial" : "98baf1e3-79f4-45a2-b334-a456c1f228c4",
   "company" : "sicmaaa",
-  "activationRequest" : "9b9b2297-690f-4736-af77-d6f1483e7977,365:12",
+  "activationRequest" : "9b9b2297-690f-4736-af77-d6f1483e7977,365:14",
   "id" : 361,
   "fullname" : "Licence Web",
   "email" : "info16@sicmagroup.com",
-  "updatedAt" : "2024-02-15T09:05:28.775084"
+  "updatedAt" : "2024-02-16T11:00:52.127441"
 }
