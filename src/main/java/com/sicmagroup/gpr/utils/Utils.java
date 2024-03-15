@@ -471,9 +471,16 @@ public class Utils {
                     licenceControl.setDayBefore(daysRemaining);
                     licenceControl.setMaxPoste(Long.parseLong(splitInfo[1]));
                     Double consommation = (totalJours * 0.3);
-                    if (daysRemaining <= (consommation.longValue()))
-                        licenceControl
-                                .setMessage("Votre licence expire dans  " + daysRemaining + " jr(s) !");
+                    if (daysRemaining <= (consommation.longValue())){
+                        if(daysRemaining == 0){
+                            licenceControl
+                            .setMessage("Votre licence expire dans quelques heures !");
+                        } else {
+                            licenceControl
+                            .setMessage("Votre licence expire dans  " + daysRemaining + " jr(s) !");
+                        }
+                    }
+                       
                     else
                         licenceControl.setMessage("");
                     apiResponseDto.setStatus(true);

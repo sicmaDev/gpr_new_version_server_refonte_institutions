@@ -10,9 +10,9 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.sicmagroup</groupId>
-	<artifactId>assilassime-gps</artifactId>
+	<artifactId>gpr</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>assilassime-gps</name>
+	<name>gpr</name>
 	<description>Backend of Claims management Web App</description>
 	<properties>
 		<java.version>17</java.version>
@@ -56,6 +56,7 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+			<version>1.18.30</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

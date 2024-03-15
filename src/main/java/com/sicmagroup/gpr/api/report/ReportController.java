@@ -114,7 +114,7 @@ public class ReportController {
 						.suggestionReport(suggestionReport)
 
 						.build();
-				;
+				
 				StatisticReport statisticReport = StatisticReport
 						.builder()
 						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(null),
