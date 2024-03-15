@@ -1,10 +1,10 @@
 {
-  "createdAt" : "2024-02-15T08:42:03.580508",
-  "serial" : "98baf1e3-79f4-45a2-b334-a456c1f228c4",
-  "company" : "sicmaaa",
-  "activationRequest" : "9b9b2297-690f-4736-af77-d6f1483e7977,365:14",
-  "id" : 361,
+  "createdAt" : "2024-03-12T10:30:06.719392",
+  "serial" : "4fac28e3-212e-4688-b984-bbbddbcdc9d6",
+  "company" : "SICMA & Associes",
+  "activationRequest" : "7aa48c53-afef-4e9c-8fa6-bdafc9cfd82b,365:15",
+  "id" : 345,
   "fullname" : "Licence Web",
-  "email" : "info16@sicmagroup.com",
-  "updatedAt" : "2024-02-16T11:00:52.127441"
+  "email" : "info2@sicmagroup.com",
+  "updatedAt" : "2024-03-12T10:48:49.560101"
 }

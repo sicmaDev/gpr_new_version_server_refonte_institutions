@@ -17,4 +17,6 @@ public class InstitutionRequest {
     private String adresse;
     private String tel;
     private String logo;
+    private String pays;
+    private String paysCode;
 }
