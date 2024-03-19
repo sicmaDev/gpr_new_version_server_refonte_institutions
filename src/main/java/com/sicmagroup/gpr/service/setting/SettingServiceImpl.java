@@ -74,8 +74,10 @@ public class SettingServiceImpl implements SettingService {
         {
             // Le fichier d'entrée
             File file = new File("data.txt");    
+            
             // Créer l'objet File Reader
             FileReader fr = new FileReader(file);  
+            
             // Créer l'objet BufferedReader        
             BufferedReader br = new BufferedReader(fr);  
             StringBuffer sb = new StringBuffer();    
@@ -88,8 +90,8 @@ public class SettingServiceImpl implements SettingService {
             }
             fr.close();    
             String license = sb.toString();
-            System.out.println("in the try catch");
-            System.out.println(license);
+            // System.out.println("in the try catch");
+            // System.out.println(license);
             ObjectMapper mapper = new ObjectMapper();
             JsonNode licenseObj = mapper.readTree(""+license+"");
             // System.out.println(licenseObj.get("clients").get(0));
@@ -103,8 +105,8 @@ public class SettingServiceImpl implements SettingService {
                 licenseResponse.setClients(clients);
                 licenseResponse.setSerial(licenseObj.get("serial").asText());
                 ResponseEntity<LicenseResponse> result = restTemplate.postForEntity(url,licenseResponse, LicenseResponse.class);
-                System.out.println("in the function 2");
-                System.out.println(result);
+                // System.out.println("in the function 2");
+                // System.out.println(result);
                 if(result != null && result.getBody() != null){
                     try {
                         ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();

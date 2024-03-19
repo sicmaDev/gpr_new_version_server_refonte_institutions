@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
@@ -15,7 +16,10 @@ import com.sicmagroup.gpr.utils.Constante;
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -154,11 +158,47 @@ public class SettingController {
         try {
             // ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
             // String json = ow.writeValueAsString(data);
+            File file = new File("data.txt");  
+            if(file.exists()){
 
-            FileWriter fw = new FileWriter("data.txt");
-            fw.write(data);
-            fw.close();
-            return "Le texte a été écrit avec succès";
+                FileReader fr = new FileReader(file);  
+                BufferedReader br = new BufferedReader(fr);  
+                StringBuffer sb = new StringBuffer();    
+                String line;
+                while((line = br.readLine()) != null) 
+                {
+                    // ajoute la ligne au buffer
+                    sb.append(line);      
+                    sb.append("\n");     
+                }
+                fr.close();    
+                String license = sb.toString();
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode licenseObj = mapper.readTree(""+license+"");
+                if(licenseObj != null && license != ""){
+                    String oldEmail = licenseObj.get("email").asText();
+                    if(data.contains(oldEmail)){
+                        FileWriter fw = new FileWriter(file);
+            
+                        fw.write(data);
+                        fw.close();
+                        return "Le texte a été écrit avec succès";
+                    } else {
+                        return "Information de licence invalide";
+                    }
+                }  else {
+                    return "Information de licence invalide";
+                }
+
+            } else {
+                FileWriter fw = new FileWriter("data.txt");
+            
+                fw.write(data);
+                fw.close();
+                return "Le texte a été écrit avec succès";
+            }
+
+           
         } catch (IOException e) {
             e.printStackTrace();
             return e.getMessage();
