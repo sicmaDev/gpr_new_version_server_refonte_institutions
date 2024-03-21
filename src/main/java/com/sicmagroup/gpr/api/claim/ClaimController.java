@@ -272,8 +272,8 @@ public class ClaimController {
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.CLAIM, Arrays.asList(ClaimStatus.SAVED,
                     ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
-            if (connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
-                    || connectedUser.getAdditionalrole().equals(Role.PR_CGR)) {
+            if (connectedUser.getAdditionalrole().equals(Role.DE)
+                    || connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
                 List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.CLAIM,
                         Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
                                 ClaimStatus.CLASSED));

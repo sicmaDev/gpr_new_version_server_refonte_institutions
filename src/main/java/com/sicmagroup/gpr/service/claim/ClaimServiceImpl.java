@@ -514,7 +514,7 @@ public class ClaimServiceImpl implements ClaimService {
         // User affectedTo = authServiceImpl.getById(userId);
         // User affectedBy = authServiceImpl.getById(affectorId);
 
-        if (claim.getStatus() != ClaimStatus.SAVED) {
+        if (!Arrays.asList(ClaimStatus.SAVED,ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.UNSATISFIED,ClaimStatus.CLASSED).contains(claim.getStatus())) {
             throw new ClaimException("Invalid request! You can't affect treatment to not saved claim");
         }
 
@@ -955,9 +955,7 @@ public class ClaimServiceImpl implements ClaimService {
             } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MINEUR
                     && !affectedTo.canTreatMinorRiskClaim()) {
                 return false;
-            } else if (claim.isTransmitted()) {
-                return false;
-            } else {
+            }else {
                 return true;
             }
         }).collect(Collectors.toList());
@@ -1181,6 +1179,7 @@ public class ClaimServiceImpl implements ClaimService {
                             .retardDay(days + " jr(s) " + hours + " heure(s)")
                             .declenchedDate(calculateDate)
                             .receiptDateTime(claim.getReceiptDateTime())
+                            .status(claim.getStatus())
                             .build();
                     claimAlertDtos.add(alertDto);
                 }

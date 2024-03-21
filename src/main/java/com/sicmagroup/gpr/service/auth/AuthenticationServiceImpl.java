@@ -693,6 +693,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .retardDay(days + " jr(s) " + hours + " heure(s)")
                             .declenchedDate(calculateDate)
                             .receiptDateTime(claim.getReceiptDateTime())
+                            .status(claim.getStatus())
                             .type(type)
                             .build();
                     claimAlertDtos.add(alertDto);
