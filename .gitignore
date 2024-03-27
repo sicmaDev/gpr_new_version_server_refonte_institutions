@@ -33,3 +33,4 @@ build/
 .vscode/
 
 backend-img.tar
+/src/ressources/application.properties
