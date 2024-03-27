@@ -2720,6 +2720,22 @@ public class ReportServiceImpl implements ReportService {
 
                 }
                 if (!isFind) {
+                    switch (status) {
+                        case SATISFIED:
+                            pieChartDto.getLabels().add("SATISFAIT");
+                            pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
+                            break;
+                        case UNSATISFIED:
+                            pieChartDto.getLabels().add("NON SATISFAIT");
+                            pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
+                            break;
+                        case PARTIAL_SATISFIED:
+                            pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
+                            pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
+                            break;
+                        default:
+                            break;
+                    }
                     pieChartDto.getDatas().add((double) 0);
                 } else {
                     isFind = false;
@@ -2758,6 +2774,22 @@ public class ReportServiceImpl implements ReportService {
                 }
 
                 if (!isFind) {
+                    switch (status) {
+                        case SATISFIED:
+                            pieChartDto.getLabels().add("SATISFAIT");
+                            pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
+                            break;
+                        case UNSATISFIED:
+                            pieChartDto.getLabels().add("NON SATISFAIT");
+                            pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
+                            break;
+                        case PARTIAL_SATISFIED:
+                            pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
+                            pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
+                            break;
+                        default:
+                            break;
+                    }
                     pieChartDto.getDatas().add((double) 0);
                 }
                 isFind = false;
@@ -3405,9 +3437,10 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.TREAT));
             totalDenuns = claimRepository.countByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
 
-            totalTreatClaims = claimRepository.countByTypeAndStatusIn(ClaimType.DENUNCIACION,
-                    Arrays.asList(ClaimStatus.TREAT));
-            totalClaims = claimRepository.countByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+            totalTreatClaims = claimRepository.countByTypeAndStatusIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                    ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION));
+            totalClaims = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
 
             List<Suggestion> allTreatResult = suggestionRepository.findByStatusIn(Arrays.asList(ClaimStatus.TREAT));
             List<Suggestion> suggestNotTempSaved = suggestionRepository.findByStatusNot(ClaimStatus.TEMP_SAVED);
@@ -3416,7 +3449,7 @@ public class ReportServiceImpl implements ReportService {
             totalTreatObj = totalTreatDenun + totalTreatClaims + allTreatResult.size();
         }
         if (totalObj != 0) {
-            return Utils.parseDouble((double) totalTreatObj / totalObj);
+            return ((double) totalTreatObj / totalObj);
         } else {
             return 0;
         }

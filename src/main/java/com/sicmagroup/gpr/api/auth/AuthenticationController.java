@@ -92,4 +92,10 @@ public class AuthenticationController {
 
     }
 
+    @PostMapping("/essai")
+    public String test(@RequestBody String tt){
+        System.out.println(tt);
+        return "ahaha";
+    }
+
 }

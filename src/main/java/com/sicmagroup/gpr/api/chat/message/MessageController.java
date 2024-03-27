@@ -13,6 +13,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.user.SimpUserRegistry;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.sicmagroup.gpr.domain.dto.chat.ChatDto;
@@ -41,6 +42,8 @@ public class MessageController {
     private final ChatServiceImpl chatServiceImpl;
     private final SimpUserRegistry simpUserRegistry;
     private final ModelMapper modelMapper;
+
+   
 
     @MessageMapping("/session/{sessionId}")
     @SendTo("/topic/session/{sessionId}")
