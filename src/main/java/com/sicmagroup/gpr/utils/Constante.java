@@ -3,9 +3,9 @@ package com.sicmagroup.gpr.utils;
 public class Constante {
     public static final boolean DEVMODE = false;
 
-    public static final String PROD_PATH_PIECE_JOINTES = "/gpr/preuve/";
-    public static final String PROD_PATH_AUDIO = "/gpr/claim_audio/";
-    public static final String PROD_PATH_RESSOURCE = "/gpr/documents/";
+    public static final String PROD_PATH_PIECE_JOINTES = "/app/gpr/preuve/";
+    public static final String PROD_PATH_AUDIO = "/app/gpr/claim_audio/";
+    public static final String PROD_PATH_RESSOURCE = "/app/gpr/documents/";
 
     public static final String TEST_PATH_PIECE_JOINTES = "/home/api-gpr/depot/gpr/preuves/";
     public static final String TEST_PATH_AUDIO = "/home/api-gpr/depot/gpr/claim_audio/";

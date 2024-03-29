@@ -100,44 +100,44 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
 
         @Query("SELECT sp.id as servicePointId, sp.libelle as libelle, COUNT(c.code) as total " +
                         "FROM ServicePoint sp, Claim c " +
-                        "WHERE c.servicePoint.id = sp.id AND c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY sp.id")
+                        "WHERE c.servicePoint.id = sp.id AND c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY sp.id, sp.libelle")
         List<ClaimPerServicePointProjection> countClaimPerServicePoint(@Param("type") ClaimType type);
 
         @Query("SELECT c.status as status, COUNT(c.code) as total FROM Claim c WHERE c.status != 'TEMP_SAVED' AND c.type = :type GROUP BY c.status  ")
         List<ObjectTotalPerStatusProjection> countClaimPerStatus(@Param("type") ClaimType type);
 
         @Query("SELECT cl.id as id, cl.libelle as libelle, COUNT(c.code) as total FROM Claim c RIGHT JOIN CollectionChannel cl ON c.collectionChannel.id = cl.id WHERE " +
-                "c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY cl.id"
+                "c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY cl.id, cl.libelle"
         )
         List<ObjectPerCanalProjection> countClaimPerCanal(@Param("type") ClaimType type);
 
 
         @Query("SELECT cl.id as canalId, sp.id as spId,  cl.libelle as canalLibelle, sp.libelle as spLibelle, COUNT(c.code) as total" +
-        " FROM Claim c, CollectionChannel cl, ServicePoint sp  WHERE c.collectionChannel.id = cl.id AND c.servicePoint.id = sp.id AND c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY cl.id, sp.id")
+        " FROM Claim c, CollectionChannel cl, ServicePoint sp  WHERE c.collectionChannel.id = cl.id AND c.servicePoint.id = sp.id AND c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY cl.id, sp.id, cl.libelle, sp.libelle")
         List<ClaimPerCanalPerSpPjt> countClaimPerCanalAndAgence(@Param("type") ClaimType type);
 
-        @Query("SELECT o.id as id, COUNT(c.code) as total, o.libelle as libelle FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY o.id")
+        @Query("SELECT o.id as id, COUNT(c.code) as total, o.libelle as libelle FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY o.id, o.libelle")
         List<ObjectPerCanalProjection> countClaimPerObjet(@Param("type") ClaimType type);
 
-        @Query("SELECT o.id as id, COUNT(c.code) as total, o.libelle as libelle FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.status != 'TEMP_SAVED' GROUP BY o.id")
+        @Query("SELECT o.id as id, COUNT(c.code) as total, o.libelle as libelle FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.status != 'TEMP_SAVED' GROUP BY o.id, o.libelle")
         List<ObjectPerCanalProjection> countObjPerObjet();
 
-        @Query("SELECT o.id as idObj, COUNT(c.code) as total, o.libelle as libelleObj, sp.libelle as libelleSp, sp.id as idSp FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.status != 'TEMP_SAVED' GROUP BY o.id, sp.id ")
+        @Query("SELECT o.id as idObj, COUNT(c.code) as total, o.libelle as libelleObj, sp.libelle as libelleSp, sp.id as idSp FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.status != 'TEMP_SAVED' GROUP BY o.id, sp.id, o.libelle, sp.libelle ")
         List<ObjectPerObjProjction> countObjtPerObjetPerAgence();
 
-         @Query("SELECT o.id as idObj, COUNT(c.code) as total, o.libelle as libelleObj, sp.libelle as libelleSp, sp.id as idSp FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY o.id, sp.id ")
+         @Query("SELECT o.id as idObj, COUNT(c.code) as total, o.libelle as libelleObj, sp.libelle as libelleSp, sp.id as idSp FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY o.id, sp.id, o.libelle, sp.libelle ")
         List<ObjectPerObjProjction> countClaimPerObjetPerAgence(@Param("type") ClaimType type);
 
-        @Query("SELECT COUNT(c.code) as total, c.gender as gender FROM Claim c WHERE c.status != 'TEMP_SAVED' AND c.type= :type GROUP BY gender")
+        @Query("SELECT COUNT(c.code) as total, c.gender as gender FROM Claim c WHERE c.status != 'TEMP_SAVED' AND c.type= :type GROUP BY gender, c.gender")
         List<ClaimPerGenderPjt> countClaimPerGender(@Param("type") ClaimType type);
 
-        @Query("SELECT sp.id as id, sp.libelle as libelle, COUNT(c.code) as total, c.gender as gender FROM Claim c LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.status != 'TEMP_SAVED' AND c.type= 'CLAIM' GROUP BY gender, id")
+        @Query("SELECT sp.id as id, sp.libelle as libelle, COUNT(c.code) as total, c.gender as gender FROM Claim c LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.status != 'TEMP_SAVED' AND c.type= 'CLAIM' GROUP BY gender, id, sp.libelle")
         List<ClaimPerGenderAndAgencePrjt> countClaimPerGenderAndAgence();
 
-        @Query("SELECT o.id as objtId, o.libelle as objLibelle, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY objNiveau ")
+        @Query("SELECT o.id as objtId, o.libelle as objLibelle, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY objtId, objLibelle, objNiveau ")
         List<ClaimPerObjLevelProjection> countClaimPerObjLevel(@Param("type") ClaimType type);
 
-        @Query("SELECT sp.id as spId, sp.libelle as spLib, o.id as objtId, o.libelle as objLib, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY spLib, objNiveau")
+        @Query("SELECT sp.id as spId, sp.libelle as spLib, o.id as objtId, o.libelle as objLib, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY sp.id, spLib, objtId, sp.libelle, o.id, o.libelle, objNiveau")
         List<ClaimPerObjLevelAndAgenceProjection> countClaimPerObjLevelAndAgence(@Param("type") ClaimType type);
 
         @Query("SELECT c.status as status, COUNT(c.code) as total FROM Claim c WHERE c.type = 'CLAIM' AND c.status IN ('SATISFIED', 'UNSATISFIED', 'PARTIAL_SATISFIED') GROUP BY status")
@@ -147,7 +147,7 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
 
         // Long countByTypeAndStatusNotAndObjetIn(ClaimType type, ClaimStatus status, );
 
-         @Query("SELECT o.id as objtId, o.libelle as objLibelle, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.type = :type AND c.status = 'SAVED' GROUP BY objNiveau ")
+         @Query("SELECT o.id as objtId, o.libelle as objLibelle, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.type = :type AND c.status = 'SAVED' GROUP BY objtId, objLibelle, objNiveau ")
         List<ClaimPerObjLevelProjection> countClaimSavedPerObjLevel(@Param("type") ClaimType type);
 
 

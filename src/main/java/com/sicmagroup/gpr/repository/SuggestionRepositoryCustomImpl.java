@@ -192,9 +192,9 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         }
 
         query.groupBy(
-                cb.coalesce(servicePoint.get("id"), 0),
-                // servicePoint.get("id"),
-                servicePoint.get("libelle"));
+            cb.coalesce(servicePoint.get("id"), 0),
+            servicePoint.get("id"),
+            servicePoint.get("libelle"));
 
         query.where(predicates.toArray(new Predicate[predicates.size()]));
         TypedQuery<ClaimPerServicePointPro> typedQuery = entityManager.createQuery(query);
@@ -352,7 +352,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         }
 
         query.groupBy(
-                collectionChannel.get("id"));
+                collectionChannel.get("id"),   collectionChannel.get("libelle"));
 
         query.where(predicates.toArray(new Predicate[0]));
         TypedQuery<ObjectPerCanalPro> typedQuery = entityManager.createQuery(query);
@@ -440,6 +440,9 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
 
         query.groupBy(
                 collectionChannel.get("id"),
+                collectionChannel.get("libelle"),
+                servicePoint.get("id"),
+                servicePoint.get("libelle"),
                 cb.coalesce(servicePoint.get("id"), 0)
 
         );
@@ -780,7 +783,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
 
         query.groupBy(
                 cb.function("YEAR", Integer.class, suggestion.get("receiptDateTime")),
-                servicePoint.get("libelle"));
+                servicePoint.get("libelle"), servicePoint.get("id"));
 
         query.where(predicates.toArray(new Predicate[0]));
         List<ObjectPerYear> resultat = entityManager.createQuery(query).getResultList();
