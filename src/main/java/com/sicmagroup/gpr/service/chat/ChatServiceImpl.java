@@ -27,7 +27,6 @@ import com.sicmagroup.gpr.repository.UserRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
-import com.sicmagroup.gpr.utils.SensitiveConstante;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
