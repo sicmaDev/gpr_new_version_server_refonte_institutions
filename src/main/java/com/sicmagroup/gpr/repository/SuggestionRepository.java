@@ -42,7 +42,7 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, S
             "END AS libelle," +
             " COUNT(s.code) as total " +
             "FROM Suggestion s LEFT JOIN ServicePoint sp ON s.serviceIndexe.id = sp.id " +
-            "WHERE s.status != 'TEMP_SAVED' GROUP BY COALESCE(sp.id, 'null')")
+            "WHERE s.status != 'TEMP_SAVED' GROUP BY sp.id, sp.libelle, COALESCE(sp.id, 'null')")
     List<SuggestPerServicePointProjection> countSuggestPerServicePoint();
 
     @Query("SELECT s.status as status, s.accepted as accepted, COUNT(s.code) as total FROM Suggestion s WHERE s.status != 'TEMP_SAVED' GROUP BY s.status, s.accepted  ")
@@ -50,7 +50,7 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, S
 
     @Query("SELECT cl.id as id, cl.libelle as libelle, COUNT(s.code) as total FROM Suggestion s RIGHT JOIN CollectionChannel cl ON s.canal.id = cl.id "
             +
-            "WHERE s.status != 'TEMP_SAVED' GROUP BY cl.id")
+            "WHERE s.status != 'TEMP_SAVED' GROUP BY cl.id, cl.libelle")
     List<ObjectPerCanalProjection> countSuggestPerCanal();
 
     @Query("SELECT cl.id as canalId, cl.libelle as canalLibelle, " +
@@ -58,13 +58,13 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, S
             +
             " COUNT(s.code) as total FROM Suggestion s LEFT JOIN CollectionChannel cl ON s.canal.id = cl.id LEFT JOIN ServicePoint sp ON s.serviceIndexe.id = sp.id  "
             +
-            "WHERE  s.status != 'TEMP_SAVED' GROUP BY cl.id, COALESCE(sp.id, 'null')")
+            "WHERE  s.status != 'TEMP_SAVED' GROUP BY cl.id, canalId, cl.libelle, spLibelle, spId,  COALESCE(sp.id, 'null')")
     List<ClaimPerCanalPerSpPjt> countSuggestPerCanalAndAgence();
 
-    @Query("SELECT  COUNT(s.code) as total, CASE WHEN s.gender IS NULL THEN 'NON_DEFINI' ELSE s.gender END as gender FROM Suggestion s WHERE s.status != 'TEMP_SAVED' GROUP BY COALESCE(gender, 'null')")
+    @Query("SELECT  COUNT(s.code) as total, CASE WHEN s.gender IS NULL THEN 'NON_DEFINI' ELSE s.gender END as gender FROM Suggestion s WHERE s.status != 'TEMP_SAVED' GROUP BY gender, COALESCE(gender, 'null')")
     List<ClaimPerGenderPjt> countSuggestPerGender();
 
-      @Query("SELECT  CASE WHEN s.serviceIndexe.id IS NULL THEN 0 ELSE sp.id END as id,  CASE WHEN s.serviceIndexe.id IS NULL THEN 'Non defini' ELSE  sp.libelle END as libelle, COUNT(s.code) as total, CASE WHEN s.gender IS NULL THEN 'NON_DEFINI' ELSE s.gender END as gender FROM Suggestion s  LEFT JOIN ServicePoint sp ON s.serviceIndexe.id = sp.id WHERE s.status != 'TEMP_SAVED' GROUP BY COALESCE(gender, 'null'), COALESCE(sp.id, 'null')")
+      @Query("SELECT  CASE WHEN s.serviceIndexe.id IS NULL THEN 0 ELSE sp.id END as id,  CASE WHEN s.serviceIndexe.id IS NULL THEN 'Non defini' ELSE  sp.libelle END as libelle, COUNT(s.code) as total, CASE WHEN s.gender IS NULL THEN 'NON_DEFINI' ELSE s.gender END as gender FROM Suggestion s  LEFT JOIN ServicePoint sp ON s.serviceIndexe.id = sp.id WHERE s.status != 'TEMP_SAVED' GROUP BY libelle, id, gender, COALESCE(gender, 'null'), COALESCE(sp.id, 'null')")
     List<ClaimPerGenderAndAgencePrjt> countSuggestPerGenderAndAgence();
 
     Long countByStatusNotAndReceiptDateTimeBetween(ClaimStatus status, LocalDateTime start, LocalDateTime end);

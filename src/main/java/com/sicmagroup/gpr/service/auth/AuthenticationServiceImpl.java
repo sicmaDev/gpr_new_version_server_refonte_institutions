@@ -293,23 +293,42 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         HashMap<String, Object> settings = new HashMap<String, Object>();
         try {
             Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
-            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
-            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
-            Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
-
             InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(),
                     InstitutionRequest.class);
             settings.put("institution", institutionRequest);
-
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+           
+            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
             MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
             settings.put("mail", mailRequest);
 
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+        
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
             SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
             settings.put("sms", smsRequest);
 
-            BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
 
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+        
+            Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
             settings.put("bot", botRequest);
 
         } catch (Exception e) {
