@@ -398,7 +398,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         }
 
         query.groupBy(
-                collectionChannel.get("id"));
+                collectionChannel.get("id"), collectionChannel.get("libelle"));
 
         query.where(predicates.toArray(new Predicate[0]));
 
@@ -497,6 +497,8 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         query.groupBy(
                 servicePoint.get("id"),
+                servicePoint.get("libelle"),
+                collectionChannel.get("libelle"),
                 collectionChannel.get("id"));
 
         query.where(predicates.toArray(new Predicate[0]));
@@ -586,7 +588,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         }
 
         query.groupBy(
-                objet.get("id"));
+                objet.get("id"), objet.get("libelle"));
 
         query.where(predicates.toArray(new Predicate[0]));
 
@@ -674,7 +676,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         }
 
         query.groupBy(
-                objet.get("id"));
+                objet.get("id"), objet.get("libelle"));
 
         query.where(predicates.toArray(new Predicate[0]));
 
@@ -769,7 +771,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         query.groupBy(
                 objet.get("id"),
-                servicePoint.get("id"));
+                servicePoint.get("id"),  objet.get("libelle"), servicePoint.get("libelle"));
 
         query.where(predicates.toArray(new Predicate[0]));
 
@@ -863,8 +865,8 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         }
 
         query.groupBy(
-                objet.get("id"),
-                servicePoint.get("id"));
+                objet.get("id"),servicePoint.get("libelle"),
+                servicePoint.get("id"), objet.get("libelle"));
 
         query.where(predicates.toArray(new Predicate[0]));
 
@@ -1040,7 +1042,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         }
 
         query.groupBy(
-                claim.get("gender"), servicePoint.get("id"));
+                claim.get("gender"), servicePoint.get("libelle"),  servicePoint.get("id"), claim.get("gender"));
 
         query.where(predicates.toArray(new Predicate[0]));
 
@@ -1131,7 +1133,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         }
 
         query.groupBy(
-                objet.get("risqueLevel"));
+                objet.get("risqueLevel"),  objet.get("libelle"),  objet.get("id"));
 
         query.where(predicates.toArray(new Predicate[0]));
 
@@ -1230,8 +1232,8 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         }
 
         query.groupBy(
-                objet.get("risqueLevel"),
-                servicePoint.get("libelle"));
+                objet.get("risqueLevel"), 
+                servicePoint.get("libelle"),  objet.get("id"), servicePoint.get("id"));
 
         query.where(predicates.toArray(new Predicate[0]));
 
@@ -1634,7 +1636,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         query.groupBy(
                 cb.function("YEAR", Integer.class, claim.get("receiptDateTime")),
-                servicePoint.get("libelle"));
+                servicePoint.get("libelle"), servicePoint.get("id"));
 
         query.where(predicates.toArray(new Predicate[0]));
         List<ObjectPerYear> resultat = entityManager.createQuery(query).getResultList();

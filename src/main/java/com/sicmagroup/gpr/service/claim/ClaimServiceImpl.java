@@ -60,7 +60,6 @@ import com.sicmagroup.gpr.service.satisfactionMeasure.SatifactionMeasureServiceI
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
-import com.sicmagroup.gpr.utils.SensitiveConstante;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
