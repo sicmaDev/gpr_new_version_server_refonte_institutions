@@ -93,8 +93,13 @@ public class AuthenticationController {
     }
 
     @PostMapping("/essai")
-    public String test(@RequestBody String tt){
-        System.out.println(tt);
+    public String test(@RequestBody MessageRequest tt){
+        if ((tt.getType()).equals("chat") && !(tt.getChatId()).equals("status@broadcast")) {
+            System.out.println(tt.getBody());
+        } else {
+            System.out.println("lol inh");
+        }
+        
         return "ahaha";
     }
 
