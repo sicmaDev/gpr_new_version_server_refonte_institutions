@@ -105,7 +105,7 @@ public class SettingServiceImpl implements SettingService {
                 licenseResponse.setClients(clients);
                 licenseResponse.setSerial(licenseObj.get("serial").asText());
                 ResponseEntity<LicenseResponse> result = restTemplate.postForEntity(url,licenseResponse, LicenseResponse.class);
-                // System.out.println("in the function 2");
+                System.out.println("in the function 2");
                 // System.out.println(result);
                 if(result != null && result.getBody() != null){
                     try {
