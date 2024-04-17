@@ -54,6 +54,7 @@ public class Claim {
 	private String tel;
 	private String crew;
 	private String folderCode;
+    private boolean isInChatSession;
     @ManyToOne
     @JoinColumn(name = "collection_channel_id")
     private CollectionChannel collectionChannel;

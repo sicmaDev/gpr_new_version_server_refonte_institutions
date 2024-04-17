@@ -1,4 +1,4 @@
-package com.sicmagroup.gpr.api.auth;
+package com.sicmagroup.gpr.api.claim.botClaim;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

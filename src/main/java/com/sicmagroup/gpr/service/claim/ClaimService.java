@@ -89,4 +89,6 @@ public interface ClaimService {
 
         public List<Claim> getClaimsWhenUserIsInGuestChatSuper(User user, List<Claim> excludeClaims);
 
+        public Claim saveBotClaim(SaveRequest claimToSave, ClaimType type)  throws Exception;
+
 }

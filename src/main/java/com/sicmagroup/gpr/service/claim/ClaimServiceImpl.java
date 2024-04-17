@@ -1794,4 +1794,200 @@ public class ClaimServiceImpl implements ClaimService {
         return claims;
     }
 
+    @Override
+    public Claim saveBotClaim(SaveRequest claimPart, ClaimType type) throws Exception {
+        ClaimRequest claimToSave = claimPart.getClaimRequest();
+        // User collector;
+        // try {
+        //     collector = authServiceImpl.getById(claimToSave.getCollectorId());
+        // } catch (Exception e) {
+        //     throw new Exception("Collector " + claimToSave.getCollectorId() + " of the claim not found");
+        // }
+
+        String message = "" +
+        "Cher(e) utilisteur" +
+        "Une nouvelle réclamation collectée avec GPR BOT. Cette réclamation  nécessite votre attention en tant qu'utilisateur habilité pour traiter les réclamations."
+        + "\n\n";
+       
+        Claim claim = Claim
+                .builder()
+                .clientFirstAndLastName(claimToSave.getClientFirstAndLastName())
+                .code(claimToSave.getCode())
+                // .gender(Gender.valueOf(claimToSave.getGender()))
+                .type(ClaimType.CLAIM)
+                // .address(claimToSave.getAddress())
+                .tel(claimToSave.getPhone())
+                // .crew(claimToSave.getCrew())
+                // .folderCode(claimToSave.getFolderCode())
+                .content(claimToSave.getContent())
+                .collector(null)
+                .status(ClaimStatus.TEMP_SAVED)
+                // .createdAt(LocalDateTime.now())
+                // .receiptDateTime(LocalDateTime.now())
+                .build();
+
+            
+
+                List<Claim> oldClaims = repository.findByTelAndTypeAndStatus(claimToSave.getPhone(), ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+                if(!oldClaims.isEmpty()){
+                  
+                    for (Claim oldClaim : oldClaims) {
+                        
+                        if(oldClaim.getCreatedAt().isBefore(LocalDateTime.now()) ){
+                            Long durationUntil = LocalDateTime.now().until(oldClaim.getCreatedAt(), ChronoUnit.MINUTES);
+                            if(durationUntil <= 60){
+                                //we are in a session conversation 
+                                claim.setCreatedAt(oldClaim.getCreatedAt());
+                                claim.setReceiptDateTime(oldClaim.getReceiptDateTime());
+                                claim.setGender(oldClaim.getGender());
+                                claim.setAddress(oldClaim.getAddress());
+                                claim.setContent(oldClaim.getContent() + "\n"+claim.getContent());
+                                claim.setCollector(oldClaim.getCollector());
+                                claim.setCollectionChannel(oldClaim.getCollectionChannel());
+                                claim.setServicePoint(oldClaim.getServicePoint());
+                                claim.setProduct(oldClaim.getProduct());
+                                claim.setObjet(oldClaim.getObjet());
+                                claim.setLanguage(oldClaim.getLanguage());
+                                claim.setInChatSession(true);
+                                claim.setId(oldClaim.getId());
+                                claim.setCode(oldClaim.getCode());
+                        
+                            } else {
+                                //Create a new claim
+                                claim.setCreatedAt(LocalDateTime.now());
+                                claim.setReceiptDateTime(LocalDateTime.now());
+                                claim.setInChatSession(false);
+                            }
+                            
+                        } 
+                    }
+                } else {
+                    claim.setCreatedAt(LocalDateTime.now());
+                    claim.setReceiptDateTime(LocalDateTime.now());
+                }
+
+
+        // if (claimToSave.getStatus() != null) {
+        //     claim.setStatus(claimToSave.getStatus());
+        // } else {
+        //     claim.setStatus(ClaimStatus.SAVED);
+        // }
+
+        //TODO: FInd id for the claim based on the claim
+        
+
+
+        // if (claimToSave.getId() != null) {
+        //     claim.setId(claimToSave.getId());
+        //     claim.setCode(claimToSave.getCode());
+        //     // Only TEMP_SAVED can be saved
+        //     Claim oldClaim = repository.findById(claimToSave.getId())
+        //             .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
+
+        //     // if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
+        //     // throw new ClaimException(
+        //     // "Invalid operation! this claim is not temporarly saved, you can't change it
+        //     // again");
+        //     // }
+
+        // } else {
+        //     if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
+        //         String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
+        //         claim.setCode(code);
+        //     } else {
+        //         claim.setCode(claimToSave.getCode());
+        //     }
+        // }
+        // if(claimToSave.getCode() == null || claimToSave.getCode()== "") {
+        // String code = generateCode(collector.getServicePoint().getUuid(),
+        // collector.getCode(), type);
+        // claim.setCode(code);
+        // }
+       
+        claim = repository.save(claim);
+        Log log = Log
+                .builder()
+                .content("code: " + claim.getCode())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(claim.getCollector().getId())
+                .userIpAddress(claimPart.getRemoteAddress())
+                .build();
+        if (type.equals(ClaimType.CLAIM)) {
+            log.setLibelle("Nouvelle réclamation bot");
+            log.setTarget(LogTarget.CLAIM);
+        } else {
+            log.setLibelle("Nouvelle dénonciation bot");
+            log.setTarget(LogTarget.DENUNCIACION);
+        }
+
+        logServiceImpl.saveLog(log);
+
+        // if (claimPart.getFiles() != null && claimPart.getFiles().length != 0) {
+        //     List<Media> medias = mediaServiceImpl.store(claimPart.getFiles(), claim);
+        //     claim.setUpdatedAt(LocalDateTime.now());
+        //     // claim.setMedias(medias);
+        // }
+        // if (claimPart.getAudios() != null && claimPart.getAudios().length != 0) {
+        //     List<ClaimAudio> audios = claimAudioServiceImpl.store(claimPart.getAudios(), claim);
+        //     claim.setUpdatedAt(LocalDateTime.now());
+        //     // for (ClaimAudio audio : audios) {
+        //     // audio.setClaim(null);
+        //     // }
+        //     // claim.setAudios(audios);
+        // }
+
+        claim = repository.save(claim);
+        List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));
+
+        List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
+
+        Double apercuContent = claim.getContent().length() * 0.5;
+       
+              
+        try {
+            Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
+                    " ", settingServiceImpl);
+        } catch (Exception e) {
+            if (e != null) {
+                Log log2 = Log
+                        .builder()
+                        .libelle("Echec mail notification")
+                        .content(e.getMessage())
+                        .createdAt(LocalDateTime.now())
+                        .type(LogType.ERROR)
+                        .userId(0L)
+                        .userIpAddress(claimPart.getRemoteAddress())
+                        .target(LogTarget.APP)
+                        .build();
+
+                logServiceImpl.saveLog(log2);
+            }
+
+        }
+        try {
+            Utils.sendSms(usersToContact,
+                    "Nouvelle réclamation enregistrée de niveau de gravité "
+                            + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
+        } catch (Exception e) {
+            Log log2 = Log
+                    .builder()
+                    .libelle("Echec sms notification")
+                    .content(e.getMessage())
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.ERROR)
+                    .userId(0L)
+                    .userIpAddress(claimPart.getRemoteAddress())
+                    .target(LogTarget.APP)
+                    .build();
+
+            logServiceImpl.saveLog(log2);
+        }
+
+        return claim;
+
+    }
+
+   
+
 }
