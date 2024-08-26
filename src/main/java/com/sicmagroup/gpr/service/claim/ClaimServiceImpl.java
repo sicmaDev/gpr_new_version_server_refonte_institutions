@@ -513,7 +513,7 @@ public class ClaimServiceImpl implements ClaimService {
         // User affectedTo = authServiceImpl.getById(userId);
         // User affectedBy = authServiceImpl.getById(affectorId);
 
-        if (!Arrays.asList(ClaimStatus.SAVED,ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.UNSATISFIED,ClaimStatus.CLASSED).contains(claim.getStatus())) {
+        if (!Arrays.asList(ClaimStatus.SAVED,ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.UNSATISFIED,ClaimStatus.CLASSED,ClaimStatus.AFFECTED).contains(claim.getStatus())) {
             throw new ClaimException("Invalid request! You can't affect treatment to not saved claim");
         }
 

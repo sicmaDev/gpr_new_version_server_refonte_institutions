@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.scheduling.annotation.Async;
@@ -105,6 +106,117 @@ public class Utils {
         }
         return type;
     }
+
+    public static Boolean testSmsConfig(String number, String message, SettingServiceImpl settingServiceImpl)
+        throws Exception {
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            if (sms != null) {
+                SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                String baseUrl = smsRequest.getUrl();
+                String token = smsRequest.getValMdp();
+                String sender = smsRequest.getValEmetteur();
+                message = UriEncoder.encode(message);
+                HttpURLConnection con;
+
+                baseUrl += smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender + "&"
+                        + smsRequest.getLibDestinataire() + "=" + number + "&" + smsRequest.getLibMessage() + "="
+                        + message;
+                URL url = new URL(baseUrl);
+                con = (HttpURLConnection) url.openConnection();
+                con.setRequestMethod("GET");
+                int status = con.getResponseCode();
+                if (status >= 200 && status <= 299) {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(con.getInputStream()));
+                    String inputLine;
+                    StringBuffer content = new StringBuffer();
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+                    
+                    return true;
+
+                } else {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(con.getErrorStream()));
+                    String inputLine;
+                    StringBuffer content = new StringBuffer();
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+                    return false;
+
+                }
+            }
+            return false;
+
+        } catch (IOException e) {
+            
+            return false;
+        } catch (Exception ex) {
+        return false;
+        }
+    }
+
+
+    
+
+    public static Boolean testMailConfig(String to, String subject, String body, String cc, String from,
+            SettingServiceImpl settingServiceImpl) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        
+
+        try {
+            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+            if (mail != null) {
+                MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+                // System.out.println("try b");
+                mailSenderr.setHost(mailRequest.getHost());
+                mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
+                mailSenderr.setUsername(mailRequest.getUser());
+                mailSenderr.setPassword(mailRequest.getPwd());
+
+                Properties props = mailSenderr.getJavaMailProperties();
+                props.put("mail.transport.protocol", "smtp");
+                props.put("mail.smtp.auth", "true");
+                props.put("mail.smtp.ssl.enable", "true");
+                props.put("mail.smtp.starttls.enable", "true");
+                props.put("mail.debug", "true");
+
+                if (cc != "" && cc != null) {
+                    String[] listCc = cc.split(",");
+                    message.setCc(listCc);
+                }
+
+                message.setTo(to);
+                message.setSubject(subject);
+                message.setText(body);
+                message.setFrom(mailRequest.getUser());
+
+                mailSenderr.send(message);
+                return true;
+            }else{
+                return false;
+            }
+
+        } catch(MailException ex){
+            return false;
+
+        }catch (Exception e) {
+
+            return false;
+        }
+
+    }
+
 
     @Async
     public static Future<String> sendmail(String to, String subject, String body, String cc, String from,
