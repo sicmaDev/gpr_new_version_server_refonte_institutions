@@ -16,6 +16,22 @@ import io.micrometer.common.lang.Nullable;
 
 public interface ReportService {
 
+    public HashMap<String,Object> getDashboardResume();
+
+    public HashMap<String,Object> listPerAgencePerModalite(@Nullable FilterRequest request);
+
+    public HashMap<String,Object> listPerAgencePerObjet(@Nullable FilterRequest request);
+
+    public HashMap<String,Object> listPerAgencePerGenre(@Nullable FilterRequest request);
+
+    public HashMap<String,Object> listPerAgencePerGravity(@Nullable FilterRequest request);
+
+    public HashMap<String,Object> listPerAgencePerMesure(@Nullable FilterRequest request);
+
+    public HashMap<String,Object> listRDSPerAgencePerModalite(@Nullable FilterRequest request);
+    
+    public HashMap<String,Object> listRDSPerAgencePerObjet(@Nullable FilterRequest request);
+
     public PieChartDto repartitionClaimDenunSuggest(@Nullable FilterRequest request);
 
     public BandChart numberClaimPerServicePoint(@Nullable FilterRequest request);

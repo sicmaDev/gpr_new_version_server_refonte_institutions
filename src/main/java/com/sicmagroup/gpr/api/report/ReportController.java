@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -112,7 +113,7 @@ public class ReportController {
 						.claimReport(claimReport)
 						.denunReport(denunReport)
 						.suggestionReport(suggestionReport)
-
+						.newVersionStat(generateNewVersionReport(null))
 						.build();
 				
 				StatisticReport statisticReport = StatisticReport
@@ -213,6 +214,7 @@ public class ReportController {
 						.global(globalReport)
 						.claimReport(claimReport)
 						.denunReport(denunReport)
+						.newVersionStat(generateNewVersionReport(request))
 						.build();
 
 				if (request.getObjets() != null && request.getObjets().isEmpty()) {
@@ -327,4 +329,36 @@ public class ReportController {
 		}
 	}
 
+
+	@PostMapping(value = "/global/new")
+	public HashMap<String,Object> generateNewVersionReport(@RequestBody FilterRequest request) {
+		HashMap<String,Object> result = new HashMap<>();
+		HashMap<String,Object> general = new HashMap<>();
+
+
+
+		general.put("RSDObjet", service.listRDSPerAgencePerObjet(request));
+		general.put("RSDModalite", service.listRDSPerAgencePerModalite(request));
+
+		result.put("GeneralPerAgence", general);
+		result.put("AgencePerObjet", service.listPerAgencePerObjet(request));
+		result.put("AgencePerModalite", service.listPerAgencePerModalite(request));
+		result.put("AgencePerMesure", service.listPerAgencePerMesure(request));
+		result.put("AgencePerGenre", service.listPerAgencePerGenre(request));
+		result.put("AgencePerGravity", service.listPerAgencePerGravity(request));
+
+		return result;
+		
+	}
+	
+
+
+	
+	@GetMapping(value = "/dashboard")
+	public HashMap<String,Object> getDashboardResume() {
+		HashMap<String,Object> result =  service.getDashboardResume();
+
+		return result;
+		
+	}
 }
