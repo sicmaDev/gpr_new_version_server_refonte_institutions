@@ -12,14 +12,18 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +38,7 @@ import com.sicmagroup.gpr.api.config.setting.InstitutionRequest;
 import com.sicmagroup.gpr.api.config.setting.MailRequest;
 import com.sicmagroup.gpr.api.config.setting.SmsRequest;
 import com.sicmagroup.gpr.api.config.user.AddEmailReceiver;
+import com.sicmagroup.gpr.api.config.user.ForgetPasswordRequest;
 import com.sicmagroup.gpr.api.config.user.RegisterRequest;
 import com.sicmagroup.gpr.domain.dto.AlertDto;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
@@ -384,6 +389,218 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .content(content)
                         .build())
                 .build();
+    }
+
+       @Override
+    public ResponseEntity<ApiResponseDto> getAuthData() {
+        User user;
+      
+        try {
+            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                    .getPrincipal();
+            user = getByEmail(userDetails.getUsername());
+           
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message("No token")
+                                    .title("Votre token est expiré").build())
+                            .build());
+
+        }
+
+        UserDto userDto = convertToDto(user);
+        // get setting info
+        List<ServicePoint> allServicePoints = servicePointRepository.findByIsDeleted(false);
+        List<ServicePointDto> allServicePointDtos = allServicePoints.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // poste
+        List<Poste> allPostes = posteRepository.findByIsDeleted(false);
+        List<PosteDto> allPosteDtos = allPostes.stream().map(this::convertToDto).collect(Collectors.toList());
+        // Product
+        List<Product> allProducts = productRepository.findByIsDeleted(false);
+        List<ProductDto> allProductDtos = allProducts.stream().map(this::convertToDto).collect(Collectors.toList());
+        // objet
+        List<Objet> allObjets = objetRepository.findByIsDeleted(false);
+        List<ObjetResponse> allObjetDtos = allObjets.stream().map(this::convertToResponse).collect(Collectors.toList());
+        // language
+        List<Language> allLanguages = languageRepository.findByIsDeleted(false);
+        List<LanguageDto> allLanguageDtos = allLanguages.stream().map(this::convertToDto).collect(Collectors.toList());
+        // collectionChannel
+        List<CollectionChannel> allCollectionChannels = collectionChannelRespository.findByIsDeleted(false);
+        List<CollectionChannelDto> allCollectionChannelDtos = allCollectionChannels.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // ExternalRecourse
+        List<ExternalRecourse> allExternalRecourses = externalRecourseRepository.findByIsDeleted(false);
+        List<ExternalRecourseDto> allExternalRecourseDtos = allExternalRecourses.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // User
+        List<User> allUsers = userRepository.findByIsDeleted(false);
+        List<UserDto> allUserDtos = allUsers.stream().map(this::convertToDto).collect(Collectors.toList());
+        // existing solutions
+        List<ExistingSolutionResponse> allExistingSolutions = existingSolutionRepository.findAll().stream()
+                .map(this::convertToResponse).collect(Collectors.toList());
+        // categorie objet
+        List<CategorieObjetDto> allCategorieObjetDtos = categorieObjetRepository.findAll().stream()
+                .map(this::convertToDto).collect(Collectors.toList());
+        // institution
+        // Settings
+        HashMap<String, Object> settings = new HashMap<String, Object>();
+        try {
+            Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(),
+                    InstitutionRequest.class);
+            settings.put("institution", institutionRequest);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+           
+            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+            settings.put("mail", mailRequest);
+
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+        
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+            settings.put("sms", smsRequest);
+
+
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+        
+            Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
+            settings.put("bot", botRequest);
+
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        settings.put("servicePoints", allServicePointDtos);
+        settings.put("postes", allPosteDtos);
+        settings.put("products", allProductDtos);
+        settings.put("objets", allObjetDtos);
+        settings.put("languages", allLanguageDtos);
+        settings.put("collectionChannels", allCollectionChannelDtos);
+        settings.put("externalRecourses", allExternalRecourseDtos);
+        settings.put("users", allUserDtos);
+        settings.put("help", faqServiceImpl.getHelp());
+        settings.put("presolution", allExistingSolutions);
+        settings.put("categorie_objet", allCategorieObjetDtos);
+        settings.put("others", settingServiceImpl.getAll());
+
+        // recuperer le contenu du fichier data
+        settingServiceImpl.updateLicence();
+        try {
+            // Le fichier d'entrée
+            File file = new File("data.txt");
+            // Créer l'objet File Reader
+            FileReader fr = new FileReader(file);
+            // Créer l'objet BufferedReader
+            BufferedReader br = new BufferedReader(fr);
+            StringBuffer sb = new StringBuffer();
+            String line;
+            while ((line = br.readLine()) != null) {
+                // ajoute la ligne au buffer
+                sb.append(line);
+                sb.append("\n");
+            }
+            fr.close();
+            settings.put("data", sb.toString());
+
+        } catch (IOException e) {
+            settings.put("data", "");
+            e.printStackTrace();
+        }
+
+        HashMap<String, Object> content = new HashMap<String, Object>();
+        
+
+        content.put("user", userDto);
+        content.put("settings", settings);
+        return ResponseEntity.ok(ApiResponseDto
+                .builder()
+                .status(true)
+                .content(content)
+                .build());
+
+    }
+
+    @Override
+    public ResponseEntity<ApiResponseDto> forgetPassword(ForgetPasswordRequest request) {
+
+        try {
+
+            User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+            char[] password = generatePassword(8);
+
+            List<User> userMailTo = new ArrayList<>();
+            userMailTo.add(user);
+            String message = "" +
+                    "Hello \n" +
+                    "Bravo,votre mot de passe a été reinstallé sur GPR"
+                    + "\n\n" +
+                    "Voici vos informations de connexion:" + "\n\n" +
+                    "* Email: " + user.getEmail() + "\n" +
+                    "* Mot de passe : " + new String(password) + "\n" +
+                    "* Page de connexion : https://gprsaas.gprserver.com/#/login \n\n" +
+                    "Ce mail ne doit pas etre divulger.";
+
+            Utils.sendmail(userMailTo, "Modification de sur GPR", message, null, " ", settingServiceImpl);
+            user.setPassword(passwordEncoder.encode(new String(password)));
+            userRepository.save(user);
+
+            return ResponseEntity.ok(ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage())
+                                    .title("Erreur").build())
+                            .build());
+        }
+    }
+    
+    private static char[] generatePassword(int length) {
+        String capitalCaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lowerCaseLetters = "abcdefghijklmnopqrstuvwxyz";
+        String specialCharacters = "!@#$";
+        String numbers = "1234567890";
+        String combinedChars = capitalCaseLetters + lowerCaseLetters + specialCharacters + numbers;
+        Random random = new Random();
+        char[] password = new char[length];
+
+        password[0] = lowerCaseLetters.charAt(random.nextInt(lowerCaseLetters.length()));
+        password[1] = capitalCaseLetters.charAt(random.nextInt(capitalCaseLetters.length()));
+        password[2] = specialCharacters.charAt(random.nextInt(specialCharacters.length()));
+        password[3] = numbers.charAt(random.nextInt(numbers.length()));
+
+        for (int i = 4; i < length; i++) {
+            password[i] = combinedChars.charAt(random.nextInt(combinedChars.length()));
+        }
+        return password;
     }
 
     private ExistingSolutionResponse convertToResponse(ExistingSolution exSolution) {

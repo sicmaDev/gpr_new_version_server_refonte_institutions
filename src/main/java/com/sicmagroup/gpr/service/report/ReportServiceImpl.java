@@ -33,15 +33,25 @@ import com.sicmagroup.gpr.domain.enumeration.Gender;
 import com.sicmagroup.gpr.domain.enumeration.GravityLevel;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
+import com.sicmagroup.gpr.domain.model.ExternalRecourse;
+import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Objet;
+import com.sicmagroup.gpr.domain.model.Poste;
+import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Suggestion;
+import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ClaimSpecification;
 import com.sicmagroup.gpr.repository.CollectionChannelRespository;
+import com.sicmagroup.gpr.repository.ExternalRecourseRepository;
+import com.sicmagroup.gpr.repository.LanguageRepository;
 import com.sicmagroup.gpr.repository.ObjetRepository;
+import com.sicmagroup.gpr.repository.PosteRepository;
+import com.sicmagroup.gpr.repository.ProductRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.SuggestionRepository;
+import com.sicmagroup.gpr.repository.UserRepository;
 import com.sicmagroup.gpr.repository.projection.ClaimPerCanalPerSpPjt;
 import com.sicmagroup.gpr.repository.projection.ClaimPerGenderAndAgencePrjt;
 import com.sicmagroup.gpr.repository.projection.ClaimPerGenderPjt;
@@ -80,6 +90,12 @@ public class ReportServiceImpl implements ReportService {
     private final CollectionChannelRespository clRepository;
     private final ServicePointRepository spRepository;
     private final ObjetRepository oRepository;
+    private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final LanguageRepository languageRepository;
+    private final ObjetRepository objetRepository;
+    private final PosteRepository posteRepository;
+    private final ExternalRecourseRepository externalRecourseRepository;
 
     private static String CLAIM_BG_COLOR = "#FFCE56";
     private static String CLAIM_HOVER_COLOR = "#FFBA56";
@@ -106,6 +122,698 @@ public class ReportServiceImpl implements ReportService {
     private static String PARTIAL_SATISFIED_BG_COLOR = "#C0900F";
 
     private static String UNRESPECTED_BG_COLOR = "#FF9933";
+
+    private boolean filterReport(Suggestion sugge, @Nullable FilterRequest request) {
+        boolean isOK = true;
+        if (request != null) {
+            if (request.getYear() instanceof Long && !request.getYear().toString().isEmpty()) {
+                LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
+                LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
+                isOK = sugge.getReceiptDateTime().isBefore(end)
+                        && sugge.getReceiptDateTime().isAfter(start);
+
+            }
+            if (isOK && request.getReceiveEnd() instanceof String
+                    && request.getReceiveStart() instanceof String && request.getReceiveStart() != ""
+                    && !request.getReceiveStart().toString().isEmpty()) {
+                LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart());
+                LocalDateTime end = request.getReceiveEnd() == "" ? LocalDateTime.now()
+                        : Utils.convertStrToLocalDateTime(request.getReceiveEnd());
+                isOK = sugge.getReceiptDateTime().isBefore(end)
+                        && sugge.getReceiptDateTime().isAfter(start);
+            }
+
+            if (isOK && request.getEtats() instanceof List<ClaimStatus> && !request.getEtats().isEmpty()) {
+                isOK = request.getEtats().contains(sugge.getStatus());
+            }
+
+            if (isOK && request.getProducts() instanceof List<Long> && !request.getProducts().isEmpty()) {
+                isOK = request.getProducts().contains(sugge.getProduit().getId());
+            }
+            if (isOK && request.getSavedBy() instanceof List<Long> && !request.getSavedBy().isEmpty()) {
+                isOK = request.getSavedBy().contains(sugge.getCollecteur().getId());
+            }
+        }
+
+        return isOK;
+
+    }
+
+    private boolean filterReport(Claim claim, @Nullable FilterRequest request) {
+        boolean isOK = true;
+        if (request != null) {
+
+            if (request.getYear() instanceof Long && !request.getYear().toString().isEmpty()) {
+                LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
+                LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
+                isOK = claim.getReceiptDateTime().isBefore(end)
+                        && claim.getReceiptDateTime().isAfter(start);
+
+            }
+            if (isOK && request.getReceiveEnd() instanceof String
+                    && request.getReceiveStart() instanceof String && request.getReceiveStart() != ""
+                    && !request.getReceiveStart().toString().isEmpty()) {
+                LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart());
+                LocalDateTime end = request.getReceiveEnd() == "" ? LocalDateTime.now()
+                        : Utils.convertStrToLocalDateTime(request.getReceiveEnd());
+                isOK = claim.getReceiptDateTime().isBefore(end)
+                        && claim.getReceiptDateTime().isAfter(start);
+            }
+
+            if (isOK && request.getEtats() instanceof List<ClaimStatus> && !request.getEtats().isEmpty()) {
+                isOK = request.getEtats().contains(claim.getStatus());
+            }
+
+            if (isOK && request.getProducts() instanceof List<Long> && !request.getProducts().isEmpty()) {
+                isOK = request.getProducts().contains(claim.getProduct().getId());
+            }
+            if (isOK && request.getSavedBy() instanceof List<Long> && !request.getSavedBy().isEmpty()) {
+                isOK = request.getSavedBy().contains(claim.getCollector().getId());
+            }
+            if (isOK && request.getObjets() instanceof List<Long> && !request.getObjets().isEmpty()) {
+                isOK = request.getObjets().contains(claim.getObjet().getId());
+            }
+        }
+
+        return isOK;
+
+    }
+
+    @Override
+    public HashMap<String, Object> getDashboardResume() {
+        HashMap<String, Object> result = new HashMap<String, Object>();
+        try {
+
+            List<ServicePoint> sp = spRepository.findAll();
+            List<User> users = userRepository.findAll();
+            List<Product> products = productRepository.findAll();
+            List<CollectionChannel> channels = clRepository.findAll();
+            List<ExternalRecourse> recours = externalRecourseRepository.findAll();
+            List<Poste> postes = posteRepository.findAll();
+            List<Language> languages = languageRepository.findAll();
+            List<Objet> objets = objetRepository.findAll();
+
+            result.put("ps", sp.size());
+            result.put("produits", products.size());
+            result.put("utilisateurs", users.size());
+            result.put("recours", recours.size());
+            result.put("postes", postes.size());
+            result.put("langues", languages.size());
+            result.put("supports", channels.size());
+            result.put("objets", objets.size());
+        } catch (Exception e) {
+            result.put("ps", 0);
+            result.put("produits", 0);
+            result.put("utilisateurs", 0);
+            result.put("recours", 0);
+            result.put("postes", 0);
+            result.put("langues", 0);
+            result.put("supports", 0);
+            result.put("objets", 0);
+        }
+
+        return result;
+
+    }
+
+    @Override
+    public HashMap<String, Object> listPerAgencePerModalite(@Nullable FilterRequest request) {
+
+        HashMap<String, Object> result = new HashMap<String, Object>();
+        result.put("claims", null);
+        result.put("suggestions", null);
+        result.put("denonciations", null);
+
+        List<ServicePoint> sp = new ArrayList<ServicePoint>();
+        List<CollectionChannel> channels = new ArrayList<CollectionChannel>();
+        if (request != null) {
+
+            if (request.getServicePoints() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                sp = spRepository.findAllById(request.getServicePoints());
+            } else {
+                sp = spRepository.findAll();
+            }
+
+            if (sp.size() == 0) {
+                return result;
+            }
+
+            if (request.getCanals() instanceof List<Long> && request.getCanals().size() > 0) {
+                channels = clRepository.findAllById(request.getCanals());
+            } else {
+                channels = clRepository.findAll();
+            }
+
+        } else {
+            sp = spRepository.findAll();
+            channels = clRepository.findAll();
+
+        }
+        List<ClaimType> RDSList = new ArrayList<>(
+                Arrays.asList(ClaimType.CLAIM, ClaimType.DENUNCIACION, ClaimType.SUGGESTION));
+
+        HashMap<String, String> colorList = new HashMap<>();
+        for (CollectionChannel channel : channels) {
+            colorList.put(channel.getLibelle(), Utils.generateRandomColor(1).get(0).toBgString());
+        }
+
+        for (ClaimType RSDSelect : RDSList) {
+            List<Suggestion> sugges = new ArrayList<>();
+            List<Claim> claims = new ArrayList<>();
+            if (RSDSelect.equals(ClaimType.SUGGESTION)) {
+                sugges = suggestionRepository.findByServiceIndexeIn(sp);
+            } else {
+
+                claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+            }
+
+            HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
+            for (ServicePoint agence : sp) {
+
+                List<HashMap<String, Object>> listInfo = new ArrayList<HashMap<String, Object>>();
+                Long totalInfo = (long) 0;
+
+                for (CollectionChannel channel : channels) {
+                    HashMap<String, Object> channelList = new HashMap<String, Object>();
+                    int nbreClaimPerAgenceFilter = 0;
+                    if (RSDSelect.equals(ClaimType.SUGGESTION)) {
+
+                        nbreClaimPerAgenceFilter = sugges.stream().filter(sugge -> {
+                            boolean isOK = filterReport(sugge, request);
+
+                            return sugge.getServiceIndexe() == agence
+                                    && sugge.getCanal() != null && sugge.getCanal().equals(channel) && isOK;
+                        }).collect(Collectors.toList()).size();
+                    } else {
+
+                        nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
+                            boolean isOK = filterReport(claim, request);
+                            return claim.getServicePoint() == agence
+                                    && claim.getCollectionChannel() != null
+                                    && claim.getCollectionChannel().equals(channel) && isOK;
+                        }).collect(Collectors.toList()).size();
+                    }
+
+                    channelList.put("nbre", nbreClaimPerAgenceFilter);
+                    channelList.put("name", channel.getLibelle());
+                    channelList.put("id", channel.getId());
+                    channelList.put("color", colorList.get(channel.getLibelle()));
+                    totalInfo = totalInfo + nbreClaimPerAgenceFilter;
+
+                    listInfo.add(channelList);
+
+                }
+                HashMap<String, Object> agenceDetail = new HashMap<String, Object>();
+                agenceDetail.put("totals", totalInfo);
+                agenceDetail.put("data", listInfo);
+                agencesHashMap.put(agence.getLibelle(), agenceDetail);
+            }
+
+            String keyRDSType = RSDSelect.equals(ClaimType.CLAIM) ? "claims"
+                    : (RSDSelect.equals(ClaimType.DENUNCIACION) ? "denonciations" : "suggestions");
+            result.put(keyRDSType, agencesHashMap);
+        }
+        // } else {
+
+        // }
+        return result;
+    }
+
+    @Override
+    public HashMap<String, Object> listPerAgencePerObjet(@Nullable FilterRequest request) {
+        HashMap<String, Object> result = new HashMap<String, Object>();
+        result.put("claims", null);
+        result.put("suggestions", null);
+        result.put("denonciations", null);
+
+        List<ClaimType> RDSList = new ArrayList<>(
+                Arrays.asList(ClaimType.CLAIM, ClaimType.DENUNCIACION));
+
+        List<ServicePoint> sp = new ArrayList<ServicePoint>();
+        List<Objet> objets = new ArrayList<Objet>();
+        if (request != null) {
+            if (request.getServicePoints() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                sp = spRepository.findAllById(request.getServicePoints());
+            } else {
+                sp = spRepository.findAll();
+            }
+            if (sp.size() == 0) {
+                return result;
+            }
+
+            if (request.getObjets() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                objets = oRepository.findAllById(request.getObjets());
+            } else {
+                objets = oRepository.findAll();
+
+            }
+        } else {
+            sp = spRepository.findAll();
+            objets =  oRepository.findAll();
+        }
+
+        HashMap<String, String> colorList = new HashMap<>();
+        for (Objet objet : objets) {
+            colorList.put(objet.getLibelle(), Utils.generateRandomColor(1).get(0).toBgString());
+        }
+        for (ClaimType RSDSelect : RDSList) {
+            List<Claim> claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+
+            HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
+            for (ServicePoint agence : sp) {
+
+                List<HashMap<String, Object>> listInfo = new ArrayList<HashMap<String, Object>>();
+                Long totalInfo = (long) 0;
+
+                for (Objet objet : objets) {
+                    HashMap<String, Object> objetList = new HashMap<String, Object>();
+                    int nbreClaimPerAgenceFilter = 0;
+
+                    nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
+                        boolean isOK = filterReport(claim, request);
+                        return claim.getServicePoint() == (agence)
+                                && claim.getObjet() == (objet) && isOK;
+                    }).collect(Collectors.toList()).size();
+
+                    objetList.put("nbre", nbreClaimPerAgenceFilter);
+                    objetList.put("name", objet.getLibelle());
+                    objetList.put("id", objet.getId());
+                    objetList.put("color", colorList.get(objet.getLibelle()));
+                    totalInfo = totalInfo + nbreClaimPerAgenceFilter;
+
+                    listInfo.add(objetList);
+
+                }
+                HashMap<String, Object> agenceDetail = new HashMap<String, Object>();
+                agenceDetail.put("totals", totalInfo);
+                agenceDetail.put("data", listInfo);
+                agencesHashMap.put(agence.getLibelle(), agenceDetail);
+            }
+
+            String keyRDSType = RSDSelect.equals(ClaimType.CLAIM) ? "claims" : "denonciations";
+            result.put(keyRDSType, agencesHashMap);
+        }
+
+        return result;
+    }
+
+    @Override
+    public HashMap<String, Object> listPerAgencePerGravity(@Nullable FilterRequest request) {
+
+        HashMap<String, Object> result = new HashMap<String, Object>();
+        result.put("claims", null);
+        result.put("suggestions", null);
+        result.put("denonciations", null);
+
+        List<ServicePoint> sp = new ArrayList<ServicePoint>();
+        if (request != null) {
+
+            if (request.getServicePoints() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                sp = spRepository.findAllById(request.getServicePoints());
+            } else {
+                sp = spRepository.findAll();
+            }
+            if (sp.size() == 0) {
+                return result;
+            }
+        } else {
+            sp = spRepository.findAll();;
+        }
+
+        List<ClaimType> RDSList = new ArrayList<>(
+                Arrays.asList(ClaimType.CLAIM, ClaimType.DENUNCIACION));
+
+        List<GravityLevel> gravities = new ArrayList<>(
+                Arrays.asList(GravityLevel.GRAVE, GravityLevel.MINEUR, GravityLevel.MOYEN));
+
+        for (ClaimType RSDSelect : RDSList) {
+            List<Claim> claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+
+            HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
+            for (ServicePoint agence : sp) {
+
+                List<HashMap<String, Object>> listInfo = new ArrayList<HashMap<String, Object>>();
+                Long totalInfo = (long) 0;
+
+                for (GravityLevel gravity : gravities) {
+                    HashMap<String, Object> objetList = new HashMap<String, Object>();
+                    int nbreClaimPerAgenceFilter = 0;
+
+                    nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
+                        boolean isOK = filterReport(claim, request);
+                        return claim.getServicePoint() == agence && claim.getObjet() != null
+                                && claim.getObjet().getRisqueLevel() == gravity && isOK;
+                    }).collect(Collectors.toList()).size();
+
+                    objetList.put("nbre", nbreClaimPerAgenceFilter);
+                    objetList.put("name", gravity.toString());
+                    objetList.put("id", "");
+                    objetList.put("color", gravity.equals(GravityLevel.GRAVE) ? GRAVE_BG_COLOR
+                            : (gravity.equals(GravityLevel.MOYEN) ? MOYEN_BG_COLOR : MINEUR_BG_COLOR));
+
+                    totalInfo = totalInfo + nbreClaimPerAgenceFilter;
+
+                    listInfo.add(objetList);
+
+                }
+                HashMap<String, Object> agenceDetail = new HashMap<String, Object>();
+                agenceDetail.put("totals", totalInfo);
+                agenceDetail.put("data", listInfo);
+                agencesHashMap.put(agence.getLibelle(), agenceDetail);
+            }
+
+            String keyRDSType = RSDSelect.equals(ClaimType.CLAIM) ? "claims" : "denonciations";
+            result.put(keyRDSType, agencesHashMap);
+        }
+
+        return result;
+    }
+
+    @Override
+    public HashMap<String, Object> listPerAgencePerMesure(@Nullable FilterRequest request) {
+
+        HashMap<String, Object> result = new HashMap<String, Object>();
+        result.put("claims", null);
+        result.put("suggestions", null);
+        result.put("denonciations", null);
+
+        List<ServicePoint> sp = new ArrayList<ServicePoint>();
+        if (request != null) {
+            if (request.getServicePoints() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                sp = spRepository.findAllById(request.getServicePoints());
+            } else {
+                sp = spRepository.findAll();;
+            }
+            if (sp.size() == 0) {
+                return result;
+            }
+        } else {
+            sp = spRepository.findAll();;
+        }
+
+        List<ClaimType> RDSList = new ArrayList<>(
+                Arrays.asList(ClaimType.CLAIM, ClaimType.DENUNCIACION, ClaimType.SUGGESTION));
+
+        List<ClaimStatus> mesures = new ArrayList<>(
+                Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.UNSATISFIED));
+
+        for (ClaimType RSDSelect : RDSList) {
+            List<Suggestion> suggestions = new ArrayList<>();
+            List<Claim> claims = new ArrayList<>();
+            if (RSDSelect.equals(ClaimType.SUGGESTION)) {
+                suggestions = suggestionRepository.findByServiceIndexeIn(sp);
+
+            } else {
+
+                claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+            }
+
+            HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
+            for (ServicePoint agence : sp) {
+
+                List<HashMap<String, Object>> listInfo = new ArrayList<HashMap<String, Object>>();
+                Long totalInfo = (long) 0;
+
+                for (ClaimStatus mesure : mesures) {
+                    HashMap<String, Object> objetList = new HashMap<String, Object>();
+                    int nbreClaimPerAgenceFilter = 0;
+                    if (RSDSelect.equals(ClaimType.SUGGESTION)) {
+
+                        nbreClaimPerAgenceFilter = suggestions.stream().filter(sug -> {
+                            boolean isOK = filterReport(sug, request);
+                            return sug.getServiceIndexe().equals(agence)
+                                    && sug.getStatus() != null && sug.getStatus().equals(mesure) && isOK;
+                        }).collect(Collectors.toList()).size();
+                    } else {
+
+                        nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
+                            boolean isOK = filterReport(claim, request);
+                            return claim.getServicePoint().equals(agence)
+                                    && claim.getStatus() != null && claim.getStatus().equals(mesure) && isOK;
+                        }).collect(Collectors.toList()).size();
+
+                    }
+
+                    objetList.put("nbre", nbreClaimPerAgenceFilter);
+                    objetList.put("name", mesure.equals(ClaimStatus.SATISFIED) ? "Oui"
+                            : (mesure.equals(ClaimStatus.PARTIAL_SATISFIED) ? "Partiel" : "Non"));
+                    objetList.put("id", "");
+                    objetList.put("color",
+                            mesure.equals(ClaimStatus.SATISFIED) ? SATISFIED_BG_COLOR
+                                    : (mesure.equals(ClaimStatus.PARTIAL_SATISFIED) ? PARTIAL_SATISFIED_BG_COLOR
+                                            : UNSATISFIED_BG_COLOR));
+
+                    totalInfo = totalInfo + nbreClaimPerAgenceFilter;
+
+                    listInfo.add(objetList);
+
+                }
+                HashMap<String, Object> agenceDetail = new HashMap<String, Object>();
+                agenceDetail.put("totals", totalInfo);
+                agenceDetail.put("data", listInfo);
+                agencesHashMap.put(agence.getLibelle(), agenceDetail);
+            }
+
+            String keyRDSType = RSDSelect.equals(ClaimType.CLAIM) ? "claims"
+                    : (RSDSelect.equals(ClaimType.DENUNCIACION) ? "denonciations" : "suggestions");
+            result.put(keyRDSType, agencesHashMap);
+        }
+
+        return result;
+    }
+
+    @Override
+    public HashMap<String, Object> listPerAgencePerGenre(@Nullable FilterRequest request) {
+
+        HashMap<String, Object> result = new HashMap<String, Object>();
+        result.put("claims", null);
+        result.put("suggestions", null);
+        result.put("denonciations", null);
+
+        List<ServicePoint> sp = new ArrayList<ServicePoint>();
+        if (request != null) {
+
+            if (request.getServicePoints() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                sp = spRepository.findAllById(request.getServicePoints());
+            } else {
+                sp = spRepository.findAll();;
+            }
+            if (sp.size() == 0) {
+                return result;
+            }
+        } else {
+            sp = spRepository.findAll();;
+        }
+
+        List<ClaimType> RDSList = new ArrayList<>(
+                Arrays.asList(ClaimType.CLAIM, ClaimType.DENUNCIACION, ClaimType.SUGGESTION));
+
+        List<Gender> genders = new ArrayList<>(
+                Arrays.asList(Gender.HOMME, Gender.FEMME, Gender.NON_DEFINI));
+
+        for (ClaimType RSDSelect : RDSList) {
+            List<Claim> claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+            List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeIn(sp);
+
+            HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
+            for (ServicePoint agence : sp) {
+
+                List<HashMap<String, Object>> listInfo = new ArrayList<HashMap<String, Object>>();
+                Long totalInfo = (long) 0;
+
+                for (Gender gender : genders) {
+                    HashMap<String, Object> objetList = new HashMap<String, Object>();
+
+                    int nbreClaimPerAgenceFilter = 0;
+                    if (RSDSelect.equals(ClaimType.SUGGESTION)) {
+
+                        nbreClaimPerAgenceFilter = suggestions.stream().filter(sug -> {
+                            boolean isOK = filterReport(sug, request);
+                            return sug.getServiceIndexe().equals(agence)
+                                    && sug.getGender() != null && sug.getGender().equals(gender) && isOK;
+                        }).collect(Collectors.toList()).size();
+                    } else {
+
+                        nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
+                            boolean isOK = filterReport(claim, request);
+                            return claim.getServicePoint().equals(agence)
+                                    && claim.getGender() != null && claim.getGender() == gender && isOK;
+                        }).collect(Collectors.toList()).size();
+                    }
+
+                    objetList.put("nbre", nbreClaimPerAgenceFilter);
+                    objetList.put("name", gender.toString());
+                    objetList.put("id", null);
+                    objetList.put("color", gender.equals(Gender.FEMME) ? GENDER_FEMALE_BG_COLOR
+                            : (gender.equals(Gender.HOMME) ? GENDER_MALE_BG_COLOR : GENDER_NON_DEFINI_BG_COLOR));
+                    totalInfo = totalInfo + nbreClaimPerAgenceFilter;
+
+                    listInfo.add(objetList);
+
+                }
+                HashMap<String, Object> agenceDetail = new HashMap<String, Object>();
+                agenceDetail.put("totals", totalInfo);
+                agenceDetail.put("data", listInfo);
+                agencesHashMap.put(agence.getLibelle(), agenceDetail);
+            }
+
+            String keyRDSType = RSDSelect.equals(ClaimType.CLAIM) ? "claims"
+                    : (RSDSelect.equals(ClaimType.DENUNCIACION) ? "denonciations" : "suggestions");
+            result.put(keyRDSType, agencesHashMap);
+        }
+
+        return result;
+    }
+
+    @Override
+    public HashMap<String, Object> listRDSPerAgencePerModalite(@Nullable FilterRequest request) {
+
+        HashMap<String, Object> result = new HashMap<String, Object>();
+
+        List<ServicePoint> sp = new ArrayList<ServicePoint>();
+        List<CollectionChannel> channels = new ArrayList<CollectionChannel>();
+        if (request != null) {
+
+            if (request.getServicePoints() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                sp = spRepository.findAllById(request.getServicePoints());
+            } else {
+                sp = spRepository.findAll();;
+            }
+            if (sp.size() == 0) {
+                return result;
+            }
+            
+
+            if (request.getCanals() instanceof List<Long> && request.getCanals().size() > 0) {
+                channels = clRepository.findAllById(request.getObjets());
+            } else {
+                channels = clRepository.findAll();
+
+            }
+        } else {
+            sp = spRepository.findAll();;
+            channels = clRepository.findAll();
+        }
+
+        List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeIn(sp);
+        List<Claim> claims = claimRepository.findByServicePointIn(sp);
+
+        HashMap<String, String> colorList = new HashMap<>();
+        for (CollectionChannel channel : channels) {
+            colorList.put(channel.getLibelle(), Utils.generateRandomColor(1).get(0).toBgString());
+        }
+
+        HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
+        for (ServicePoint agence : sp) {
+
+            List<HashMap<String, Object>> listInfo = new ArrayList<HashMap<String, Object>>();
+            Long totalInfo = (long) 0;
+
+            for (CollectionChannel channel : channels) {
+                HashMap<String, Object> channelList = new HashMap<String, Object>();
+                int suggestionCount = suggestions.stream().filter(suggest -> {
+                    boolean isOK = filterReport(suggest, request);
+
+                    return suggest.getServiceIndexe().equals(agence)
+                            && suggest.getCanal() != null && suggest.getCanal().equals(channel) && isOK;
+                }).collect(Collectors.toList()).size();
+
+                int claimsCount = claims.stream().filter(claim -> {
+                    boolean isOK = filterReport(claim, request);
+                    return claim.getServicePoint().equals(agence)
+                            && claim.getCollectionChannel().equals(channel) && isOK;
+                }).collect(Collectors.toList()).size();
+
+                channelList.put("nbre", claimsCount + suggestionCount);
+                channelList.put("color", colorList.get(channel.getLibelle()));
+                channelList.put("name", channel.getLibelle());
+                channelList.put("id", channel.getId());
+                totalInfo = totalInfo + claimsCount + suggestionCount;
+
+                listInfo.add(channelList);
+
+            }
+            HashMap<String, Object> agenceDetail = new HashMap<String, Object>();
+            agenceDetail.put("totals", totalInfo);
+            agenceDetail.put("data", listInfo);
+            agencesHashMap.put(agence.getLibelle(), agenceDetail);
+        }
+
+        result = agencesHashMap;
+
+        return result;
+    }
+
+    @Override
+    public HashMap<String, Object> listRDSPerAgencePerObjet(@Nullable FilterRequest request) {
+
+        HashMap<String, Object> result = new HashMap<String, Object>();
+
+        List<ServicePoint> sp = new ArrayList<ServicePoint>();
+        List<Objet> objets = new ArrayList<Objet>();
+        if (request != null) {
+
+            if (request.getServicePoints() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                sp = spRepository.findAllById(request.getServicePoints());
+            } else {
+                sp = spRepository.findAll();
+            }
+            if (sp.size() == 0) {
+                return result;
+            }
+           
+            if (request.getObjets() instanceof List<Long> && request.getServicePoints().size() > 0) {
+                objets = oRepository.findAllById(request.getObjets());
+            } else {
+                objets = oRepository.findAll();
+
+            }
+        } else {
+            sp = spRepository.findAll();
+            objets = oRepository.findAll();
+        }
+
+        List<Claim> claims = claimRepository.findByServicePointIn(sp);
+
+        HashMap<String, String> colorList = new HashMap<>();
+        for (Objet objet : objets) {
+            colorList.put(objet.getLibelle(), Utils.generateRandomColor(1).get(0).toBgString());
+        }
+
+        HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
+        for (ServicePoint agence : sp) {
+
+            List<HashMap<String, Object>> listInfo = new ArrayList<HashMap<String, Object>>();
+            Long totalInfo = (long) 0;
+
+            for (Objet objet : objets) {
+                HashMap<String, Object> channelList = new HashMap<String, Object>();
+
+                int claimsCount = claims.stream().filter(claim -> {
+                    boolean isOK = filterReport(claim, request);
+                    return claim.getServicePoint().equals(agence)
+                            && claim.getObjet().equals(objet) && isOK;
+                }).collect(Collectors.toList()).size();
+
+                channelList.put("nbre", claimsCount);
+                channelList.put("name", objet.getLibelle());
+                channelList.put("id", objet.getId());
+                channelList.put("color", colorList.get(objet.getLibelle()));
+                totalInfo = totalInfo + claimsCount;
+
+                listInfo.add(channelList);
+
+            }
+            HashMap<String, Object> agenceDetail = new HashMap<String, Object>();
+            agenceDetail.put("totals", totalInfo);
+            agenceDetail.put("data", listInfo);
+            agencesHashMap.put(agence.getLibelle(), agenceDetail);
+        }
+
+        result = agencesHashMap;
+
+        return result;
+    }
 
     @Override
     public PieChartDto repartitionClaimDenunSuggest(@Nullable FilterRequest request) {
@@ -2292,42 +3000,34 @@ public class ReportServiceImpl implements ReportService {
                 .build();
         List<GravityLevel> allLevels = Arrays.asList(GravityLevel.GRAVE, GravityLevel.MOYEN, GravityLevel.MINEUR);
         Long total = (long) 0;
-        boolean isFind = false;
+        List<ServicePoint> allSPoints = spRepository.findAll();
+    
         if (request != null) {
             List<ClaimPerObjLevelPro> allResult = claimRepository.countClaimByCriteriaAndByObjLevel(request,
                     ClaimType.CLAIM);
-            System.out.println("allResult");
-            System.out.println(allResult);
-            for (ClaimPerObjLevelPro projection : allResult) {
-                total += projection.getTotal();
-            }
+            total = (long) allResult.size();
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
-                for (ClaimPerObjLevelPro projection : allResult) {
-                    if (projection.getObjNiveau().equals(gravityLevel)) {
-                        // System.out.println("allResult2");
-                        // System.out.println(projection.getObjNiveau());
-                        // System.out.println(projection.getTotal());
-                        // System.out.println(total);
-                        // System.out.println(Utils.percentCalculator(projection.getTotal(), total));
-                        pieChartDto.getDatas()
-                                .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                        switch (gravityLevel) {
-                            case GRAVE:
-                                pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
-                                break;
-                            case MINEUR:
-                                pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
-                                break;
-                            case MOYEN:
-                                pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                }
+                int nbreClaimPerAgenceFilter = allResult.stream().filter(claim -> {
+                    return claim.getObjNiveau() == gravityLevel;
+                }).collect(Collectors.toList()).size();
+               
+                pieChartDto.getDatas()
+                        .add(Utils.parseDouble(Utils.percentCalculator((long) nbreClaimPerAgenceFilter, total)));
 
+                switch (gravityLevel) {
+                    case GRAVE:
+                        pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
+                        break;
+                    case MINEUR:
+                        pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
+                        break;
+                    case MOYEN:
+                        pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
+                        break;
+                    default:
+                        break;
+                }
                 // if (!isFind) {
                 // pieChartDto.getDatas().add((double) 0);
                 // }
@@ -2335,38 +3035,33 @@ public class ReportServiceImpl implements ReportService {
             }
 
         } else {
-            List<ClaimPerObjLevelProjection> allResult = claimRepository.countClaimPerObjLevel(ClaimType.CLAIM);
 
+            List<Claim> claims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM,
+                    ClaimStatus.TEMP_SAVED);
             total = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
-
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
-                for (ClaimPerObjLevelProjection projection : allResult) {
-                    if (projection.getObjNiveau().equals(gravityLevel.name())) {
-                        isFind = true;
-                        pieChartDto.getDatas()
-                                .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                        switch (gravityLevel) {
-                            case GRAVE:
-                                pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
-                                break;
-                            case MINEUR:
-                                pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
-                                break;
-                            case MOYEN:
-                                pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
-                                break;
-                            default:
-                                break;
-                        }
+                int nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
+                    return claim.getObjet().getRisqueLevel() == gravityLevel;
+                }).collect(Collectors.toList()).size();
 
-                    }
-                }
+                pieChartDto.getDatas()
+                        .add(Utils.parseDouble(Utils.percentCalculator((long) nbreClaimPerAgenceFilter, total)));
 
-                if (!isFind) {
-                    pieChartDto.getDatas().add((double) 0);
+                switch (gravityLevel) {
+                    case GRAVE:
+                        pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
+                        break;
+                    case MINEUR:
+                        pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
+                        break;
+                    case MOYEN:
+                        pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
+                        break;
+                    default:
+                        break;
                 }
-                isFind = false;
+      
             }
         }
 
@@ -2385,76 +3080,114 @@ public class ReportServiceImpl implements ReportService {
                 .build();
         List<GravityLevel> allLevels = Arrays.asList(GravityLevel.GRAVE, GravityLevel.MOYEN, GravityLevel.MINEUR);
         Long total = (long) 0;
-        boolean isFind = false;
+        List<ServicePoint> allSPoints = spRepository.findAll();
+
         if (request != null) {
             List<ClaimPerObjLevelPro> allResult = claimRepository.countClaimByCriteriaAndByObjLevel(request,
                     ClaimType.DENUNCIACION);
+
+            
             for (ClaimPerObjLevelPro projection : allResult) {
                 total += projection.getTotal();
             }
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
-                for (ClaimPerObjLevelPro projection : allResult) {
-                    if (projection.getObjNiveau().equals(gravityLevel)) {
+                int nbreClaimPerAgenceFilter = allResult.stream().filter(claim -> {
+                    return claim.getObjNiveau() == gravityLevel;
+                }).collect(Collectors.toList()).size();
+               
+                pieChartDto.getDatas()
+                        .add(Utils.parseDouble(Utils.percentCalculator((long) nbreClaimPerAgenceFilter, total)));
 
-                        pieChartDto.getDatas()
-                                .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                        switch (gravityLevel) {
-                            case GRAVE:
-                                pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
-                                break;
-                            case MINEUR:
-                                pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
-                                break;
-                            case MOYEN:
-                                pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
+                switch (gravityLevel) {
+                    case GRAVE:
+                        pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
+                        break;
+                    case MINEUR:
+                        pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
+                        break;
+                    case MOYEN:
+                        pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
+                        break;
+                    default:
+                        break;
                 }
-
+              
             }
 
         } else {
-            List<ClaimPerObjLevelProjection> allResult = claimRepository.countClaimPerObjLevel(ClaimType.DENUNCIACION);
+            // List<ClaimPerObjLevelProjection> allResult =
+            // claimRepository.countClaimPerObjLevel(ClaimType.DENUNCIACION,
+            // spId);
 
-            total = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            // total =
+            // claimRepository.countByTypeAndStatusNotAndServicePointIn(ClaimType.CLAIM,
+            // ClaimStatus.TEMP_SAVED,
+            // allSPoints);
 
+            // for (GravityLevel gravityLevel : allLevels) {
+            // pieChartDto.getLabels().add(gravityLevel.name());
+            // for (ClaimPerObjLevelProjection projection : allResult) {
+            // if (projection.getObjNiveau().equals(gravityLevel.name())) {
+            // isFind = true;
+            // pieChartDto.getDatas()
+            // .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(),
+            // total)));
+            // switch (gravityLevel) {
+            // case GRAVE:
+            // pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
+            // break;
+            // case MINEUR:
+            // pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
+            // break;
+            // case MOYEN:
+            // pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
+            // break;
+            // default:
+            // break;
+            // }
+            // }
+            // }
+
+            // if (!isFind) {
+            // pieChartDto.getDatas().add((double) 0);
+            // }
+            // isFind = false;
+            // }
+
+            // Alby
+            List<Claim> claims = claimRepository.findByTypeAndStatusNot(ClaimType.DENUNCIACION,
+                    ClaimStatus.TEMP_SAVED);
+            total = (long) claims.size();
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
-                for (ClaimPerObjLevelProjection projection : allResult) {
-                    if (projection.getObjNiveau().equals(gravityLevel.name())) {
-                        isFind = true;
-                        pieChartDto.getDatas()
-                                .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                        switch (gravityLevel) {
-                            case GRAVE:
-                                pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
-                                break;
-                            case MINEUR:
-                                pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
-                                break;
-                            case MOYEN:
-                                pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
+                int nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
+                    return claim.getObjet().getRisqueLevel() == gravityLevel;
+                }).collect(Collectors.toList()).size();
+
+                pieChartDto.getDatas()
+                        .add(Utils.parseDouble(Utils.percentCalculator((long) nbreClaimPerAgenceFilter, total)));
+
+                switch (gravityLevel) {
+                    case GRAVE:
+                        pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
+                        break;
+                    case MINEUR:
+                        pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
+                        break;
+                    case MOYEN:
+                        pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
+                        break;
+                    default:
+                        break;
                 }
 
-                if (!isFind) {
-                    pieChartDto.getDatas().add((double) 0);
-                }
-                isFind = false;
             }
+
         }
 
         return pieChartDto;
     }
-
     @Override
     public StackedBar numberClaimByGravityByAngence(@Nullable FilterRequest request) {
         StackedBar stackedBar = StackedBar
@@ -3439,7 +4172,7 @@ public class ReportServiceImpl implements ReportService {
 
             totalTreatClaims = claimRepository.countByTypeAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-                    ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION));
+                            ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION));
             totalClaims = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
 
             List<Suggestion> allTreatResult = suggestionRepository.findByStatusIn(Arrays.asList(ClaimStatus.TREAT));

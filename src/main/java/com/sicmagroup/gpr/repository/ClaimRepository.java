@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.projection.ObjectPerCanalProjection;
 import com.sicmagroup.gpr.repository.projection.ObjectPerObjProjction;
@@ -38,6 +39,10 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
         List<Claim> findByStatus(ClaimStatus status);
 
         List<Claim> findByType(ClaimType type);
+
+        List<Claim> findByTypeAndServicePointIn(ClaimType type,List<ServicePoint> servicePoints);
+        
+        List<Claim> findByServicePointIn(List<ServicePoint> servicePoints);
 
         List<Claim> findByTypeAndStatus(ClaimType type, ClaimStatus status);
 

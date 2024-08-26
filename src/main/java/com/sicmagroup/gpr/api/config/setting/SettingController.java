@@ -10,8 +10,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.model.Setting;
+import com.sicmagroup.gpr.domain.model.User;
+import com.sicmagroup.gpr.service.auth.AuthenticationService;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
+import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,8 @@ import java.io.UnsupportedEncodingException;
 import org.apache.tomcat.util.bcel.classfile.Constant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class SettingController {
 
     private final SettingServiceImpl serviceImpl;
+    private final AuthenticationService authService;
 
     // @PostMapping(value="/institution/save")
     // public ResponseEntity<ApiResponseDto> configInstit(@RequestBody SomeEnityData
@@ -342,6 +348,90 @@ public class SettingController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
             }
 
+        }
+
+    }
+
+     @PostMapping(value = "/others/sms/test")
+    public ResponseEntity<ApiResponseDto> testSms(@RequestBody SmsTestRequest request) {
+        ObjectMapper Obj = new ObjectMapper();
+
+        try {
+            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                    .getPrincipal();
+            User connectedUser = authService.getByEmail(userDetails.getUsername());
+
+            Boolean isSuccess = Utils.testSmsConfig(request.getPhone(), request.getMessage(), serviceImpl);
+            if(!isSuccess){
+                throw new Exception("SMS non envoyé");
+            }
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(request)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }
+
+        // Catch block to handle exceptions
+        catch (IOException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+            .builder()
+            .status(true)
+            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+            .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+          
+        }
+
+    }
+    @PostMapping(value = "/others/mail/test")
+    public ResponseEntity<ApiResponseDto> testMail(@RequestBody MailTestRequest request) {
+        
+
+        try {
+            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                    .getPrincipal();
+            User connectedUser = authService.getByEmail(userDetails.getUsername());
+           
+
+            Boolean isSuccess = Utils.testMailConfig(request.getTo(),request.getSubject(), request.getMessage(),null," ", serviceImpl);
+            if(!isSuccess){
+                throw new Exception("Mail non envoyé");
+            }
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(request)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }
+
+        // Catch block to handle exceptions
+        catch (IOException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+            .builder()
+            .status(true)
+            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+            .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+          
         }
 
     }

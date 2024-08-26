@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.projection.ClaimPerCanalPerSpPjt;
@@ -27,6 +28,7 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, S
     List<Suggestion> findByStatusIn(List<ClaimStatus> statuses);
 
     List<Suggestion> findByStatusNot(ClaimStatus status);
+    List<Suggestion> findByServiceIndexeIn(List<ServicePoint> servicePoint);
     List<Suggestion> findByStatusNotAndReceiptDateTimeBetween(ClaimStatus status, LocalDateTime start, LocalDateTime end);
 
     Optional<Suggestion> findByCode(String code);
