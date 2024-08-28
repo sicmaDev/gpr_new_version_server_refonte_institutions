@@ -76,6 +76,7 @@ import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.existingSolution.ExistingSolutionServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
+import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
@@ -96,6 +97,7 @@ public class ClaimController {
     private final SolutionServiceImpl solutionServiceImpl;
     private final MediaServiceImpl mediaService;
     private final ClaimAudioServiceImpl claimAudioServiceImpl;
+    private final ServicePointServiceImpl spServiceImpl;
     private final ExistingSolutionServiceImpl existingSolutionServiceImpl;
 
     @GetMapping("/list/all")
@@ -379,6 +381,11 @@ public class ClaimController {
                 ClaimRequest claimRequest2 = mapper.readValue(claimRequest, ClaimRequest.class);
 
                 try {
+                    boolean servicePointIsActif = spServiceImpl.isActif(claimRequest2.getServicePointId());
+                    boolean userIsActif = spServiceImpl.isActif(claimRequest2.getCollectorId());
+                    if(!userIsActif || !servicePointIsActif){
+                        throw new Exception("Point de Service ou Utilisateur désactivé");
+                    }
                     SaveRequest saveRequest = SaveRequest.builder().claimRequest(claimRequest2).files(files)
                             .audios(audios)
                             .remoteAddress(request.getRemoteAddr()).build();

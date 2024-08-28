@@ -61,6 +61,45 @@ public class UserController {
     private final ModelMapper modelMapper;
     private final SettingServiceImpl settingServiceImpl;
 
+    @GetMapping("/list")
+    public ResponseEntity<ApiResponseDto> list() {
+     
+        List<User> allUsers = authenticationServiceImpl.all();
+        ApiResponseDto apiResponseDto = ApiResponseDto.builder()
+                .status(true)
+                .content(allUsers.stream().map(this::convertToDto).collect(Collectors.toList()))
+                .build();
+        return ResponseEntity.ok(apiResponseDto);  
+
+    }
+    @DeleteMapping("/disabled/{id}/{isDisabled}")
+    public ResponseEntity<ApiResponseDto> disabledUser(@PathVariable(name = "id", required = true) Long id,@PathVariable(name = "isDisabled", required = true) boolean isDisabled) {
+     
+        ApiResponseDto apiResponseDto;
+        User user;
+        try {
+            if(isDisabled){
+                user = authenticationServiceImpl.deleteTempUser(id);
+                
+            }else{
+                user = authenticationServiceImpl.enabledUser(id);
+            }
+    
+            apiResponseDto = ApiResponseDto.builder()
+                    .status(true)
+                    .content(convertToDto(user))
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+        } catch (NotFoundException e) {
+          
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("NOT FOUND").message("User not found").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+    }
     @GetMapping("/list/{deleted}")
     public ResponseEntity<ApiResponseDto> getAll(@PathVariable(name = "deleted", required = false) boolean deleted) {
         ApiResponseDto apiResponseDto;

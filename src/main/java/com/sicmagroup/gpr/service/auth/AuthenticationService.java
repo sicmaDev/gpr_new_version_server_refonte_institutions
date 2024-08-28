@@ -40,6 +40,7 @@ public interface AuthenticationService {
     public User updateUser(Long id, RegisterRequest userDto) throws NotFoundException;
 
     public User deleteTempUser(Long id) throws NotFoundException;
+    public User enabledUser(Long id) throws NotFoundException;
 
     public void deleteUser(User user) throws Exception;
 
@@ -60,4 +61,10 @@ public interface AuthenticationService {
     public void removeEmailReceiver(Long id) throws Exception;
 
     public List<User> getEmailReceiversForNotif(ServicePoint servicePointIndexe);
+   
+    public List<User> all();
+
+
+    public boolean isActif(Long id);
+
 }

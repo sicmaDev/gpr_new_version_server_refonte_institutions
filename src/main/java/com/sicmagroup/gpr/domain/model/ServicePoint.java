@@ -33,6 +33,7 @@ public class ServicePoint {
 	private Long id;
 	@Column(unique = true)
 	private String uuid;
+	@Column(unique = true)
 	private String libelle;
 	@Lob
     @Column(columnDefinition = "TEXT")

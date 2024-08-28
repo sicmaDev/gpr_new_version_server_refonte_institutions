@@ -17,6 +17,7 @@ import com.sicmagroup.gpr.domain.enumeration.Role;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
+    Optional<User> findByEmailAndIsDeleted(String email,boolean isDeleted);
 
     Optional<User> findByCode(String code);
 

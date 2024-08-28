@@ -248,10 +248,30 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        User user;
+        try {
+             user = userRepository.findByEmailAndIsDeleted(request.getEmail(),false).orElseThrow();
+        } catch (Exception e) {
+           return AuthenticationResponse.builder()
+                .response(ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(null)
+                        .build())
+                .build();
+            // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            //         ApiResponseDto
+            //                 .builder()
+            //                 .status(false)
+            //                 .content(ErrorResponse.builder().message("No token")
+            //                         .title("Votre compte ou token n'est plus valable").build())
+            //                 .build());
 
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        }
+        
+
+        authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
         // HashMap<String, Object> extras = new HashMap<>();
         // extras.put("additionalRole", user.getAdditionalrole());
@@ -391,7 +411,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
     }
 
-       @Override
+    @Override
     public ResponseEntity<ApiResponseDto> getAuthData() {
         User user;
       
@@ -399,15 +419,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
                     .getPrincipal();
             user = getByEmail(userDetails.getUsername());
-           
-
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                     ApiResponseDto
                             .builder()
                             .status(false)
                             .content(ErrorResponse.builder().message("No token")
-                                    .title("Votre token est expiré").build())
+                                    .title("Votre compte ou token n'est plus valable").build())
                             .build());
 
         }
@@ -549,7 +567,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         try {
 
-            User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+            User user = userRepository.findByEmailAndIsDeleted(request.getEmail(),false).orElseThrow();
             char[] password = generatePassword(8);
 
             List<User> userMailTo = new ArrayList<>();
@@ -758,6 +776,24 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
+    public List<User> all() {
+        return userRepository.findAll();
+    }
+
+    @Override
+    public boolean isActif(Long id) {
+        try {
+            User user = userRepository.findByIdAndIsDeleted(id, false).orElseThrow();
+
+            return true;
+
+        } catch (Exception e) {
+            return false;
+        }
+        
+    }
+
+    @Override
     public User getById(Long id) throws NotFoundException {
         return userRepository.findById(id).orElseThrow(() -> new NotFoundException());
     }
@@ -807,10 +843,26 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public User deleteTempUser(Long id) throws NotFoundException {
         User userOld = userRepository.getReferenceById(id);
+        
         userOld.setDeleted(true);
         userOld.setDeletedAt(LocalDateTime.now());
         userOld = userRepository.save(userOld);
         return userOld;
+    }
+
+    @Override
+    public User enabledUser(Long id) throws NotFoundException {
+        User userOld = userRepository.getReferenceById(id);
+        userOld.setDeleted(false);
+        userOld.setDeletedAt(LocalDateTime.now());
+        userOld = userRepository.save(userOld);
+        return userOld;
+    }
+
+    private boolean isTheLastH12(){
+        // List<User> users = userRepository.fin
+        // List<
+        return true;
     }
 
     @Override
@@ -854,7 +906,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public User getByEmail(String email) throws Exception {
-        return userRepository.findByEmail(email).orElseThrow(() -> new Exception("Utilisateur introuvable"));
+        return userRepository.findByEmailAndIsDeleted(email,false).orElseThrow(() -> new Exception("Utilisateur introuvable"));
     }
 
     @Override

@@ -22,6 +22,8 @@ import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.ServicePointDto;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
+import com.sicmagroup.gpr.repository.ServicePointRepository;
+import com.sicmagroup.gpr.repository.SettingRepository;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -34,6 +36,46 @@ public class ServicePointController {
 
     private final ServicePointServiceImpl serviceImpl;
     private final ModelMapper modelMapper;
+
+    @GetMapping("/list")
+    public ResponseEntity<ApiResponseDto> list() {
+        ApiResponseDto apiResponseDto;
+
+        List<ServicePoint> allServicePoints = serviceImpl.all();
+        apiResponseDto = ApiResponseDto.builder()
+                .status(true)
+                .content(allServicePoints.stream().map(this::convertToDto).collect(Collectors.toList()))
+                .build();
+        return ResponseEntity.ok(apiResponseDto);
+
+    }
+
+    @DeleteMapping("/disabled/{id}/{isDisabled}")
+    public ResponseEntity<ApiResponseDto> disabled(@PathVariable(name = "id", required = true) Long id,@PathVariable(name = "isDisabled", required = true) boolean isDisabled) {
+        ApiResponseDto apiResponseDto;
+        try {
+            ServicePoint servicePoint;
+            if(isDisabled){
+                servicePoint = serviceImpl.deleteTempServicePoint(id);
+                
+            }else{
+                servicePoint = serviceImpl.enableServicePoint(id);
+            }
+            apiResponseDto = ApiResponseDto.builder()
+                    .status(true)
+                    .content(convertToDto(servicePoint))
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("NOT FOUND").message("Service Point not found").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+
+    }
 
     @GetMapping("/list/{deleted}")
     public ResponseEntity<ApiResponseDto> getAll(@PathVariable(name = "deleted", required = false) boolean deleted) {

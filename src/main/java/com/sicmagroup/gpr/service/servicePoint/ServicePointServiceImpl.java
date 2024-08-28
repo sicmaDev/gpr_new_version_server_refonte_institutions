@@ -21,6 +21,23 @@ public class ServicePointServiceImpl implements ServicePointService {
     private final ServicePointRepository repository;
 
     @Override
+    public List<ServicePoint> all() {
+        return repository.findAll();
+    }
+
+    @Override
+    public boolean isActif(Long id) {
+        try {
+            ServicePoint servicePoint = repository.findByIdAndIsDeleted(id, false).orElseThrow();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+        
+    }
+
+
+    @Override
     public List<ServicePoint> getAll() {
         return repository.findByIsDeleted(false);
     }
@@ -45,6 +62,13 @@ public class ServicePointServiceImpl implements ServicePointService {
     public ServicePoint deleteTempServicePoint(Long id) throws NotFoundException {
         ServicePoint servicePoint = repository.findById(id).orElseThrow(() -> new NotFoundException());
         servicePoint.setDeleted(true);
+        servicePoint.setDeletedAt(LocalDateTime.now());
+        return repository.save(servicePoint);
+    }
+    @Override
+    public ServicePoint enableServicePoint(Long id) throws NotFoundException {
+        ServicePoint servicePoint = repository.findById(id).orElseThrow(() -> new NotFoundException());
+        servicePoint.setDeleted(false);
         servicePoint.setDeletedAt(LocalDateTime.now());
         return repository.save(servicePoint);
     }
