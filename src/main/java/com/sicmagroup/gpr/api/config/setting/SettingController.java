@@ -35,6 +35,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import com.sicmagroup.gpr.utils.Utils;
 
 @RestController
 @RequestMapping("/api/v1/config/setting")
@@ -352,15 +353,12 @@ public class SettingController {
 
     }
 
-     @PostMapping(value = "/others/sms/test")
+    @PostMapping(value = "/others/sms/test")
     public ResponseEntity<ApiResponseDto> testSms(@RequestBody SmsTestRequest request) {
         ObjectMapper Obj = new ObjectMapper();
-
+       
         try {
-            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                    .getPrincipal();
-            User connectedUser = authService.getByEmail(userDetails.getUsername());
-
+           
             Boolean isSuccess = Utils.testSmsConfig(request.getPhone(), request.getMessage(), serviceImpl);
             if(!isSuccess){
                 throw new Exception("SMS non envoyé");
@@ -393,16 +391,11 @@ public class SettingController {
         }
 
     }
+
     @PostMapping(value = "/others/mail/test")
     public ResponseEntity<ApiResponseDto> testMail(@RequestBody MailTestRequest request) {
-        
 
         try {
-            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                    .getPrincipal();
-            User connectedUser = authService.getByEmail(userDetails.getUsername());
-           
-
             Boolean isSuccess = Utils.testMailConfig(request.getTo(),request.getSubject(), request.getMessage(),null," ", serviceImpl);
             if(!isSuccess){
                 throw new Exception("Mail non envoyé");
