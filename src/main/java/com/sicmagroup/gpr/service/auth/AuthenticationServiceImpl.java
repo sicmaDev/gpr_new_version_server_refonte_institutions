@@ -580,10 +580,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     "Voici vos informations de connexion:" + "\n\n" +
                     "* Email: " + user.getEmail() + "\n" +
                     "* Mot de passe : " + new String(password) + "\n" +
-                    "* Page de connexion : https://gprsaas.gprserver.com/#/login \n\n" +
                     "Ce mail ne doit pas etre divulger.";
 
-            Utils.sendmail(userMailTo, "Modification de sur GPR", message, null, " ", settingServiceImpl);
+            Utils.sendmail(userMailTo, "Modification plateforme de GPR", message, null, " ", settingServiceImpl);
             user.setPassword(passwordEncoder.encode(new String(password)));
             userRepository.save(user);
 
