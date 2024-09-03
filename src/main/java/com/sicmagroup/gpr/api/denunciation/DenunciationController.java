@@ -37,6 +37,7 @@ import com.sicmagroup.gpr.api.claim.ProposedSolutionRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
 import com.sicmagroup.gpr.api.claim.TransmissionRequest;
 import com.sicmagroup.gpr.api.claim.UnApprouvedRequest;
+import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
 import com.sicmagroup.gpr.domain.dto.ClaimDto;
@@ -79,6 +80,7 @@ import com.sicmagroup.gpr.domain.model.chat.UserVote;
 import com.sicmagroup.gpr.domain.model.chat.Vote;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
+import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
@@ -94,7 +96,7 @@ public class DenunciationController {
     private final ClaimServiceImpl service;
     private final ModelMapper modelMapper;
     private final ExternalRecourseServiceImpl externalRecourseServiceImpl;
-
+    private final ClaimAudioServiceImpl claimAudioServiceImpl;
     private final AuthenticationServiceImpl authService;
     private final SolutionServiceImpl solutionServiceImpl;
     private final MediaServiceImpl mediaService;
@@ -258,6 +260,36 @@ public class DenunciationController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
+    @GetMapping("/getAudiosBy/{claimId}")
+    public ResponseEntity<List<ClaimAudioResponse>> getAllClaimAudioForAClaim(
+            @PathVariable(name = "claimId") Long claimId) {
+        ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
+        Claim claim = Claim.builder().build();
+        try {
+            claim = service.getById(claimId);
+
+        } catch (NotFoundException e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Claim not found").title("NOT FOUND EXCEPTION").build())
+                    .build();
+            return ResponseEntity.notFound().build();
+        }
+        List<ClaimAudioResponse> medias = claimAudioServiceImpl.getAudioByClaim(claim);
+        // List<MediaResponse> mediaResponses =
+        // medias.stream().map(this::convertToResponse).collect(Collectors.toList());
+        // System.out.println("medias.size");
+        // System.out.println(medias.size());
+
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(true)
+                .content(medias)
+                .build();
+        return ResponseEntity.ok(medias);
+    }
+
     @GetMapping(value = "/list/{status}")
     public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable ClaimStatus status) {
         // ClaimStatus claimStatus = ClaimStatus.valueOf(status);
@@ -298,13 +330,16 @@ public class DenunciationController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
+
+
     @PostMapping(value = "/add", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
             MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<ApiResponseDto> saveClaim(@RequestPart("denun") String denunRequest,
-            @RequestPart(name = "files", required = false) MultipartFile[] files, HttpServletRequest request2)
+            @RequestPart(name = "files", required = false) MultipartFile[] files,
+            @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request2)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto = Utils.verifyLicence();
-        ;
+        
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {
@@ -313,7 +348,9 @@ public class DenunciationController {
 
                 try {
                     SaveDenunRequest saveRequest = SaveDenunRequest.builder().claimRequest(denunRequest2).files(files)
+                            .audios(audios)
                             .remoteAddress(request2.getRemoteAddr()).build();
+
                     Claim claim = service.saveClaim(saveRequest, ClaimType.DENUNCIACION);
                     apiResponseDto = ApiResponseDto
                             .builder()
@@ -352,10 +389,11 @@ public class DenunciationController {
     @PostMapping(value = "/save_temp", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
             MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<ApiResponseDto> saveTempClaim(@RequestPart("denun") String denunRequest,
-            @RequestPart(name = "files", required = false) MultipartFile[] files, HttpServletRequest request2)
+            @RequestPart(name = "files", required = false) MultipartFile[] files,
+            @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request2)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto = Utils.verifyLicence();
-        ;
+        
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {
@@ -363,6 +401,7 @@ public class DenunciationController {
                 ClaimRequest denunRequest2 = mapper.readValue(denunRequest, ClaimRequest.class);
                 try {
                     SaveRequest saveRequest = SaveRequest.builder().claimRequest(denunRequest2).files(files)
+                            .audios(audios)
                             .remoteAddress(request2.getRemoteAddr()).build();
 
                     Claim claim = service.saveTempClaim(saveRequest, ClaimType.DENUNCIACION);

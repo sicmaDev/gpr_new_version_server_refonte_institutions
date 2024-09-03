@@ -28,6 +28,7 @@ import com.sicmagroup.gpr.domain.dto.UserDto;
 import com.sicmagroup.gpr.domain.dto.claimResponse.PosteResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.ServicePointResponse;
 import com.sicmagroup.gpr.domain.enumeration.ChatStatus;
+import com.sicmagroup.gpr.domain.enumeration.Habilitation;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.Poste;
@@ -63,35 +64,37 @@ public class UserController {
 
     @GetMapping("/list")
     public ResponseEntity<ApiResponseDto> list() {
-     
+
         List<User> allUsers = authenticationServiceImpl.all();
         ApiResponseDto apiResponseDto = ApiResponseDto.builder()
                 .status(true)
                 .content(allUsers.stream().map(this::convertToDto).collect(Collectors.toList()))
                 .build();
-        return ResponseEntity.ok(apiResponseDto);  
+        return ResponseEntity.ok(apiResponseDto);
 
     }
+
     @DeleteMapping("/disabled/{id}/{isDisabled}")
-    public ResponseEntity<ApiResponseDto> disabledUser(@PathVariable(name = "id", required = true) Long id,@PathVariable(name = "isDisabled", required = true) boolean isDisabled) {
-     
+    public ResponseEntity<ApiResponseDto> disabledUser(@PathVariable(name = "id", required = true) Long id,
+            @PathVariable(name = "isDisabled", required = true) boolean isDisabled) {
+
         ApiResponseDto apiResponseDto;
         User user;
         try {
-            if(isDisabled){
+            if (isDisabled) {
                 user = authenticationServiceImpl.deleteTempUser(id);
-                
-            }else{
+
+            } else {
                 user = authenticationServiceImpl.enabledUser(id);
             }
-    
+
             apiResponseDto = ApiResponseDto.builder()
                     .status(true)
                     .content(convertToDto(user))
                     .build();
             return ResponseEntity.ok(apiResponseDto);
         } catch (NotFoundException e) {
-          
+
             apiResponseDto = ApiResponseDto
                     .builder()
                     .status(false)
@@ -100,6 +103,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
     }
+
     @GetMapping("/list/{deleted}")
     public ResponseEntity<ApiResponseDto> getAll(@PathVariable(name = "deleted", required = false) boolean deleted) {
         ApiResponseDto apiResponseDto;
@@ -127,6 +131,7 @@ public class UserController {
         ApiResponseDto apiResponseDto;
         User user;
         try {
+
             user = authenticationServiceImpl.getDeletedById(id, deleted);
             System.out.println(id);
             apiResponseDto = ApiResponseDto.builder()
@@ -135,11 +140,20 @@ public class UserController {
                     .build();
             return ResponseEntity.ok(apiResponseDto);
         } catch (NotFoundException e) {
-            e.printStackTrace();
+
             apiResponseDto = ApiResponseDto
                     .builder()
                     .status(false)
                     .content(ErrorResponse.builder().title("NOT FOUND").message("User not found").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Unauthorize")
+                            .message("Vous ne pouvez pas modifier ce utilisateur à cause de son habilitation").build())
                     .build();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
@@ -178,6 +192,11 @@ public class UserController {
         } else {
             User user;
             try {
+                if (!request.getHabilitations().contains(Habilitation.H12.name())) {
+                    if (authenticationServiceImpl.isTheLastH12(id)) {
+                        throw new Exception("Vous ne pouvez pas modifier ce utilisateur à cause de son habilitation");
+                    }
+                }
                 user = authenticationServiceImpl.updateUser(id, request);
                 apiResponseDto = ApiResponseDto
                         .builder()
@@ -236,6 +255,16 @@ public class UserController {
                     .content(ErrorResponse.builder().title("NOT FOUND").message("Utilisateur introuvable").build())
                     .build();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+        if (authenticationServiceImpl.isTheLastH12(user)) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Opération impossible")
+                            .message("L'utilisateur est le dernier ayant l'habilitation de configurer GPR").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+
         }
 
         if (user.getClaimsCollect().isEmpty()) {
@@ -330,17 +359,17 @@ public class UserController {
 
     // @GetMapping(value = "/path")
     // public String getMethodName() {
-    //     User user;
-    //     try {
-    //         user = authenticationServiceImpl.getById(2L);
-    //         Utils.sendSms(Arrays.asList(user),"Essaie sms backend", settingServiceImpl);
-           
-    //     } catch (Exception ex) {
-    //         // TODO Auto-generated catch block
-    //         ex.printStackTrace();
-    //     }
+    // User user;
+    // try {
+    // user = authenticationServiceImpl.getById(2L);
+    // Utils.sendSms(Arrays.asList(user),"Essaie sms backend", settingServiceImpl);
 
-    //     return new String();
+    // } catch (Exception ex) {
+    // // TODO Auto-generated catch block
+    // ex.printStackTrace();
+    // }
+
+    // return new String();
     // }
 
     private UserDto convertToDto(User user) {

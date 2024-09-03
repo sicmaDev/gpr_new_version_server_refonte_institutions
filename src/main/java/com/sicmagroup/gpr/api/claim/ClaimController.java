@@ -382,7 +382,7 @@ public class ClaimController {
 
                 try {
                     boolean servicePointIsActif = spServiceImpl.isActif(claimRequest2.getServicePointId());
-                    boolean userIsActif = spServiceImpl.isActif(claimRequest2.getCollectorId());
+                    boolean userIsActif = authService.isActif(claimRequest2.getCollectorId());
                     if(!userIsActif || !servicePointIsActif){
                         throw new Exception("Point de Service ou Utilisateur désactivé");
                     }

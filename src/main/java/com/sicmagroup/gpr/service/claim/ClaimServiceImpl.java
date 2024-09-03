@@ -1089,11 +1089,20 @@ public class ClaimServiceImpl implements ClaimService {
 
         claim = repository.save(claim);
 
+
+        
         if (claimPart.getFiles() != null && claimPart.getFiles().length != 0) {
             List<Media> medias = mediaServiceImpl.store(claimPart.getFiles(), claim);
             claim.setUpdatedAt(LocalDateTime.now());
             claim.setMedias(medias);
-            claim = repository.save(claim);
+        }
+        if (claimPart.getAudios() != null && claimPart.getAudios().length != 0) {
+            List<ClaimAudio> audios = claimAudioServiceImpl.store(claimPart.getAudios(), claim);
+            claim.setUpdatedAt(LocalDateTime.now());
+            // for (ClaimAudio audio : audios) {
+            // audio.setClaim(null);
+            // }
+            // claim.setAudios(audios);
         }
 
         List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));

@@ -16,5 +16,6 @@ import lombok.NoArgsConstructor;
 public class SaveDenunRequest {
        private DenunRequest claimRequest;
     private MultipartFile[] files;
+    private MultipartFile[] audios;
     private String remoteAddress;
 }

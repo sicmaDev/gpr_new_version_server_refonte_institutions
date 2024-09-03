@@ -128,11 +128,32 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
         }
         return responses;
     }
-
     @Override
-    public List<ClaimAudio> getAudiosBySuggestion(Suggestion suggestion) {
-        return repository.findBySuggestion(suggestion);
+    public List<ClaimAudioResponse> getAudiosBySuggestion(Suggestion suggestion) {
+        List<ClaimAudio> list = repository.findBySuggestion(suggestion);
+        List<ClaimAudioResponse> responses = new ArrayList<>();
+        for (ClaimAudio audio : list) {
+            ClaimAudioResponse claimAudioResponse;
+            try {
+                claimAudioResponse = ClaimAudioResponse
+                        .builder()
+                        .id(audio.getId())
+                        .name(audio.getName())
+                        .path(audio.getPath())
+                        .size(audio.getSize())
+                        .data(loadAsResource(audio).getContentAsByteArray())
+                        .build();
+                responses.add(claimAudioResponse);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+        System.out.println(responses.size()+">>>");
+        return responses;
     }
+
+   
 
     private ClaimAudio storeOneFile(MultipartFile file, Claim claim) {
         // System.out.println("store fnction");

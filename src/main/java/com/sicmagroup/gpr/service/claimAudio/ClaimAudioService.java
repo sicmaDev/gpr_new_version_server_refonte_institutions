@@ -26,5 +26,5 @@ public interface ClaimAudioService {
 
     List<ClaimAudioResponse> getAudioByClaim(Claim claim);
 
-    List<ClaimAudio> getAudiosBySuggestion(Suggestion suggestion);
+    List<ClaimAudioResponse> getAudiosBySuggestion(Suggestion suggestion);
 }

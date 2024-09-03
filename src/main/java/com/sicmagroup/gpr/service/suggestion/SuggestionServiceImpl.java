@@ -13,6 +13,7 @@ import com.sicmagroup.gpr.api.suggestion.TreatSuggestionRequest;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Media;
@@ -22,6 +23,7 @@ import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.SuggestionRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
+import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.collectionChannel.CollectionChannelServiceImpl;
 import com.sicmagroup.gpr.service.language.LanguageServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
@@ -40,6 +42,8 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final ServicePointServiceImpl servicePointServiceImpl;
     private final ProductServiceImpl productServiceImpl;
     private final ObjetServcieImpl objetServcieImpl;
+    private final ClaimAudioServiceImpl claimAudioServiceImpl;
+
     private final LanguageServiceImpl languageServiceImpl;
     private final AuthenticationServiceImpl authServiceImpl;
     private final MediaServiceImpl mediaServiceImpl;
@@ -179,6 +183,16 @@ public class SuggestionServiceImpl implements SuggestionService {
             suggestion.setUpdatedAt(LocalDateTime.now());
             suggestion.setFiles(medias);
             suggestion = repository.save(suggestion);
+        }
+        if (request.getAudios() != null && request.getAudios().length != 0) {
+            List<ClaimAudio> audios = claimAudioServiceImpl.store(request.getAudios(),suggestion);
+            suggestion.setUpdatedAt(LocalDateTime.now());
+            suggestion = repository.save(suggestion);
+            
+            // for (ClaimAudio audio : audios) {
+            // audio.setClaim(null);
+            // }
+            // claim.setAudios(audios);
         }
 
         return suggestion;

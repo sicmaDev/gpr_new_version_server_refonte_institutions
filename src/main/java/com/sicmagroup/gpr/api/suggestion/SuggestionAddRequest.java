@@ -15,6 +15,6 @@ import lombok.NoArgsConstructor;
 public class SuggestionAddRequest {
     
     private SuggestionRequest suggestionRequest;
-
+    private MultipartFile[] audios;
     private MultipartFile[] files;
 }

@@ -59,6 +59,7 @@ import com.sicmagroup.gpr.domain.dto.claimResponse.PosteResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.ServicePointResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.Habilitation;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.CategorieObjet;
 import com.sicmagroup.gpr.domain.model.Claim;
@@ -375,7 +376,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         settings.put("others", settingServiceImpl.getAll());
 
         // recuperer le contenu du fichier data
-        settingServiceImpl.updateLicence();
+        // settingServiceImpl.updateLicence();
         try {
             // Le fichier d'entrée
             File file = new File("data.txt");
@@ -526,7 +527,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         settings.put("others", settingServiceImpl.getAll());
 
         // recuperer le contenu du fichier data
-        settingServiceImpl.updateLicence();
+        // settingServiceImpl.updateLicence();
         try {
             // Le fichier d'entrée
             File file = new File("data.txt");
@@ -843,6 +844,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public User deleteTempUser(Long id) throws NotFoundException {
         User userOld = userRepository.getReferenceById(id);
+        if(isTheLastH12(userOld)){
+            throw new NotFoundException();
+        };
         
         userOld.setDeleted(true);
         userOld.setDeletedAt(LocalDateTime.now());
@@ -859,10 +863,44 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return userOld;
     }
 
-    private boolean isTheLastH12(){
+    public boolean isTheLastH12(User user){
         // List<User> users = userRepository.fin
         // List<
-        return true;
+        if(user.getPoste().getHabilitations().contains(Habilitation.H12.name())){
+            List<Poste> postes = posteRepository.findByHabilitationsContaining(Habilitation.H12.name());
+            int numbreUser = 0;
+            for (Poste poste : postes) {
+                
+                numbreUser = numbreUser+ userRepository.findByPosteAndIsDeleted(poste, false).size();
+            }
+            if(numbreUser <=1){
+                return true;
+            }
+        }
+            return false;
+    }
+    public boolean isTheLastH12(Long id){
+        try {
+            
+       
+        User user = userRepository.findById(id).orElseThrow();
+        if(user.getPoste().getHabilitations().contains(Habilitation.H12.name())){
+            List<Poste> postes = posteRepository.findByHabilitationsContaining(Habilitation.H12.name());
+            int numbreUser = 0;
+            for (Poste poste : postes) {
+                numbreUser = numbreUser+ poste.getUsers().size();
+            }
+
+            if(numbreUser <=1){
+                return true;
+            }
+
+        }
+            return false;
+
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override

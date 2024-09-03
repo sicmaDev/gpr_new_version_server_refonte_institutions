@@ -11,6 +11,7 @@ import com.sicmagroup.gpr.domain.model.Poste;
 public interface PosteRepository extends JpaRepository<Poste, Long> {
 
     List<Poste> findByIsDeleted(boolean deleted);
+    List<Poste> findByHabilitationsContaining(String habilitation);
 
     Optional<Poste> findByIdAndIsDeleted(Long id, boolean deleted);
 }

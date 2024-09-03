@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
@@ -30,7 +31,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByIsEmailReceiver(boolean isEmailReceiver);
     Optional<User> findByIsEmailReceiverAndIsRaAndServicePoint(boolean isEmailReceiver, boolean isRa, ServicePoint servicePoint);
 
+    List<User> findByPosteAndIsDeleted(Poste poste,boolean isDeleted);
+    
     List<User> findByChatsMemberIn(List<Chat> chats);
     List<User> findByChatsGuestIn(List<Chat> chats);
+
 
 }
