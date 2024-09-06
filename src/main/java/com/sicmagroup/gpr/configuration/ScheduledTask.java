@@ -41,7 +41,7 @@ public class ScheduledTask {
         List<User> usersToContact = authServiceImpl.getUsersByRoles(roles);
         try {
             Utils.sendmail(usersToContact, " Notification retard de traitement", claimAlertDtos.size()
-                    + " Réclamations ont un retard de traitement. Connectez-vous à la plateforme de gps pour proposer des solutions adéquates à ces réclamations.",
+                    + " Réclamation(s) ont un retard de traitement. Connectez-vous à la plateforme de GPR pour proposer des solutions adéquates à ces réclamations.",
                     null,
                     " ", settingServiceImpl);
         } catch (Exception e) {
@@ -65,7 +65,7 @@ public class ScheduledTask {
         claimAlertDtos = claimService.getAllAlertDtosByType(ClaimType.DENUNCIACION);
         try {
             Utils.sendmail(usersToContact, " Notification retard de traitement", claimAlertDtos.size()
-                    + " Dénonciation ont un retard de traitement. Connectez-vous à la plateforme de gps pour proposer des solutions adéquates à ces dénonciations.",
+                    + " Dénonciation(s) ont un retard de traitement. Connectez-vous à la plateforme de GPR pour proposer des solutions adéquates à ces dénonciations.",
                     null,
                     " ", settingServiceImpl);
         } catch (Exception e) {

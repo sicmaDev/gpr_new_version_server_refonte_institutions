@@ -246,14 +246,14 @@ public class ClaimServiceImpl implements ClaimService {
 
         Double apercuContent = claim.getContent().length() * 0.5;
         String message = "" +
-                "Cher(e) utilisteur" +
-                "Une nouvelle réclamation a été enregistrée avec succès dans votre système. Cette réclamation nécessite votre attention en tant qu'utilisateur habilité pour traiter les réclamations."
+                "Cher(e) utilisateur, "+
+                "une nouvelle réclamation a été enregistrée avec succès dans votre système. Vous recevez ce mail en tant qu'utilisateur habilité à recevoir une notification lors d'enregistrement de nouvelles réclamations."
                 + "\n\n" +
                 "Détails de la réclamation :" + "\n\n" +
                 "* Code de réclamation : " + claim.getCode() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour nos clients.";
+                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
         try {
             Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
                     " ", settingServiceImpl);
@@ -549,7 +549,7 @@ public class ClaimServiceImpl implements ClaimService {
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "Veuillez prendre les mesures nécessaires pour examiner et traiter cette réclamation dans les plus brefs délais";
         try {
-            Utils.sendmail(affectedTo.getEmail(), "Affectation de la réclamation", message, null,
+            Utils.sendmail(affectedTo.getEmail(), "Affectation de réclamation", message, null,
                     " ", settingServiceImpl);
         } catch (Exception e) {
             if (e != null) {
@@ -660,9 +660,9 @@ public class ClaimServiceImpl implements ClaimService {
                     "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                     "La solution proposée par " + treator.getFirstandlastname() + " est la suivante : " + "\n" +
                     request.getSolution() + "\n\n" +
-                    "Nous vous invitons à examiner attentivement cette solution et à l'approuver ou la désaprouver ";
+                    "Nous vous invitons à examiner attentivement cette solution.";
 
-            Utils.sendmail(claim.getTreatmentAffectedBy().getEmail(), "Proposition de solution à la " + type + "",
+            Utils.sendmail(claim.getTreatmentAffectedBy().getEmail(), "Proposition de solution à une " + type + "",
                     message, null, " ", settingServiceImpl);
         } else {
             claim.setStatus(ClaimStatus.TREAT);
@@ -672,8 +672,8 @@ public class ClaimServiceImpl implements ClaimService {
             List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
             if (pilote != null && !pilote.isEmpty()) {
                 String message = "" +
-                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote d'Assilassimé Solidarité.\n\n" +
-                        "L'utilisateur " + treator.getFirstandlastname()
+                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote de la plateforme GPR, \n\n" +
+                        "l'utilisateur " + treator.getFirstandlastname()
                         + " a examiné la " + type + " portant le code : "
                         + claim.getCode()
                         + " et l'a traitée." + "\n\n" +
@@ -685,7 +685,7 @@ public class ClaimServiceImpl implements ClaimService {
                         +
                         "La solution proposée par " + treator.getFirstandlastname() + " est la suivante : " + "\n" +
                         request.getSolution() + "\n\n" +
-                        "Nous vous invitons à communiquer la solution au pilote pour mesurer sa satisfaction ";
+                        "Nous vous invitons à communiquer la solution au plaignant pour mesurer sa satisfaction. ";
 
                 Utils.sendmail(pilote.get(0).getEmail(), "" + type + " traitée",
                         message, null, " ", settingServiceImpl);
@@ -733,11 +733,11 @@ public class ClaimServiceImpl implements ClaimService {
             // send mail to
 
             if (claim.getSession() == null) { // To CGR if it is direct treat
-                String message = "Cher(s) membre du CGR, le client ayant fait la réclamation : " + claim.getCode()
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCode()
                         + " n'est pas satisfait de la solution proposée par "
                         + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
-                        "Veuillez vous connectez à la plateforme GPRAssilassimé dans la section Réclamation > Assurance Satisfaction pour ouvrir une session et proposé une solution adéquate.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
+                        "Veuillez vous connectez à la plateforme GPR afin de prendre des mesures adéquates par rapport à cette réclamation.";
+                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
 
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null, " ", settingServiceImpl);
@@ -745,11 +745,11 @@ public class ClaimServiceImpl implements ClaimService {
                     e.printStackTrace();
                 }
             } else {// TODE and CA if it's come from CGR
-                String message = "Cher(s) membre du Conseil d'administration, le client ayant fait la réclamation : "
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
                         + claim.getCode()
-                        + " est non-satisfait de la solution proposée par le Comité de Gestion des réclamations. \n\n" +
-                        "Veuillez vous connectez à la plateforme GPRAssilassimé dans la section Réclamation > Assurance Satisfaction pour consulter les détails de cette réclamation.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CA, Role.DE));
+                        + " est non-satisfait de la solution qui lui a été proposée. \n\n" +
+                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
+                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null,
                             " ", settingServiceImpl);
@@ -762,11 +762,11 @@ public class ClaimServiceImpl implements ClaimService {
             claim.setStatus(ClaimStatus.PARTIAL_SATISFIED);
 
             if (claim.getSession() == null) { // To CGR if it is direct treat
-                String message = "Cher(s) membre du CGR, le client ayant fait la réclamation : " + claim.getCode()
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCode()
                         + " est partiellement satisfait de la solution proposée par "
                         + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
-                        "Veuillez vous connectez à la plateforme GPRAssilassimé dans la section Réclamation > Assurance Satisfaction pour ouvrir une session et proposé une solution adéquate.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
+                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
+                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
 
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
@@ -775,12 +775,13 @@ public class ClaimServiceImpl implements ClaimService {
                     e.printStackTrace();
                 }
             } else {// TODE and CA if it's come from CGR
-                String message = "Cher(s) membre du Conseil d'administration, le client ayant fait la réclamation : "
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
                         + claim.getCode()
-                        + " est partiellement satisfait de la solution proposée par le Comité de Gestion des réclamations. \n\n"
-                        +
-                        "Veuillez vous connectez à la plateforme GPRAssilassimé dans la section Réclamation > Assurance Satisfaction pour consulter les détails de cette réclamation.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CA, Role.DE));
+                        + " est partiellement satisfait de la solution proposée par " 
+                        + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
+                        
+                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
+                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
                             " ", settingServiceImpl);
@@ -821,15 +822,15 @@ public class ClaimServiceImpl implements ClaimService {
             type = "dénonciation";
         }
         String message = "" +
-                "Cher(e) membre du CGR,\n\n" +
-                "L'utilisateur " + unApprouver.getFirstandlastname() + " (Le DE) "
+                "Cher(e) membre utilisateur ,\n\n" +
+                "le DE " + unApprouver.getFirstandlastname()
                 + " a examiné et désapprouvé la solution que vous avez proposé pour la " + type + " portant le code : "
                 + claim.getCode() + "\n\n" +
                 "Détails de la " + type + " :" + "\n\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "* Motif de désapprobation : " + commentaire + "\n\n" +
-                "Nous vous invitons à examiner attentivement le commentaire laissé puis de proposer une nouvelle solution.";
+                "Nous vous invitons à examiner attentivement le commentaire laissé puis à proposer une nouvelle solution.";
         try {
             Utils.sendmail(cgrMembers, "Solution désapprouvée",
                     message, null, " ", settingServiceImpl);
@@ -1112,13 +1113,13 @@ public class ClaimServiceImpl implements ClaimService {
         Double apercuContent = claim.getContent().length() * 0.3;
         String message = "" +
                 "Cher(e) utilisteur" +
-                "Une nouvelle réclamation a été enregistrée avec succès dans notre système. Cette réclamation nécessite votre attention en tant qu'utilisateur habilité pour traiter les réclamations."
+                "Une nouvelle réclamation a été enregistrée avec succès dans notre système. Vous recevez cette notification en tant qu'utilisateur habilité à recevoir des notification lorsqu'une nouvelle réclamation est enregistrée."
                 + "\n\n" +
                 "Détails de la réclamation :" + "\n\n" +
                 "* Code de réclamation : " + claim.getCode() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour nos clients.";
+                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour son traitement. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
         try {
             Utils.sendmail(authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint()),
                     " Notification d'enregistrement de réclamation", message, null,
@@ -1327,7 +1328,7 @@ public class ClaimServiceImpl implements ClaimService {
         try {
 
             Utils.sendSms(claim.getTel(),
-                    "Cher(e) bénéficiaire, Votre réclamation a été prise en compte. Nous vous recontacterons dès que possible avec une solution.", settingServiceImpl);
+                    "Cher(e) client, Votre réclamation a été prise en compte. Nous vous recontacterons dès que possible avec une solution.", settingServiceImpl);
 
         } catch (Exception ex) {
             // TODO Auto-generated catch block
@@ -1756,11 +1757,11 @@ public class ClaimServiceImpl implements ClaimService {
                 }
                 return claim;
             } else {
-                throw new Exception("Plateforme male configurée. Pilote introuvable");
+                throw new Exception("Plateforme mal configurée. Pilote introuvable");
             }
 
         } else {
-            throw new Exception("Le status de la réclamation est invalide");
+            throw new Exception("Le statut de la réclamation est invalide");
         }
     }
 
@@ -1814,8 +1815,8 @@ public class ClaimServiceImpl implements ClaimService {
         // }
 
         String message = "" +
-        "Cher(e) utilisteur" +
-        "Une nouvelle réclamation collectée avec GPR BOT. Cette réclamation  nécessite votre attention en tant qu'utilisateur habilité pour traiter les réclamations."
+        "Cher(e) utilisteur, " +
+        "une nouvelle réclamation collectée avec GPR BOT. Cette réclamation  nécessite votre attention."
         + "\n\n";
        
         Claim claim = Claim
