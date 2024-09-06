@@ -1,10 +1,1 @@
-{
-  "createdAt" : "2024-04-04T12:53:11.198768",
-  "serial" : "3725f3f4-5f84-4177-84a4-ebe30bc0dd02",
-  "company" : "SICMA ET ASSOCIES",
-  "activationRequest" : "39735630-7b28-4e77-b800-a3bdf91ae3c1,365:20",
-  "id" : 350,
-  "fullname" : "Licence Web",
-  "email" : "info@sicmagroup.com",
-  "updatedAt" : "2024-07-08T16:35:03.064466"
-}
+{"createdAt":"2024-04-04T12:53:11.455989","serial":"3725f3f4-5f84-4177-84a4-ebe30bc0dd02","company":"SICMA ET ASSOCIES","activationRequest":"39735630-7b28-4e77-b800-a3bdf91ae3c1,365:20","id":350,"fullname":"Licence Web","email":"info@sicmagroup.com","updatedAt":"2024-07-08T16:35:03.068076"}
