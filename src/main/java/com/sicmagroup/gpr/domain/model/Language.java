@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,7 +23,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor 
 @AllArgsConstructor
 @Entity
-@Table(name = "gps_language")
+@Table(name = "gps_language",uniqueConstraints = {
+	@UniqueConstraint(
+		name="libelle_unique",
+		columnNames = "libelle"
+	)
+})
 public class Language {
     @Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

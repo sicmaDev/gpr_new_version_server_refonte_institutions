@@ -35,6 +35,7 @@ import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
+import com.sicmagroup.gpr.repository.PosteRepository;
 import com.sicmagroup.gpr.repository.UserRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.repository.chat.MessageRepository;
@@ -61,6 +62,7 @@ public class UserController {
     private final AuthenticationServiceImpl authenticationServiceImpl;
     private final ModelMapper modelMapper;
     private final SettingServiceImpl settingServiceImpl;
+    private final PosteRepository pRepository;
 
     @GetMapping("/list")
     public ResponseEntity<ApiResponseDto> list() {
@@ -192,7 +194,9 @@ public class UserController {
         } else {
             User user;
             try {
-                if (!request.getHabilitations().contains(Habilitation.H12.name())) {
+                Poste poste = pRepository.findById(request.getPosteId()).get();
+
+                if (!poste.getHabilitations().contains(Habilitation.H12.name())) {
                     if (authenticationServiceImpl.isTheLastH12(id)) {
                         throw new Exception("Vous ne pouvez pas modifier ce utilisateur à cause de son habilitation");
                     }

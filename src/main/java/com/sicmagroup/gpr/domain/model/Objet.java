@@ -17,6 +17,7 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,13 +29,20 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "gps_objet")
+@Table(name = "gps_objet",uniqueConstraints = {
+	@UniqueConstraint(
+		name="libelle_unique_objet",
+		columnNames = "libelle"
+	)
+})
 public class Objet {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(unique = true)
+
+    @Column(unique = true,name = "libelle")
     private String libelle;
+
     @Lob
     @Column(columnDefinition = "TEXT")
     private String description;
