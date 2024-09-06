@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,7 +25,12 @@ import com.sicmagroup.gpr.domain.enumeration.ServicePointEnum;
 @NoArgsConstructor 
 @AllArgsConstructor
 @Entity
-@Table(name = "gps_service_point")
+@Table(name = "gps_service_point",uniqueConstraints = {
+	@UniqueConstraint(
+		name="libelle_unique",
+		columnNames = "libelle"
+	)
+})
 public class ServicePoint {
 
 
