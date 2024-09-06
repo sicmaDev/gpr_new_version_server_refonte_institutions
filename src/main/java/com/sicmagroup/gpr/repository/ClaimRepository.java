@@ -48,6 +48,7 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
 
         List<Claim> findByTypeAndStatusNot(ClaimType type, ClaimStatus status);
         List<Claim> findByTypeAndStatusNotAndReceiptDateTimeBetween(ClaimType type, ClaimStatus status, LocalDateTime start, LocalDateTime end);
+        List<Claim> findByTypeAndStatusInAndReceiptDateTimeBetween(ClaimType type, List<ClaimStatus> status, LocalDateTime start, LocalDateTime end);
 
         List<Claim> findByTypeAndStatusAndCollector(ClaimType type, ClaimStatus status, User collector);
 

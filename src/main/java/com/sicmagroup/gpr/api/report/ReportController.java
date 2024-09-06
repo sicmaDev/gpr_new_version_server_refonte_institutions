@@ -121,7 +121,6 @@ public class ReportController {
 						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(null),
 								serviceStatsClaim.totalByGravity(null), serviceStatsClaim.tauxSatisfaction(null),
 								serviceStatsClaim.totalReclamantSatisfait(null),
-								serviceStatsClaim.totalSavedClaim(null),
 								serviceStatsClaim.totalTreat(null), serviceStatsClaim.totalTreatByGravity(null),
 								serviceStatsClaim.totalTreatByRespectTiming(null), serviceStatsClaim.totalUnTreat(null),
 								serviceStatsClaim.totalUnTreatByGravity(null)))

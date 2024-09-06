@@ -497,7 +497,9 @@ public class StatsClaim {
             claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
         }
 
-        List<Claim> allClaims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+        List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
+        List<Claim> allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
         // System.out.println("Taux");
         resultat.replace("Taux de satisfaction(%)",
                 Utils.parseDouble(
