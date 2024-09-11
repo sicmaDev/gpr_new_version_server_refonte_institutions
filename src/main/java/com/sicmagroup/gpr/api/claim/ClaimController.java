@@ -644,7 +644,7 @@ public class ClaimController {
                             .status(false)
                             .content(
                                     ErrorResponse.builder()
-                                            .message("Vous n'êtes pas hailité à traiter cette réclamation GRAVE")
+                                            .message("Vous n'êtes pas habilité à traiter cette réclamation GRAVE")
                                             .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
@@ -657,7 +657,7 @@ public class ClaimController {
                             .builder()
                             .status(false)
                             .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas hailité à traiter cette réclamation à risque MOYEN")
+                                    .message("Vous n'êtes pas habilité à traiter cette réclamation à risque MOYEN")
                                     .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
@@ -669,7 +669,7 @@ public class ClaimController {
                             .builder()
                             .status(false)
                             .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas hailité à traiter cette réclamation à risque  MINEUR")
+                                    .message("Vous n'êtes pas habilité à traiter cette réclamation à risque  MINEUR")
                                     .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);

@@ -121,7 +121,6 @@ public class ReportController {
 						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(null),
 								serviceStatsClaim.totalByGravity(null), serviceStatsClaim.tauxSatisfaction(null),
 								serviceStatsClaim.totalReclamantSatisfait(null),
-								serviceStatsClaim.totalSavedClaim(null),
 								serviceStatsClaim.totalTreat(null), serviceStatsClaim.totalTreatByGravity(null),
 								serviceStatsClaim.totalTreatByRespectTiming(null), serviceStatsClaim.totalUnTreat(null),
 								serviceStatsClaim.totalUnTreatByGravity(null)))
@@ -158,7 +157,7 @@ public class ReportController {
 		// System.out.println("Status choosed");
 		// System.out.println(request);
 		ApiResponseDto apiResponseDto = Utils.verifyLicence();
-		;
+		
 		if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
 			LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
 			if (lc.isActif()) {
