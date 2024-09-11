@@ -812,6 +812,11 @@ public class ClaimServiceImpl implements ClaimService {
 
         claim.setStatus(ClaimStatus.DESAPPROUVED);
         claim.setUpdatedAt(LocalDateTime.now());
+
+        if(claim.getTreatmentAffectedTo() == null){
+            claim.setTreatmentAffectedTo(solution.getAuthor());
+            claim.setTreatmentAffectedBy(unApprouver);
+        }
         claim = repository.save(claim);
         // TODO send mail to CGR User
         Double apercuContent = claim.getContent().length() * 0.5;
