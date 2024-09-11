@@ -157,7 +157,7 @@ public class ReportController {
 		// System.out.println("Status choosed");
 		// System.out.println(request);
 		ApiResponseDto apiResponseDto = Utils.verifyLicence();
-		;
+		
 		if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
 			LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
 			if (lc.isActif()) {
