@@ -43,6 +43,7 @@ import com.sicmagroup.gpr.api.config.user.RegisterRequest;
 import com.sicmagroup.gpr.domain.dto.AlertDto;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
+import com.sicmagroup.gpr.domain.dto.ClaimDto;
 import com.sicmagroup.gpr.domain.dto.CollectionChannelDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.ExistingSolutionDto;
@@ -53,12 +54,14 @@ import com.sicmagroup.gpr.domain.dto.ObjetDto;
 import com.sicmagroup.gpr.domain.dto.PosteDto;
 import com.sicmagroup.gpr.domain.dto.ProductDto;
 import com.sicmagroup.gpr.domain.dto.ServicePointDto;
+import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.dto.UserDto;
 import com.sicmagroup.gpr.domain.dto.claimResponse.ObjetResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.PosteResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.ServicePointResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
 import com.sicmagroup.gpr.domain.enumeration.Habilitation;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.CategorieObjet;
@@ -599,6 +602,148 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                     .title("Erreur").build())
                             .build());
         }
+    }
+    
+
+    @Override
+    public HashMap<String, Object> exportConfig(ConfigExportEnum type) {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("type", type.name());
+
+        if (type.equals(ConfigExportEnum.claims) || type.equals(ConfigExportEnum.denunciations)) {
+            ClaimType claimType = type.equals(ConfigExportEnum.claims) ? ClaimType.CLAIM : ClaimType.DENUNCIACION;
+            try {
+                List<Claim> claims = claimRepository.findByType(claimType);
+                List<ClaimDto> claimDtos = claims.stream().map((Claim claim) -> {
+                    return modelMapper.map(claim, ClaimDto.class);
+                })
+                        .collect(Collectors.toList());
+
+                result.put("data", claimDtos);
+                result.put("totals", claimDtos.size());
+            } catch (Exception e) {
+                result.put("data", "NULL");
+                result.put("totals", 0);
+            }
+        } else if (type.equals(ConfigExportEnum.suggestions)) {
+            try {
+                List<Suggestion> suggestions = suggestionRepository.findAll();
+                List<SuggestionDto> suggestionDtos = suggestions.stream().map((Suggestion suggest) -> {
+                    return modelMapper.map(suggest, SuggestionDto.class);
+                })
+                        .collect(Collectors.toList());
+
+                result.put("data", suggestionDtos);
+                result.put("totals", suggestionDtos.size());
+            } catch (Exception e) {
+                result.put("data", "NULL");
+                result.put("totals", 0);
+
+            }
+        }
+
+        else if (type.equals(ConfigExportEnum.configs)) {
+            List<ServicePoint> allServicePoints = servicePointRepository.findAll();
+            List<ServicePointDto> allServicePointDtos = allServicePoints.stream().map(this::convertToDto)
+                    .collect(Collectors.toList());
+            
+            List<Poste> allPostes = posteRepository.findByIsDeleted(false);
+            List<PosteDto> allPosteDtos = allPostes.stream().map(this::convertToDto).collect(Collectors.toList());
+            // Product
+            List<Product> allProducts = productRepository.findByIsDeleted(false);
+            List<ProductDto> allProductDtos = allProducts.stream().map(this::convertToDto).collect(Collectors.toList());
+            // objet
+            List<Objet> allObjets = objetRepository.findByIsDeleted(false);
+            List<ObjetResponse> allObjetDtos = allObjets.stream().map(this::convertToResponse)
+                    .collect(Collectors.toList());
+            // language
+            List<Language> allLanguages = languageRepository.findByIsDeleted(false);
+            List<LanguageDto> allLanguageDtos = allLanguages.stream().map(this::convertToDto)
+                    .collect(Collectors.toList());
+            // collectionChannel
+            List<CollectionChannel> allCollectionChannels = collectionChannelRespository.findByIsDeleted(false);
+            List<CollectionChannelDto> allCollectionChannelDtos = allCollectionChannels.stream().map(this::convertToDto)
+                    .collect(Collectors.toList());
+            // ExternalRecourse
+            List<ExternalRecourse> allExternalRecourses = externalRecourseRepository.findByIsDeleted(false);
+            List<ExternalRecourseDto> allExternalRecourseDtos = allExternalRecourses.stream().map(this::convertToDto)
+                    .collect(Collectors.toList());
+            // User
+            List<User> allUsers = userRepository.findByIsDeleted(false);
+            List<UserDto> allUserDtos = allUsers.stream().map(this::convertToDto).collect(Collectors.toList());
+            // existing solutions
+            List<ExistingSolutionResponse> allExistingSolutions = existingSolutionRepository.findAll().stream()
+                    .map(this::convertToResponse).collect(Collectors.toList());
+            // categorie objet
+            List<CategorieObjetDto> allCategorieObjetDtos = categorieObjetRepository.findAll().stream()
+                    .map(this::convertToDto).collect(Collectors.toList());
+            // institution
+            // Settings
+            HashMap<String, Object> settings = new HashMap<String, Object>();
+            try {
+                Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
+                ObjectMapper objectMapper = new ObjectMapper();
+                InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(),
+                        InstitutionRequest.class);
+                settings.put("institution", institutionRequest);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            try {
+
+                Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+                ObjectMapper objectMapper = new ObjectMapper();
+                MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+                settings.put("mail", mailRequest);
+
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            try {
+
+                Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+                ObjectMapper objectMapper = new ObjectMapper();
+                SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                settings.put("sms", smsRequest);
+
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            try {
+
+                Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
+                ObjectMapper objectMapper = new ObjectMapper();
+                BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
+                settings.put("bot", botRequest);
+
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+            settings.put("servicePoints", allServicePointDtos);
+            settings.put("postes", allPosteDtos);
+            settings.put("products", allProductDtos);
+            settings.put("objets", allObjetDtos);
+            settings.put("languages", allLanguageDtos);
+            settings.put("collectionChannels", allCollectionChannelDtos);
+            settings.put("externalRecourses", allExternalRecourseDtos);
+            settings.put("users", allUserDtos);
+            settings.put("help", faqServiceImpl.getHelp());
+            settings.put("presolution", allExistingSolutions);
+            settings.put("categorie_objet", allCategorieObjetDtos);
+            settings.put("others", settingServiceImpl.getAll());
+
+            
+            result.put("data", settings);
+        }
+
+        // }
+
+        return result;
     }
     
     private static char[] generatePassword(int length) {

@@ -15,6 +15,7 @@ import com.sicmagroup.gpr.api.config.user.AddEmailReceiver;
 import com.sicmagroup.gpr.api.config.user.ForgetPasswordRequest;
 import com.sicmagroup.gpr.api.config.user.RegisterRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
+import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.User;
@@ -26,6 +27,8 @@ public interface AuthenticationService {
     public AuthenticationResponse authenticate(AuthenticationRequest request) ;
 
     public ResponseEntity<ApiResponseDto> getAuthData();
+    
+    public HashMap<String, Object> exportConfig(ConfigExportEnum type);
     
     public ResponseEntity<ApiResponseDto> forgetPassword(ForgetPasswordRequest request);
 

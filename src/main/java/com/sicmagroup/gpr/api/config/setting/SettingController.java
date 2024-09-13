@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
+import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
 import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.auth.AuthenticationService;
@@ -26,12 +27,15 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
 
 import org.apache.tomcat.util.bcel.classfile.Constant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -499,5 +503,37 @@ public class SettingController {
 
     }
 
+    
+    @GetMapping(value = "/export/{type}")
+    public ResponseEntity<ApiResponseDto> exportConfig(@PathVariable(name = "type",required = true) ConfigExportEnum type) {
+        ObjectMapper Obj = new ObjectMapper();
+
+        try {
+            
+            
+            HashMap<String,Object> settingExport = authService.exportConfig(type);
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(settingExport)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }catch (Exception e) {
+          
+                ApiResponseDto apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            
+
+        }
+
+    }
+
+    
     
 }
