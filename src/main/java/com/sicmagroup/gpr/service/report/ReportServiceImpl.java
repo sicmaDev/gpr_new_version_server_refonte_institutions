@@ -75,6 +75,7 @@ import com.sicmagroup.gpr.repository.projection.custom.ObjectPerYear;
 import com.sicmagroup.gpr.repository.projection.custom.ObjectTotalPerStatusPro;
 import com.sicmagroup.gpr.repository.projection.custom.SuggesPerGenderAndAgencePro;
 import com.sicmagroup.gpr.repository.projection.custom.SuggestTotalPerStatusPro;
+import com.sicmagroup.gpr.utils.ColorUtils;
 import com.sicmagroup.gpr.utils.Utils;
 
 import io.jsonwebtoken.Claims;
@@ -1135,7 +1136,7 @@ public class ReportServiceImpl implements ReportService {
                 .datas(new ArrayList<>())
                 .ids(new ArrayList<>())
                 .build();
-
+      
         if (request != null) {
             List<ClaimPerServicePointPro> allResult = suggestionRepository
                     .countSuggestByCriteriaAndServicePoint(request);
@@ -1155,6 +1156,8 @@ public class ReportServiceImpl implements ReportService {
             List<SuggestPerServicePointProjection> allResult = suggestionRepository.countSuggestPerServicePoint();
             long totalClaim = 0;
             List<ServicePoint> allSp = spRepository.findAll();
+            double undefinedSuggestionsTotal = 0;
+            double totalCalculatedPercentage = 0;
             boolean isFind = false;
             for (SuggestPerServicePointProjection projection : allResult) {
                 totalClaim += projection.getTotal();
@@ -1165,19 +1168,39 @@ public class ReportServiceImpl implements ReportService {
                     if (sp.getId().equals(projection.getServiceIndexeId())) {
                         pieChartDto.getDatas()
                                 .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), totalClaim)));
+                        
+                        totalCalculatedPercentage += Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), totalClaim));
+                        
                         isFind = true;
+                    }else {
+                        // Ajouter les suggestions sans point de service
+                        undefinedSuggestionsTotal += projection.getTotal();
                     }
                 }
 
+                
                 if (!isFind) {
+                   
+                   
                     pieChartDto.getDatas().add((double) 0);
                 } else {
                     isFind = false;
                 }
 
             }
+            // Ajouter les suggestions sans point de service
+            if (undefinedSuggestionsTotal > 0) {
+                pieChartDto.getLabels().add("Non défini");
+                double undefinedPercentage = 100 - totalCalculatedPercentage;
+                pieChartDto.getDatas().add(Utils.parseDouble(undefinedPercentage));
+                // pieChartDto.getBackgroundColors().add(GENDER_NON_DEFINI_BG_COLOR);
+                // pieChartDto.getHoverColors().add(GENDER_NON_DEFINI_BG_COLOR);
+            }
 
-            List<RgbColor> bgColors = Utils.generateRandomColor(allResult.size());
+            List<RgbColor> bgColors = new ArrayList<>();
+            bgColors.addAll(Utils.generateRandomColor(allSp.size()));
+            bgColors.add(new RgbColor(207, 216, 220));
+         
             pieChartDto.setBackgroundColors(bgColors.stream().map(t -> t.toBgString()).collect(Collectors.toList()));
             pieChartDto.setHoverColors(bgColors.stream().map(t -> t.toBorderString()).collect(Collectors.toList()));
         }
@@ -1584,7 +1607,7 @@ public class ReportServiceImpl implements ReportService {
                 }
             }
 
-            List<RgbColor> bgColors = Utils.generateRandomColor(allResult.size());
+            List<RgbColor> bgColors = Utils.generateRandomColor(pieChartDto.getDatas().size());
             pieChartDto.setBackgroundColors(bgColors.stream().map(t -> t.toBgString()).collect(Collectors.toList()));
             pieChartDto.setHoverColors(bgColors.stream().map(t -> t.toBorderString()).collect(Collectors.toList()));
         }
@@ -1643,7 +1666,7 @@ public class ReportServiceImpl implements ReportService {
                     isFind = false;
                 }
             }
-            List<RgbColor> bgColors = Utils.generateRandomColor(allResult.size());
+            List<RgbColor> bgColors = Utils.generateRandomColor(pieChartDto.getDatas().size());
             pieChartDto.setBackgroundColors(bgColors.stream().map(t -> t.toBgString()).collect(Collectors.toList()));
             pieChartDto.setHoverColors(bgColors.stream().map(t -> t.toBorderString()).collect(Collectors.toList()));
         }
@@ -3418,7 +3441,10 @@ public class ReportServiceImpl implements ReportService {
         long total = 0;
         boolean isFind = false;
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-                ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
+                ClaimStatus.PARTIAL_SATISFIED);
+        // si il faut prendre en compte classée et litigate il faut les grouper comme nonstatisfait ou les afficher dans le pie chart
+        // List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+        //         ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
         if (request != null) {
             List<ObjectTotalPerStatusPro> allResult = claimRepository.countClaimByCriteriaAndSatisfaction(request);
 
@@ -3476,6 +3502,7 @@ public class ReportServiceImpl implements ReportService {
 
             }
         } else {
+            System.out.println("lol ");
             List<ClaimPerStatusSatisfactionProjection> allResult = claimRepository.countClaimPerSatisfaction();
 
             total = claimRepository.countByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
@@ -3530,7 +3557,7 @@ public class ReportServiceImpl implements ReportService {
             }
 
         }
-
+        
         return pieChartDto;
 
     }

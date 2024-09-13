@@ -124,8 +124,9 @@ public class ReportController {
 								serviceStatsClaim.totalTreat(null), serviceStatsClaim.totalTreatByGravity(null),
 								serviceStatsClaim.totalTreatByRespectTiming(null), serviceStatsClaim.totalUnTreat(null),
 								serviceStatsClaim.totalUnTreatByGravity(null)))
-						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(null),
-								serviceStatsDenun.totalSavedClaim(null), serviceStatsDenun.totalTreat(null),
+						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(null),
+								serviceStatsDenun.totalByGravity(null),
+								serviceStatsDenun.totalTreat(null),
 								serviceStatsDenun.totalTreatByGravity(null),
 								serviceStatsDenun.totalTreatByRespectTiming(null),
 								serviceStatsDenun.totalUnTreat(null), serviceStatsDenun.totalUnTreatByGravity(null)))

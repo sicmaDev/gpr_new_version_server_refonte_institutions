@@ -71,7 +71,31 @@ public class StatsDenun {
 
         } else {
             List<ClaimPerObjLevelProjection> allResult = claimRepository.countClaimPerObjLevel(ClaimType.DENUNCIACION);
+            // for (ClaimPerObjLevelProjection projection : allResult) {
+            //     switch (projection.getObjNiveau()) {
+            //         case "GRAVE":
+            //             key = "Nombre de dénonciations à niveau de gravité élevé enregistrées";
+            //             break;
+            //         case "MOYEN":
+            //             key = "Nombre de dénonciations à niveau de gravité moyen enregistrées";
+            //             break;
+            //         case "MINEUR":
+            //             key = "Nombre de dénonciations à niveau de gravité mineur enregistrées";
+            //             break;
+
+            //     }
+            //     resultat.put(key, projection.getTotal().doubleValue());
+            // }
+
+           
+            System.out.println("Nombre total de réclamations: " + allResult.size());
+
+            // // Itérer sur les résultats
             for (ClaimPerObjLevelProjection projection : allResult) {
+                System.out.println("Niveau: " + projection.getObjNiveau() + ", Total: " + projection.getTotal());
+
+                // Définir la clé pour le niveau de gravité
+              
                 switch (projection.getObjNiveau()) {
                     case "GRAVE":
                         key = "Nombre de dénonciations à niveau de gravité élevé enregistrées";
@@ -83,9 +107,17 @@ public class StatsDenun {
                         key = "Nombre de dénonciations à niveau de gravité mineur enregistrées";
                         break;
 
+                    default:
+                        key = "Niveau de gravité inconnu";
+                        System.err.println("Niveau de gravité inconnu: " + projection.getObjNiveau());
+                        continue; // Passer à l'élément suivant
                 }
-                resultat.put(key, projection.getTotal().doubleValue());
+
+                // Accumuler les totaux pour chaque clé
+                resultat.put(key, resultat.getOrDefault(key, 0.0) + projection.getTotal().doubleValue());
             }
+
+           
         }
 
         if (!resultat.containsKey("Nombre de dénonciations à niveau de gravité élevé enregistrées")) {
