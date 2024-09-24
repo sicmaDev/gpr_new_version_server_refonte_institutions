@@ -74,6 +74,12 @@ public class ReportController {
 						.nbreClaimPerObjLevelAndAgence(service.numberClaimByGravityByAngence(null))
 						.repartitionClaimBySatisfaction(service.repartitionClaimBySatisfaction(null))
 						.nbreClaimTreatInDelaiOrNot(service.numberClaimTreatInDelaiOrNot(null))
+						.tauxClaimSatisfactionByMonth(service.tauxClaimSatisfactionByMonth(null))
+						.tauxClaimSatisfactionByMonthByAgence(service.tauxClaimSatisfactionByMonthByAgence(null))
+						.nbreClaimTreatInDelaiOrNotByMonth(service.numberClaimTreatInDelaiOrNotByMonth(null))
+						.nbreClaimTreatInDelaiOrNotByMonthByAgence(service.numberClaimTreatInDelaiOrNotByMonthByAgence(null))
+						.nbreDenunTreatInDelaiOrNotByMonth(service.numberDenunTreatInDelaiOrNotByMonth(null))
+						.nbreDenunTreatInDelaiOrNotByMonthByAgence(service.numberDenunTreatInDelaiOrNotByMonthByAgence(null))
 						.evolutionSatisfactionByThisYear(service.evolutionSatisfactionByYear(null))
 						.tauxResolution(service.tauxResolutionClaim(null))
 						.evolutionByAgenceAndYear(service.evolutionClaimBySpAndYear(null))
@@ -123,7 +129,11 @@ public class ReportController {
 								serviceStatsClaim.totalReclamantSatisfait(null),
 								serviceStatsClaim.totalTreat(null), serviceStatsClaim.totalTreatByGravity(null),
 								serviceStatsClaim.totalTreatByRespectTiming(null), serviceStatsClaim.totalUnTreat(null),
-								serviceStatsClaim.totalUnTreatByGravity(null)))
+								serviceStatsClaim.totalUnTreatByGravity(null),
+								serviceStatsClaim.pourcentageReclamationsTraitees(null),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(null),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(null) 
+								))
 						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(null),
 								serviceStatsDenun.totalByGravity(null),
 								serviceStatsDenun.totalTreat(null),
@@ -189,6 +199,12 @@ public class ReportController {
 						.nbreClaimPerObjLevelAndAgence(service.numberClaimByGravityByAngence(request))
 						.repartitionClaimBySatisfaction(service.repartitionClaimBySatisfaction(request))
 						.nbreClaimTreatInDelaiOrNot(service.numberClaimTreatInDelaiOrNot(request))
+						.tauxClaimSatisfactionByMonth(service.tauxClaimSatisfactionByMonth(request))
+						.tauxClaimSatisfactionByMonthByAgence(service.tauxClaimSatisfactionByMonthByAgence(request))
+						.nbreClaimTreatInDelaiOrNotByMonth(service.numberClaimTreatInDelaiOrNotByMonth(request))
+						.nbreClaimTreatInDelaiOrNotByMonthByAgence(service.numberClaimTreatInDelaiOrNotByMonthByAgence(request))
+						.nbreDenunTreatInDelaiOrNotByMonth(service.numberDenunTreatInDelaiOrNotByMonth(request))
+						.nbreDenunTreatInDelaiOrNotByMonthByAgence(service.numberDenunTreatInDelaiOrNotByMonthByAgence(request))
 						.evolutionSatisfactionByThisYear(service.evolutionSatisfactionByYear(request))
 						.tauxResolution(service.tauxResolutionClaim(request))
 						.evolutionByAgenceAndYear(service.evolutionClaimBySpAndYear(request))
@@ -276,7 +292,11 @@ public class ReportController {
 								serviceStatsClaim.totalTreat(request), serviceStatsClaim.totalTreatByGravity(request),
 								serviceStatsClaim.totalTreatByRespectTiming(request),
 								serviceStatsClaim.totalUnTreat(request),
-								serviceStatsClaim.totalUnTreatByGravity(request)))
+								serviceStatsClaim.totalUnTreatByGravity(request),
+								serviceStatsClaim.pourcentageReclamationsTraitees(request),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(request),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(request) 
+								))
 						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(request),
 								serviceStatsDenun.totalSavedClaim(request), serviceStatsDenun.totalTreat(request),
 								serviceStatsDenun.totalTreatByGravity(request),

@@ -30,6 +30,12 @@ public class ClaimReport {
     private StackedBar nbreClaimPerObjLevelAndAgence;
     private PieChartDto repartitionClaimBySatisfaction;
     private StackedBar nbreClaimTreatInDelaiOrNot;
+    private StackedBar tauxClaimSatisfactionByMonth;
+    private StackedBar tauxClaimSatisfactionByMonthByAgence;
+    private StackedBar nbreClaimTreatInDelaiOrNotByMonth;
+    private StackedBar nbreClaimTreatInDelaiOrNotByMonthByAgence;
+    private StackedBar nbreDenunTreatInDelaiOrNotByMonth;
+    private StackedBar nbreDenunTreatInDelaiOrNotByMonthByAgence;
     private LineChart evolutionSatisfactionByThisYear;
     private double tauxResolution;
     private StackedBar evolutionByAgenceAndYear;
