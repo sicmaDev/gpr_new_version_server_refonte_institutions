@@ -28,12 +28,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
+import java.util.Random;
 
 import org.apache.tomcat.util.bcel.classfile.Constant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,6 +52,7 @@ public class SettingController {
 
     private final SettingServiceImpl serviceImpl;
     private final AuthenticationService authService;
+    private final PasswordEncoder passwordEncoder;
 
     // @PostMapping(value="/institution/save")
     // public ResponseEntity<ApiResponseDto> configInstit(@RequestBody SomeEnityData
@@ -169,47 +173,45 @@ public class SettingController {
         try {
             // ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
             // String json = ow.writeValueAsString(data);
-            File file = new File("data.txt");  
-            if(file.exists()){
+            File file = new File("data.txt");
+            if (file.exists()) {
 
-                FileReader fr = new FileReader(file);  
-                BufferedReader br = new BufferedReader(fr);  
-                StringBuffer sb = new StringBuffer();    
+                FileReader fr = new FileReader(file);
+                BufferedReader br = new BufferedReader(fr);
+                StringBuffer sb = new StringBuffer();
                 String line;
-                while((line = br.readLine()) != null) 
-                {
+                while ((line = br.readLine()) != null) {
                     // ajoute la ligne au buffer
-                    sb.append(line);      
-                    sb.append("\n");     
+                    sb.append(line);
+                    sb.append("\n");
                 }
-                fr.close();    
+                fr.close();
                 String license = sb.toString();
                 ObjectMapper mapper = new ObjectMapper();
-                JsonNode licenseObj = mapper.readTree(""+license+"");
-                if(licenseObj != null && license != ""){
+                JsonNode licenseObj = mapper.readTree("" + license + "");
+                if (licenseObj != null && license != "") {
                     String oldEmail = licenseObj.get("email").asText();
-                    if(data.contains(oldEmail)){
+                    if (data.contains(oldEmail)) {
                         FileWriter fw = new FileWriter(file);
-            
+
                         fw.write(data);
                         fw.close();
                         return "Le texte a été écrit avec succès";
                     } else {
                         return "Information de licence invalide";
                     }
-                }  else {
+                } else {
                     return "Information de licence invalide";
                 }
 
             } else {
                 FileWriter fw = new FileWriter("data.txt");
-            
+
                 fw.write(data);
                 fw.close();
                 return "Le texte a été écrit avec succès";
             }
 
-           
         } catch (IOException e) {
             e.printStackTrace();
             return e.getMessage();
@@ -360,11 +362,11 @@ public class SettingController {
     @PostMapping(value = "/others/sms/test")
     public ResponseEntity<ApiResponseDto> testSms(@RequestBody SmsTestRequest request) {
         ObjectMapper Obj = new ObjectMapper();
-       
+
         try {
-           
+
             Boolean isSuccess = Utils.testSmsConfig(request.getPhone(), request.getMessage(), serviceImpl);
-            if(!isSuccess){
+            if (!isSuccess) {
                 throw new Exception("SMS non envoyé");
             }
             ApiResponseDto apiResponseDto = ApiResponseDto
@@ -386,12 +388,12 @@ public class SettingController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         } catch (Exception e) {
             ApiResponseDto apiResponseDto = ApiResponseDto
-            .builder()
-            .status(true)
-            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
-            .build();
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-          
+
         }
 
     }
@@ -400,8 +402,9 @@ public class SettingController {
     public ResponseEntity<ApiResponseDto> testMail(@RequestBody MailTestRequest request) {
 
         try {
-            Boolean isSuccess = Utils.testMailConfig(request.getTo(),request.getSubject(), request.getMessage(),null," ", serviceImpl);
-            if(!isSuccess){
+            Boolean isSuccess = Utils.testMailConfig(request.getTo(), request.getSubject(), request.getMessage(), null,
+                    " ", serviceImpl);
+            if (!isSuccess) {
                 throw new Exception("Mail non envoyé");
             }
             ApiResponseDto apiResponseDto = ApiResponseDto
@@ -423,12 +426,12 @@ public class SettingController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         } catch (Exception e) {
             ApiResponseDto apiResponseDto = ApiResponseDto
-            .builder()
-            .status(true)
-            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
-            .build();
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-          
+
         }
 
     }
@@ -503,15 +506,14 @@ public class SettingController {
 
     }
 
-    
     @GetMapping(value = "/export/{type}")
-    public ResponseEntity<ApiResponseDto> exportConfig(@PathVariable(name = "type",required = true) ConfigExportEnum type) {
+    public ResponseEntity<ApiResponseDto> exportConfig(
+            @PathVariable(name = "type", required = true) ConfigExportEnum type) {
         ObjectMapper Obj = new ObjectMapper();
 
         try {
-            
-            
-            HashMap<String,Object> settingExport = authService.exportConfig(type);
+
+            HashMap<String, Object> settingExport = authService.exportConfig(type);
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
@@ -519,8 +521,97 @@ public class SettingController {
                     .build();
             return ResponseEntity.ok(apiResponseDto);
 
-        }catch (Exception e) {
-          
+        } catch (Exception e) {
+
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+
+        }
+
+    }
+
+    @PostMapping(value = "/apikey/generate")
+    public ResponseEntity<ApiResponseDto> generateApiKey(@RequestBody ApiKeyRequest request) {
+        ObjectMapper Obj = new ObjectMapper();
+
+        try {
+            Setting settingOld = serviceImpl.getbySlug(Constante.API_KEY_SLUG);
+
+            String api_key = generateRandomString(6);
+            String api_secret = generateRandomString(6);
+            HashMap<String, String> data = new HashMap<>();
+            data.put("api_key", api_key);
+            data.put("api_secret", passwordEncoder.encode(api_key));
+            data.put("libelle", request.getLibelle());
+            data.put("description", request.getDescription());
+            String jsonStr = Obj.writeValueAsString(data);
+            UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
+                    .libelle(Constante.API_KEY_SLUG)
+                    .value(jsonStr)
+                    .build();
+            Setting setting = serviceImpl.update(majSettingRequest);
+
+            data.put("api_secret", api_secret);
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(data)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }
+
+        // Catch block to handle exceptions
+        catch (IOException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            if (e.getMessage().equals("The choosen setting doesn't exist")) {
+                // Getting organisation object as a json string
+                String jsonStr;
+                try {
+
+                    String api_key = generateRandomString(10);
+                    String api_secret = generateRandomString(10);
+                    HashMap<String, String> data = new HashMap<>();
+                    data.put("api_key", api_key);
+                    data.put("api_secret", passwordEncoder.encode(api_key));
+                    data.put("libelle", request.getLibelle());
+                    data.put("description", request.getDescription());
+                     jsonStr = Obj.writeValueAsString(data);
+                    AddSettingRequest addSettingRequest = AddSettingRequest.builder()
+                            .libelle(Constante.API_KEY_SLUG)
+                            .value(jsonStr)
+                            .build();
+                    Setting setting = serviceImpl.save(addSettingRequest);
+                    data.put("api_secret", api_secret);
+
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(data)
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (JsonProcessingException e1) {
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(true)
+                            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+
+            } else {
                 ApiResponseDto apiResponseDto = ApiResponseDto
                         .builder()
                         .status(true)
@@ -528,12 +619,24 @@ public class SettingController {
                                 .build())
                         .build();
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-            
+            }
 
         }
 
     }
 
-    
-    
+
+    private static String generateRandomString(int count) {
+        String SALTCHARS = "ABCDEFGHIJKLMNOPQRST_abcdefghijkklmnopqrstuv:@uUVWXYZ1234567890";
+        StringBuilder salt = new StringBuilder();
+        Random rnd = new Random();
+        while (salt.length() < count) { // length of the random string.
+            int index = (int) (rnd.nextFloat() * SALTCHARS.length());
+            salt.append(SALTCHARS.charAt(index));
+        }
+        String saltStr = salt.toString();
+        return saltStr;
+
+    }
+
 }
