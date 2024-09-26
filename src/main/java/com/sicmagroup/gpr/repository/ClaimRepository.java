@@ -148,8 +148,22 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
         @Query("SELECT sp.id as spId, sp.libelle as spLib, o.id as objtId, o.libelle as objLib, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY sp.id, spLib, objtId, sp.libelle, o.id, o.libelle, objNiveau")
         List<ClaimPerObjLevelAndAgenceProjection> countClaimPerObjLevelAndAgence(@Param("type") ClaimType type);
 
-        @Query("SELECT c.status as status, COUNT(c.code) as total FROM Claim c WHERE c.type = 'CLAIM' AND c.status IN ('SATISFIED', 'UNSATISFIED', 'PARTIAL_SATISFIED') GROUP BY status")
-        List<ClaimPerStatusSatisfactionProjection> countClaimPerSatisfaction(); 
+        // @Query("SELECT c.status as status, COUNT(c.code) as total FROM Claim c WHERE c.type = 'CLAIM' AND c.status IN ('SATISFIED', 'UNSATISFIED', 'PARTIAL_SATISFIED','CLASSED','LITIGATION') GROUP BY status")
+        // List<ClaimPerStatusSatisfactionProjection> countClaimPerSatisfaction(); 
+
+        @Query("SELECT " +
+        "CASE " +
+        "WHEN c.status IN ('CLASSED', 'LITIGATION') THEN 'UNSATISFIED' " +
+        "ELSE c.status END as status, " +
+        "COUNT(c.code) as total " +
+        "FROM Claim c " +
+        "WHERE c.type = 'CLAIM' " +
+        "AND c.status IN ('SATISFIED', 'UNSATISFIED', 'PARTIAL_SATISFIED', 'CLASSED', 'LITIGATION') " +
+        "GROUP BY CASE " +
+        "WHEN c.status IN ('CLASSED', 'LITIGATION') THEN 'UNSATISFIED' " +
+        "ELSE c.status END")
+        List<ClaimPerStatusSatisfactionProjection> countClaimPerSatisfaction();
+
 
         Long countByTypeAndStatusNotAndReceiptDateTimeBetween(ClaimType type, ClaimStatus status, LocalDateTime start, LocalDateTime end);
 

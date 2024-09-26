@@ -75,6 +75,7 @@ import com.sicmagroup.gpr.repository.projection.custom.ObjectPerYear;
 import com.sicmagroup.gpr.repository.projection.custom.ObjectTotalPerStatusPro;
 import com.sicmagroup.gpr.repository.projection.custom.SuggesPerGenderAndAgencePro;
 import com.sicmagroup.gpr.repository.projection.custom.SuggestTotalPerStatusPro;
+import com.sicmagroup.gpr.utils.ColorUtils;
 import com.sicmagroup.gpr.utils.Utils;
 
 import io.jsonwebtoken.Claims;
@@ -596,7 +597,7 @@ public class ReportServiceImpl implements ReportService {
             if (request.getServicePoints() instanceof List<Long> && request.getServicePoints().size() > 0) {
                 sp = spRepository.findAllById(request.getServicePoints());
             } else {
-                sp = spRepository.findAll();;
+                sp = spRepository.findAll();
             }
             if (sp.size() == 0) {
                 return result;
@@ -1135,7 +1136,7 @@ public class ReportServiceImpl implements ReportService {
                 .datas(new ArrayList<>())
                 .ids(new ArrayList<>())
                 .build();
-
+      
         if (request != null) {
             List<ClaimPerServicePointPro> allResult = suggestionRepository
                     .countSuggestByCriteriaAndServicePoint(request);
@@ -1155,6 +1156,8 @@ public class ReportServiceImpl implements ReportService {
             List<SuggestPerServicePointProjection> allResult = suggestionRepository.countSuggestPerServicePoint();
             long totalClaim = 0;
             List<ServicePoint> allSp = spRepository.findAll();
+            double undefinedSuggestionsTotal = 0;
+            double totalCalculatedPercentage = 0;
             boolean isFind = false;
             for (SuggestPerServicePointProjection projection : allResult) {
                 totalClaim += projection.getTotal();
@@ -1165,19 +1168,39 @@ public class ReportServiceImpl implements ReportService {
                     if (sp.getId().equals(projection.getServiceIndexeId())) {
                         pieChartDto.getDatas()
                                 .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), totalClaim)));
+                        
+                        totalCalculatedPercentage += Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), totalClaim));
+                        
                         isFind = true;
+                    }else {
+                        // Ajouter les suggestions sans point de service
+                        undefinedSuggestionsTotal += projection.getTotal();
                     }
                 }
 
+                
                 if (!isFind) {
+                   
+                   
                     pieChartDto.getDatas().add((double) 0);
                 } else {
                     isFind = false;
                 }
 
             }
+            // Ajouter les suggestions sans point de service
+            if (undefinedSuggestionsTotal > 0) {
+                pieChartDto.getLabels().add("Non défini");
+                double undefinedPercentage = 100 - totalCalculatedPercentage;
+                pieChartDto.getDatas().add(Utils.parseDouble(undefinedPercentage));
+                // pieChartDto.getBackgroundColors().add(GENDER_NON_DEFINI_BG_COLOR);
+                // pieChartDto.getHoverColors().add(GENDER_NON_DEFINI_BG_COLOR);
+            }
 
-            List<RgbColor> bgColors = Utils.generateRandomColor(allResult.size());
+            List<RgbColor> bgColors = new ArrayList<>();
+            bgColors.addAll(Utils.generateRandomColor(allSp.size()));
+            bgColors.add(new RgbColor(207, 216, 220));
+         
             pieChartDto.setBackgroundColors(bgColors.stream().map(t -> t.toBgString()).collect(Collectors.toList()));
             pieChartDto.setHoverColors(bgColors.stream().map(t -> t.toBorderString()).collect(Collectors.toList()));
         }
@@ -1584,7 +1607,7 @@ public class ReportServiceImpl implements ReportService {
                 }
             }
 
-            List<RgbColor> bgColors = Utils.generateRandomColor(allResult.size());
+            List<RgbColor> bgColors = Utils.generateRandomColor(pieChartDto.getDatas().size());
             pieChartDto.setBackgroundColors(bgColors.stream().map(t -> t.toBgString()).collect(Collectors.toList()));
             pieChartDto.setHoverColors(bgColors.stream().map(t -> t.toBorderString()).collect(Collectors.toList()));
         }
@@ -1643,7 +1666,7 @@ public class ReportServiceImpl implements ReportService {
                     isFind = false;
                 }
             }
-            List<RgbColor> bgColors = Utils.generateRandomColor(allResult.size());
+            List<RgbColor> bgColors = Utils.generateRandomColor(pieChartDto.getDatas().size());
             pieChartDto.setBackgroundColors(bgColors.stream().map(t -> t.toBgString()).collect(Collectors.toList()));
             pieChartDto.setHoverColors(bgColors.stream().map(t -> t.toBorderString()).collect(Collectors.toList()));
         }
@@ -3417,8 +3440,12 @@ public class ReportServiceImpl implements ReportService {
                 .build();
         long total = 0;
         boolean isFind = false;
+        // List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+        //         ClaimStatus.PARTIAL_SATISFIED);
+        // si il faut prendre en compte classée et litigate il faut les grouper comme nonstatisfait ou les afficher dans le pie chart
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
+        
         if (request != null) {
             List<ObjectTotalPerStatusPro> allResult = claimRepository.countClaimByCriteriaAndSatisfaction(request);
 
@@ -3435,14 +3462,15 @@ public class ReportServiceImpl implements ReportService {
                                 pieChartDto.getLabels().add("SATISFAIT");
                                 pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
                                 break;
-                            case UNSATISFIED:
-                                pieChartDto.getLabels().add("NON SATISFAIT");
-                                pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
-                                break;
                             case PARTIAL_SATISFIED:
                                 pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
                                 pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
                                 break;
+                            case UNSATISFIED:
+                                pieChartDto.getLabels().add("NON SATISFAIT");
+                                pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
+                                break;
+                           
                             default:
                                 break;
                         }
@@ -3458,14 +3486,15 @@ public class ReportServiceImpl implements ReportService {
                             pieChartDto.getLabels().add("SATISFAIT");
                             pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
                             break;
-                        case UNSATISFIED:
-                            pieChartDto.getLabels().add("NON SATISFAIT");
-                            pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
-                            break;
                         case PARTIAL_SATISFIED:
                             pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
                             pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
                             break;
+                        case UNSATISFIED:
+                            pieChartDto.getLabels().add("NON SATISFAIT");
+                            pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
+                            break;
+                        
                         default:
                             break;
                     }
@@ -3476,6 +3505,7 @@ public class ReportServiceImpl implements ReportService {
 
             }
         } else {
+            System.out.println("lol ");
             List<ClaimPerStatusSatisfactionProjection> allResult = claimRepository.countClaimPerSatisfaction();
 
             total = claimRepository.countByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
@@ -3489,14 +3519,15 @@ public class ReportServiceImpl implements ReportService {
                                 pieChartDto.getLabels().add("SATISFAIT");
                                 pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
                                 break;
-                            case UNSATISFIED:
-                                pieChartDto.getLabels().add("NON SATISFAIT");
-                                pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
-                                break;
                             case PARTIAL_SATISFIED:
                                 pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
                                 pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
                                 break;
+                            case UNSATISFIED:
+                                pieChartDto.getLabels().add("NON SATISFAIT");
+                                pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
+                                break;
+                            
                             default:
                                 break;
                         }
@@ -3512,14 +3543,15 @@ public class ReportServiceImpl implements ReportService {
                             pieChartDto.getLabels().add("SATISFAIT");
                             pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
                             break;
-                        case UNSATISFIED:
-                            pieChartDto.getLabels().add("NON SATISFAIT");
-                            pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
-                            break;
                         case PARTIAL_SATISFIED:
                             pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
                             pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
                             break;
+                        case UNSATISFIED:
+                            pieChartDto.getLabels().add("NON SATISFAIT");
+                            pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
+                            break;
+                       
                         default:
                             break;
                     }
@@ -3530,7 +3562,7 @@ public class ReportServiceImpl implements ReportService {
             }
 
         }
-
+        
         return pieChartDto;
 
     }
@@ -3609,6 +3641,582 @@ public class ReportServiceImpl implements ReportService {
 
         return stackedBar;
     }
+
+   
+    public StackedBar numberClaimTreatInDelaiOrNotByMonth(@Nullable FilterRequest request) {
+        // List<Claim> allClaims;
+
+        // if (request != null) {
+
+        //     allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+        //             Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+        //                     ClaimStatus.CLASSED));
+
+        // } else {
+        //     allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+        //             Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+        //                     ClaimStatus.CLASSED));
+        // }
+        // List<Objet> allObjets = oRepository.findAll();
+        // StackedBar stackedBar = StackedBar
+        //         .builder()
+        //         .ids(new ArrayList<>())
+        //         .datasets(new ArrayList<>())
+        //         .labels(new ArrayList<>())
+        //         .build();
+        // List<Double> dataInDelai = new ArrayList<>();
+        // List<Double> dataNotInDelai = new ArrayList<>();
+        // for (Objet objet : allObjets) {
+        //     stackedBar.getIds().add(objet.getId());
+        //     stackedBar.getLabels().add(objet.getLibelle());
+        //     dataInDelai.add((double) 0);
+        //     dataNotInDelai.add((double) 0);
+        // }
+        // LocalDateTime receiptDate;
+        // LocalDateTime measureDate;
+        // LocalDateTime supposedFinalTreatmentDate;
+        // long delaiObj;
+        // // for (int i = 0; i < 2 ; i++) {
+        // for (Claim claim : allClaims) {
+        //     receiptDate = claim.getReceiptDateTime();
+        //     measureDate = claim.getSolutions().get((claim.getSolutions().size() - 1)).getSatisfactionMeasure()
+        //             .getMeasureDateTime();
+
+        //     delaiObj = claim.getObjet().getProcessingTime();
+        //     supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
+        //     if (measureDate.isAfter(supposedFinalTreatmentDate)) { // il y a retard de traitement
+        //         dataNotInDelai.set(stackedBar.getIds().indexOf(claim.getObjet().getId()),
+        //                 dataNotInDelai.get(stackedBar.getIds().indexOf(claim.getObjet().getId())) + 1);
+        //     } else {
+        //         dataInDelai.set(stackedBar.getIds().indexOf(claim.getObjet().getId()),
+        //                 dataInDelai.get(stackedBar.getIds().indexOf(claim.getObjet().getId())) + 1);
+        //     }
+
+        // }
+        // // if()
+
+        // StackedBarDataset stackedBarDataset = StackedBarDataset
+        //         .builder()
+        //         .label("Délai respecté")
+        //         .backgroundColor(SERVICE_BG_POINT_COLOR)
+        //         // .borderColor(CLAIM_BG_COLOR)
+        //         .data(dataInDelai)
+        //         .build();
+        // stackedBar.getDatasets().add(stackedBarDataset);
+
+        // StackedBarDataset stackedBarDataset2 = StackedBarDataset
+        //         .builder()
+        //         .label("Délai non respecté")
+        //         .backgroundColor(UNRESPECTED_BG_COLOR)
+        //         .data(dataNotInDelai)
+        //         .build();
+        // stackedBar.getDatasets().add(stackedBarDataset2);
+
+        // // }
+
+        // return stackedBar;
+
+        List<Claim> allClaims;
+
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
+                            ClaimStatus.CLASSED));
+        } else {
+            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
+                            ClaimStatus.CLASSED));
+        }
+        
+        // Préparer les mois de l'année pour l'affichage
+        List<String> months = Arrays.asList("Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc");
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(months)
+                .build();
+        
+        // Initialiser les données pour chaque mois (nombre de réclamations respectant les délais et le total)
+        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Double> totalClaimsPerMonth = new ArrayList<>(Collections.nCopies(12, 0.0));
+        
+        LocalDateTime receiptDate;
+        LocalDateTime measureDate;
+        LocalDateTime supposedFinalTreatmentDate;
+        long delaiObj;
+        
+        // Parcourir toutes les réclamations
+        for (Claim claim : allClaims) {
+            // Vérifier si la réclamation a bien une solution et une mesure
+            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
+                continue; // Passer à la réclamation suivante si pas de solution
+            }
+        
+            // Récupérer la date de réception et la date de mesure
+            receiptDate = claim.getReceiptDateTime();
+            measureDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getSatisfactionMeasure().getMeasureDateTime();
+        
+            // Récupérer le délai de traitement de l'objet associé à la réclamation
+            delaiObj = claim.getObjet().getProcessingTime();
+            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
+        
+            // Récupérer l'index du mois correspondant
+            int monthIndex = receiptDate.getMonthValue() - 1;
+        
+            if (monthIndex >= 0 && monthIndex < 12) {
+                // Augmenter le nombre total de réclamations pour le mois
+                totalClaimsPerMonth.set(monthIndex, totalClaimsPerMonth.get(monthIndex) + 1);
+        
+                // Vérifier si la réclamation a été traitée dans les délais
+                if (measureDate.isBefore(supposedFinalTreatmentDate) || measureDate.isEqual(supposedFinalTreatmentDate)) {
+                    // Ajouter à la liste des réclamations respectant les délais
+                    dataRespectingDelai.set(monthIndex, dataRespectingDelai.get(monthIndex) + 1);
+                }
+            }
+        }
+        
+        // Calculer le pourcentage des réclamations traitées dans les délais par mois
+        for (int i = 0; i < 12; i++) {
+            if (totalClaimsPerMonth.get(i) > 0) {
+                dataRespectingDelai.set(i, (dataRespectingDelai.get(i) / totalClaimsPerMonth.get(i)) * 100);
+            }
+        }
+        
+        // Créer le dataset pour les réclamations traitées dans les délais
+        StackedBarDataset datasetRespectingDelai = StackedBarDataset
+                .builder()
+                .label("Respect")
+                .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
+                .data(dataRespectingDelai)
+                .build();
+        
+        stackedBar.getDatasets().add(datasetRespectingDelai);
+        
+        return stackedBar;
+        
+    }
+
+
+    
+    public StackedBar numberClaimTreatInDelaiOrNotByMonthByAgence(@Nullable FilterRequest request) {
+
+        List<Claim> allClaims;
+
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
+                            ClaimStatus.CLASSED));
+        } else {
+            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
+                            ClaimStatus.CLASSED));
+        }
+        
+        // Récupérer toutes les agences
+        List<ServicePoint> allAgences = spRepository.findAll();
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(new ArrayList<>())
+                .build();
+        
+        // Initialiser les données pour chaque agence (nombre de réclamations respectant les délais et le total)
+        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+        List<Double> totalClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+        
+        LocalDateTime receiptDate;
+        LocalDateTime measureDate;
+        LocalDateTime supposedFinalTreatmentDate;
+        long delaiObj;
+        
+        // Parcourir toutes les agences
+        for (ServicePoint agence : allAgences) {
+            stackedBar.getIds().add(agence.getId());
+            stackedBar.getLabels().add(agence.getLibelle());
+        }
+        
+        // Parcourir toutes les réclamations
+        for (Claim claim : allClaims) {
+            // Vérifier si la réclamation a bien une solution et une mesure
+            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
+                continue; // Passer à la réclamation suivante si pas de solution
+            }
+        
+            // Récupérer la date de réception et la date de mesure
+            receiptDate = claim.getReceiptDateTime();
+            measureDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getSatisfactionMeasure().getMeasureDateTime();
+        
+            // Récupérer le délai de traitement de l'objet associé à la réclamation
+            delaiObj = claim.getObjet().getProcessingTime();
+            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
+        
+            // Récupérer l'index de l'agence correspondante
+            int agenceIndex = stackedBar.getIds().indexOf(claim.getServicePoint().getId());
+        
+            if (agenceIndex >= 0 && agenceIndex < allAgences.size()) {
+                // Augmenter le nombre total de réclamations pour l'agence
+                totalClaimsPerAgence.set(agenceIndex, totalClaimsPerAgence.get(agenceIndex) + 1);
+        
+                // Vérifier si la réclamation a été traitée dans les délais
+                if (measureDate.isBefore(supposedFinalTreatmentDate) || measureDate.isEqual(supposedFinalTreatmentDate)) {
+                    // Ajouter à la liste des réclamations respectant les délais
+                    dataRespectingDelai.set(agenceIndex, dataRespectingDelai.get(agenceIndex) + 1);
+                }
+            }
+        }
+        
+        // Calculer le pourcentage des réclamations traitées dans les délais par agence
+        for (int i = 0; i < allAgences.size(); i++) {
+            if (totalClaimsPerAgence.get(i) > 0) {
+                double percentage = (dataRespectingDelai.get(i) / totalClaimsPerAgence.get(i)) * 100;
+                // Arrondir à deux chiffres après la virgule
+                percentage = Math.round(percentage * 100.0) / 100.0;
+                dataRespectingDelai.set(i, percentage);
+            }
+        }
+
+        
+        // Créer le dataset pour les réclamations traitées dans les délais
+        StackedBarDataset datasetRespectingDelai = StackedBarDataset
+                .builder()
+                .label("Respect")
+                .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
+                .data(dataRespectingDelai)
+                .build();
+        
+        stackedBar.getDatasets().add(datasetRespectingDelai);
+        
+        return stackedBar;
+        
+    }
+
+
+    //a voir
+    public StackedBar numberDenunTreatInDelaiOrNotByMonth(@Nullable FilterRequest request) {
+        List<Claim> allClaims;
+    
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+            Arrays.asList(ClaimStatus.TREAT));
+        } else {
+            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.DENUNCIACION,
+            Arrays.asList(ClaimStatus.TREAT));
+        }
+    
+        // Préparer les mois de l'année pour l'affichage
+        List<String> months = Arrays.asList("Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc");
+        StackedBar stackedBar = StackedBar.builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(months)
+                .build();
+    
+        // Initialiser les données pour chaque mois (nombre de réclamations respectant les délais et le total)
+        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Double> totalClaimsPerMonth = new ArrayList<>(Collections.nCopies(12, 0.0));
+    
+        LocalDateTime receiptDate;
+        LocalDateTime treatmentDate;
+        LocalDateTime supposedFinalTreatmentDate;
+        long delaiObj;
+    
+        // Parcourir toutes les réclamations
+        for (Claim claim : allClaims) {
+            // Vérifier si la réclamation a des solutions
+            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
+                continue; // Passer à la réclamation suivante si pas de solution
+            }
+    
+            // Récupérer la date de réception et la date de traitement (via la dernière solution)
+            receiptDate = claim.getReceiptDateTime();
+            treatmentDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getCreatedAt(); // Date de traitement récupérée via la dernière solution
+    
+            // Récupérer le délai de traitement de l'objet associé à la réclamation
+            delaiObj = claim.getObjet().getProcessingTime();
+            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
+    
+            // Récupérer l'index du mois correspondant
+            int monthIndex = receiptDate.getMonthValue() - 1;
+    
+            if (monthIndex >= 0 && monthIndex < 12) {
+                // Augmenter le nombre total de réclamations pour le mois
+                totalClaimsPerMonth.set(monthIndex, totalClaimsPerMonth.get(monthIndex) + 1);
+    
+                // Vérifier si la réclamation a été traitée dans les délais
+                if (treatmentDate.isBefore(supposedFinalTreatmentDate) || treatmentDate.isEqual(supposedFinalTreatmentDate)) {
+                    // Ajouter à la liste des réclamations respectant les délais
+                    dataRespectingDelai.set(monthIndex, dataRespectingDelai.get(monthIndex) + 1);
+                }
+            }
+        }
+    
+        // Calculer le pourcentage des réclamations traitées dans les délais par mois
+        for (int i = 0; i < 12; i++) {
+            if (totalClaimsPerMonth.get(i) > 0) {
+                dataRespectingDelai.set(i, (dataRespectingDelai.get(i) / totalClaimsPerMonth.get(i)) * 100);
+            }
+        }
+    
+        // Créer le dataset pour les réclamations traitées dans les délais
+        StackedBarDataset datasetRespectingDelai = StackedBarDataset.builder()
+                .label("Respect")
+                .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
+                .data(dataRespectingDelai)
+                .build();
+    
+        stackedBar.getDatasets().add(datasetRespectingDelai);
+    
+        return stackedBar;
+    }
+    
+    //a revoir
+    public StackedBar numberDenunTreatInDelaiOrNotByMonthByAgence(@Nullable FilterRequest request) {
+        List<Claim> allClaims;
+    
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+                    Arrays.asList(ClaimStatus.TREAT));
+        } else {
+            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.DENUNCIACION,
+            Arrays.asList(ClaimStatus.TREAT));
+        }
+    
+        // Récupérer toutes les agences
+        List<ServicePoint> allAgences = spRepository.findAll();
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(new ArrayList<>())
+                .build();
+    
+        // Initialiser les données pour chaque agence (nombre de réclamations respectant les délais et le total)
+        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+        List<Double> totalClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+    
+        LocalDateTime receiptDate;
+        LocalDateTime treatmentDate;
+        LocalDateTime supposedFinalTreatmentDate;
+        long delaiObj;
+    
+        // Parcourir toutes les agences
+        for (ServicePoint agence : allAgences) {
+            stackedBar.getIds().add(agence.getId());
+            stackedBar.getLabels().add(agence.getLibelle());
+        }
+    
+        // Parcourir toutes les réclamations
+        for (Claim claim : allClaims) {
+            // Vérifier si la réclamation a bien une solution
+            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
+                continue; // Passer à la réclamation suivante si pas de solution
+            }
+    
+            // Récupérer la date de réception et la date de traitement via la dernière solution
+            receiptDate = claim.getReceiptDateTime();
+            treatmentDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getCreatedAt(); // Date de traitement
+    
+            // Récupérer le délai de traitement de l'objet associé à la réclamation
+            delaiObj = claim.getObjet().getProcessingTime();
+            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
+    
+            // Récupérer l'index de l'agence correspondante
+            int agenceIndex = stackedBar.getIds().indexOf(claim.getServicePoint().getId());
+    
+            if (agenceIndex >= 0 && agenceIndex < allAgences.size()) {
+                // Augmenter le nombre total de réclamations pour l'agence
+                totalClaimsPerAgence.set(agenceIndex, totalClaimsPerAgence.get(agenceIndex) + 1);
+    
+                // Vérifier si la réclamation a été traitée dans les délais
+                if (treatmentDate.isBefore(supposedFinalTreatmentDate) || treatmentDate.isEqual(supposedFinalTreatmentDate)) {
+                    // Ajouter à la liste des réclamations respectant les délais
+                    dataRespectingDelai.set(agenceIndex, dataRespectingDelai.get(agenceIndex) + 1);
+                }
+            }
+        }
+    
+        // Calculer le pourcentage des réclamations traitées dans les délais par agence
+        for (int i = 0; i < allAgences.size(); i++) {
+            if (totalClaimsPerAgence.get(i) > 0) {
+                double percentage = (dataRespectingDelai.get(i) / totalClaimsPerAgence.get(i)) * 100;
+                // Arrondir à deux chiffres après la virgule
+                percentage = Math.round(percentage * 100.0) / 100.0;
+                dataRespectingDelai.set(i, percentage);
+            }
+        }
+    
+        // Créer le dataset pour les réclamations traitées dans les délais
+        StackedBarDataset datasetRespectingDelai = StackedBarDataset
+                .builder()
+                .label("Respect")
+                .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
+                .data(dataRespectingDelai)
+                .build();
+    
+        stackedBar.getDatasets().add(datasetRespectingDelai);
+    
+        return stackedBar;
+    }
+    
+
+
+
+    
+    public StackedBar tauxClaimSatisfactionByMonth(@Nullable FilterRequest request) {
+    
+        List<Claim> allClaims;
+
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
+                            ClaimStatus.CLASSED));
+        } else {
+            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
+                            ClaimStatus.CLASSED));
+        }
+        
+       // Initialiser les données pour les 12 mois
+        List<Double> satisfactionRates = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Integer> totalClaimsByMonth = new ArrayList<>(Collections.nCopies(12, 0));
+        List<Integer> satisfiedClaimsByMonth = new ArrayList<>(Collections.nCopies(12, 0));
+
+        for (Claim claim : allClaims) {
+            // Récupérer la date de la dernière mesure de satisfaction
+            LocalDateTime measureDate = claim.getSolutions()
+                    .get(claim.getSolutions().size() - 1)
+                    .getSatisfactionMeasure()
+                    .getMeasureDateTime();
+
+            // Récupérer le mois de cette date (de 1 à 12)
+            int month = measureDate.getMonthValue() - 1; // Indexé à 0 pour correspondre aux listes
+
+            // Incrémenter le total des réclamations pour ce mois
+            totalClaimsByMonth.set(month, totalClaimsByMonth.get(month) + 1);
+
+            // Vérifier le statut de la réclamation et incrémenter les satisfaites si applicable
+            if (claim.getStatus() == ClaimStatus.SATISFIED) {
+                satisfiedClaimsByMonth.set(month, satisfiedClaimsByMonth.get(month) + 1);
+            }
+        }
+
+        // Calculer le taux de satisfaction pour chaque mois
+        for (int i = 0; i < 12; i++) {
+            if (totalClaimsByMonth.get(i) > 0) {
+                double satisfactionRate = ((double) satisfiedClaimsByMonth.get(i) / totalClaimsByMonth.get(i)) * 100;
+                // Arrondir à deux chiffres après la virgule
+                satisfactionRate = Math.round(satisfactionRate * 100.0) / 100.0;
+                satisfactionRates.set(i, satisfactionRate);
+            }
+        }
+
+        // Créer le graphique avec les données de taux de satisfaction
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(Arrays.asList("Jan", "Fév", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"))
+                .build();
+
+        StackedBarDataset satisfactionDataset = StackedBarDataset
+                .builder()
+                .label("Taux de satisfaction")
+                .backgroundColor(SATISFIED_BG_COLOR) // Assurez-vous que cette couleur est bien définie
+                .data(satisfactionRates)
+                .build();
+
+        // Ajouter le dataset au graphique
+        stackedBar.getDatasets().add(satisfactionDataset);
+
+        return stackedBar;
+
+                
+    }
+
+
+    
+    public StackedBar tauxClaimSatisfactionByMonthByAgence(@Nullable FilterRequest request) {
+    
+        List<Claim> allClaims;
+
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
+                            ClaimStatus.CLASSED));
+        } else {
+            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
+                            ClaimStatus.CLASSED));
+        }
+
+        // Récupérer toutes les agences
+        List<ServicePoint> allAgences = spRepository.findAll();
+        
+        // Initialiser les données pour chaque agence
+        List<Double> satisfactionRatesPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+        List<Integer> totalClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0));
+        List<Integer> satisfiedClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0));
+
+        // Parcourir toutes les réclamations
+        for (Claim claim : allClaims) {
+            // Récupérer l'agence de la réclamation
+            ServicePoint agence = claim.getServicePoint();
+
+            // Trouver l'index de l'agence dans la liste des agences
+            int index = allAgences.indexOf(agence);
+
+            // Incrémenter le total des réclamations pour cette agence
+            totalClaimsPerAgence.set(index, totalClaimsPerAgence.get(index) + 1);
+
+            // Vérifier le statut de la réclamation et incrémenter les satisfaites si applicable
+            if (claim.getStatus() == ClaimStatus.SATISFIED) {
+                satisfiedClaimsPerAgence.set(index, satisfiedClaimsPerAgence.get(index) + 1);
+            }
+        }
+
+        // Calculer le taux de satisfaction pour chaque agence
+        for (int i = 0; i < allAgences.size(); i++) {
+            if (totalClaimsPerAgence.get(i) > 0) {
+                double satisfactionRate = ((double) satisfiedClaimsPerAgence.get(i) / totalClaimsPerAgence.get(i)) * 100;
+                // Arrondir à deux chiffres après la virgule
+                satisfactionRate = Math.round(satisfactionRate * 100.0) / 100.0;
+                satisfactionRatesPerAgence.set(i, satisfactionRate);
+            }
+        }
+
+        // Créer le graphique avec les données de taux de satisfaction par agence
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(new ArrayList<>()) // Les noms des agences seront dans les labels
+                .build();
+
+        // Remplir les données du graphique avec les agences et leurs taux de satisfaction
+        for (int i = 0; i < allAgences.size(); i++) {
+            stackedBar.getIds().add(allAgences.get(i).getId());
+            stackedBar.getLabels().add(allAgences.get(i).getLibelle());
+        }
+
+        // Créer le dataset pour le taux de satisfaction par agence
+        StackedBarDataset satisfactionDataset = StackedBarDataset
+                .builder()
+                .label("Taux de satisfaction par agence")
+                .backgroundColor(SATISFIED_BG_COLOR) // Assurez-vous que cette couleur est bien définie
+                .data(satisfactionRatesPerAgence)
+                .build();
+
+        // Ajouter le dataset au graphique
+        stackedBar.getDatasets().add(satisfactionDataset);
+
+        return stackedBar;
+
+                
+    }
+
+
 
     @Override
     public LineChart evolutionSatisfactionByYear(@Nullable FilterRequest request) {

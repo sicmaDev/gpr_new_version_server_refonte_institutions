@@ -682,6 +682,28 @@ public class Utils {
         }
         return listColor;
     }
+    // public static List<RgbColor> generateRandomColor(int total) {
+    //     List<RgbColor> listColor = new ArrayList<>();
+    //     Random random = new Random();
+        
+    //     for (int i = 0; i < total; i++) {
+    //         int red, green, blue;
+    //         int threshold = 100; // Seuil pour éviter les couleurs qui tendent vers le noir
+    
+    //         do {
+    //             red = random.nextInt(256);   // 0 à 255 inclus
+    //             green = random.nextInt(256); // 0 à 255 inclus
+    //             blue = random.nextInt(256);  // 0 à 255 inclus
+    //         } while ((red + green + blue) < threshold || (red == 255 && green == 255 && blue == 255)); // Re-générer si la couleur tend vers le noir ou est blanche
+    
+    //         listColor.add(new RgbColor(0, 0, 0));
+    //     }
+        
+    //     return listColor;
+    // }
+    
+    
+    
 
    
 

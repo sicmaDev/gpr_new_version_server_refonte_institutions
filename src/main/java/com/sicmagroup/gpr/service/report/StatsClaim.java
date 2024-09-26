@@ -51,48 +51,94 @@ public class StatsClaim {
                     ClaimType.CLAIM);
             for (ClaimPerObjLevelPro claimPerObjLevelPro : allResult) {
                 switch (claimPerObjLevelPro.getObjNiveau().name()) {
-                    case "GRAVE":
-                        key = "Nombre de réclamations à niveau de gravité Grave enregistrées";
+                    case "MINEUR":
+                        key = "Nombre de réclamations à niveau de gravité Mineur enregistrées";
                         break;
                     case "MOYEN":
                         key = "Nombre de réclamations à niveau de gravité Moyen enregistrées";
                         break;
-                    case "MINEUR":
-                        key = "Nombre de réclamations à niveau de gravité Mineur enregistrées";
+                    case "GRAVE":
+                        key = "Nombre de réclamations à niveau de gravité Grave enregistrées";
                         break;
+                    
+                    
                 }
                 resultat.put(key, claimPerObjLevelPro.getTotal().doubleValue());
             }
 
         } else {
+            // List<ClaimPerObjLevelProjection> allResult = claimRepository.countClaimPerObjLevel(ClaimType.CLAIM);
+            // // System.out.println("Niveau: " allResult.length());
+            // for (ClaimPerObjLevelProjection projection : allResult) {
+            //     System.out.println("Niveau: " + projection.getObjNiveau() + ", Total: " + projection.getTotal());
+            //     switch (projection.getObjNiveau()) {
+            //         case "GRAVE":
+            //             key = "Nombre de réclamations à niveau de gravité Grave enregistrées";
+            //             break;
+            //         case "MOYEN":
+            //             key = "Nombre de réclamations à niveau de gravité Moyen enregistrées";
+            //             break;
+            //         case "MINEUR":
+            //             key = "Nombre de réclamations à niveau de gravité Mineur enregistrées";
+            //             break;
+
+            //     }
+            //     resultat.put(key, projection.getTotal().doubleValue());
+            // }
+
+            // Initialiser le Map pour accumuler les totaux
+
+
+            // Récupérer les données depuis claimRepository
             List<ClaimPerObjLevelProjection> allResult = claimRepository.countClaimPerObjLevel(ClaimType.CLAIM);
+
+            System.out.println("Nombre total de réclamations: " + allResult.size());
+
+            // Itérer sur les résultats
             for (ClaimPerObjLevelProjection projection : allResult) {
+                System.out.println("Niveau: " + projection.getObjNiveau() + ", Total: " + projection.getTotal());
+
+                // Définir la clé pour le niveau de gravité
+              
                 switch (projection.getObjNiveau()) {
-                    case "GRAVE":
-                        key = "Nombre de réclamations à niveau de gravité Grave enregistrées";
+                    case "MINEUR":
+                        key = "Nombre de réclamations à niveau de gravité Mineur enregistrées";
                         break;
                     case "MOYEN":
                         key = "Nombre de réclamations à niveau de gravité Moyen enregistrées";
                         break;
-                    case "MINEUR":
-                        key = "Nombre de réclamations à niveau de gravité Mineur enregistrées";
+                    case "GRAVE":
+                        key = "Nombre de réclamations à niveau de gravité Grave enregistrées";
                         break;
-
+                    
+                   
+                    default:
+                        key = "Niveau de gravité inconnu";
+                        System.err.println("Niveau de gravité inconnu: " + projection.getObjNiveau());
+                        continue; // Passer à l'élément suivant
                 }
-                resultat.put(key, projection.getTotal().doubleValue());
+
+                // Accumuler les totaux pour chaque clé
+                resultat.put(key, resultat.getOrDefault(key, 0.0) + projection.getTotal().doubleValue());
             }
+
+            // Afficher le contenu du résultat pour vérification
+            // for (Map.Entry<String, Double> entry : resultat.entrySet()) {
+            //     System.out.println(entry.getKey() + ": " + entry.getValue());
+            // }
+
         }
 
-        if (!resultat.containsKey("Nombre de réclamations à niveau de gravité Grave enregistrées")) {
-            resultat.put("Nombre de réclamations à niveau de gravité Grave enregistrées", 0D);
+        if (!resultat.containsKey("Nombre de réclamations à niveau de gravité Mineur enregistrées")) {
+            resultat.put("Nombre de réclamations à niveau de gravité Mineur enregistrées", 0D);
         }
         if (!resultat.containsKey("Nombre de réclamations à niveau de gravité Moyen enregistrées")) {
             resultat.put("Nombre de réclamations à niveau de gravité Moyen enregistrées", 0D);
         }
-        if (!resultat.containsKey("Nombre de réclamations à niveau de gravité Mineur enregistrées")) {
-            resultat.put("Nombre de réclamations à niveau de gravité Mineur enregistrées", 0D);
+        if (!resultat.containsKey("Nombre de réclamations à niveau de gravité Grave enregistrées")) {
+            resultat.put("Nombre de réclamations à niveau de gravité Grave enregistrées", 0D);
         }
-
+        
         return resultat;
     }
 
@@ -231,9 +277,11 @@ public class StatsClaim {
         int total = 0;
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.CLASSED, ClaimStatus.LITIGATION, ClaimStatus.PARTIAL_SATISFIED);
-        resultat.put("Nombre de réclamations à niveau de gravité Grave traitées", 0D);
-        resultat.put("Nombre de réclamations à niveau de gravité Moyen traitées", 0D);
         resultat.put("Nombre de réclamations à niveau de gravité Mineur traitées", 0D);
+        resultat.put("Nombre de réclamations à niveau de gravité Moyen traitées", 0D);
+        resultat.put("Nombre de réclamations à niveau de gravité Grave traitées", 0D);
+       
+       
         List<Claim> claimsByStatus = new ArrayList<>();
         if (request != null) {
             if (request.getEtats() != null && request.getEtats().isEmpty()) {
@@ -506,6 +554,153 @@ public class StatsClaim {
                         Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size()))));
         return resultat;
     }
+
+    public HashMap<String, Double> pourcentageReclamationsTraitees(@Nullable FilterRequest request) {
+        HashMap<String, Double> resultat = new HashMap<>();
+        resultat.put("Pourcentage réclamations traitées (%)", 0D);  // Initialisation avec 0%
+    
+        // Liste des statuts correspondant aux réclamations traitées
+        List<ClaimStatus> statusTraites = Arrays.asList(
+                ClaimStatus.TREAT,
+                ClaimStatus.SATISFIED,
+                ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED,
+                ClaimStatus.CLASSED,
+                ClaimStatus.LITIGATION
+        );
+    
+        // Récupération du nombre total de réclamations
+        List<Claim> allClaims = new ArrayList<>();
+        if (request != null) {
+            // Si un filtre est fourni, on récupère les réclamations en fonction de ce filtre
+            // allClaims = claimRepository.countClaimByCriteria(request);
+        } else {
+            // Si aucun filtre n'est fourni, on récupère toutes les réclamations
+            allClaims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+        }
+    
+        // Récupération du nombre total de réclamations traitées
+        long nombreReclamationsTraitees = allClaims.stream()
+                .filter(claim -> statusTraites.contains(claim.getStatus()))
+                .count();
+    
+        // Calcul du pourcentage de réclamations traitées
+        if (allClaims.size() > 0) {
+            double pourcentage = (double) nombreReclamationsTraitees / allClaims.size() * 100;
+            // Arrondi à deux chiffres après la virgule
+            pourcentage = Math.round(pourcentage * 100.0) / 100.0;
+            // Mise à jour du HashMap avec le pourcentage calculé
+            resultat.replace("Pourcentage réclamations traitées (%)", pourcentage);
+        }
+    
+        return resultat;
+    }
+
+    public HashMap<String, Double> pourcentageReelReclamationsTraitees(@Nullable FilterRequest request) {
+        HashMap<String, Double> resultat = new HashMap<>();
+        resultat.put("Pourcentage réel réclamations traitées (%)", 0D);  // Initialisation avec 0%
+    
+        // Liste des statuts correspondant aux réclamations traitées
+        List<ClaimStatus> statusTraites = Arrays.asList(
+                ClaimStatus.TREAT,
+                ClaimStatus.SATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED,
+                ClaimStatus.UNSATISFIED,
+                ClaimStatus.CLASSED,
+                ClaimStatus.LITIGATION
+        );
+    
+        // Récupération de toutes les réclamations
+        List<Claim> allClaims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);; // Méthode pour récupérer toutes les réclamations
+        List<Claim> allExpiredClaims = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+    
+        // Filtrage des réclamations échues
+        for (Claim claim : allClaims) {
+            LocalDateTime supposedFinalTreatmentDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+            if (now.isAfter(supposedFinalTreatmentDate)) {
+                allExpiredClaims.add(claim);
+            }
+        }
+    
+        // Compter le nombre total de réclamations traitées parmi celles échues
+        long nombreReclamationsTraitees = allExpiredClaims.stream()
+                .filter(claim -> statusTraites.contains(claim.getStatus()))
+                .count();
+    
+        // Calculer le pourcentage réel des réclamations traitées
+        if (!allExpiredClaims.isEmpty()) {
+            double pourcentage = (double) nombreReclamationsTraitees / allExpiredClaims.size() * 100;
+            // Arrondi à deux chiffres après la virgule
+            pourcentage = Math.round(pourcentage * 100.0) / 100.0;
+    
+            // Mise à jour du HashMap avec le pourcentage calculé
+            resultat.replace("Pourcentage réel réclamations traitées (%)", pourcentage);
+        }
+    
+        return resultat;
+    }
+    
+    public HashMap<String, Double> pourcentageReclamationsTraiteesDansDelai(@Nullable FilterRequest request) {
+        HashMap<String, Double> resultat = new HashMap<>();
+        resultat.put("Pourcentage des réclamations traitées dans le délai (%)", 0D);
+    
+        List<ClaimStatus> statusTraites = Arrays.asList(
+                ClaimStatus.TREAT,
+                ClaimStatus.SATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED,
+                ClaimStatus.UNSATISFIED,
+                ClaimStatus.CLASSED,
+                ClaimStatus.LITIGATION
+        );
+    
+        List<Claim> allClaims;
+        List<Claim> allExpiredClaims = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+    
+        try {
+            // Récupération de toutes les réclamations
+            allClaims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);;
+    
+            // Filtrage des réclamations échues
+            for (Claim claim : allClaims) {
+                LocalDateTime supposedFinalTreatmentDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+                if (now.isAfter(supposedFinalTreatmentDate)) {
+                    allExpiredClaims.add(claim);
+                }
+            }
+    
+            // Compter le nombre de réclamations traitées dans le délai
+            long nombreReclamationsDansDelai = allClaims.stream()
+                    .filter(claim -> {
+                        LocalDateTime supposedFinalTreatmentDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+                        List<Solution> solutions = claim.getSolutions();
+                        LocalDateTime measureDate = (solutions != null && !solutions.isEmpty()) 
+                                ? solutions.get(solutions.size() - 1).getSatisfactionMeasure().getMeasureDateTime()
+                                : null;
+    
+                        return measureDate != null 
+                                && statusTraites.contains(claim.getStatus())
+                                && !measureDate.isAfter(supposedFinalTreatmentDate);
+                    })
+                    .count();
+    
+            // Calculer le pourcentage des réclamations traitées dans le délai
+            if (!allExpiredClaims.isEmpty()) {
+                double pourcentage = (double) nombreReclamationsDansDelai / allExpiredClaims.size() * 100;
+                pourcentage = Math.round(pourcentage * 100.0) / 100.0;
+    
+                resultat.replace("Pourcentage des réclamations traitées dans le délai (%)", pourcentage);
+            }
+        } catch (Exception e) {
+            e.printStackTrace(); // Affiche l'erreur dans la console
+            // Vous pouvez également enregistrer l'erreur dans un fichier ou une base de données pour l'analyse
+        }
+    
+        return resultat;
+    }
+    
+    
 
     // HashMap<String, Double> tauxReponse(@Nullable FilterRequest request) {
     // HashMap<String, Double> resultat = new HashMap<>();
