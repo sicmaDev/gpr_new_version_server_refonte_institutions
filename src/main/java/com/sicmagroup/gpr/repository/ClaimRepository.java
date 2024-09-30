@@ -32,6 +32,8 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
 
         Optional<Claim> findByCode(String code);
 
+        List<Claim> findByTypeAndCodeStartsWith(ClaimType type,String code);
+
         List<Claim> findByTelAndTypeAndStatus(String tel, ClaimType type, ClaimStatus status);
 
         Optional<Claim> findByTypeAndCode(ClaimType type, String code);

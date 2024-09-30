@@ -33,7 +33,11 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, S
 
     Optional<Suggestion> findByCode(String code);
 
+    List<Suggestion> findByCodeStartsWith(String code);
+
     List<Suggestion> findByCollecteurAndStatus(User collecteur, ClaimStatus status);
+
+    List<Suggestion> findByCollecteurAndStatusOrCodeStartsWithAndStatus(User collecteur, ClaimStatus status,String start,ClaimStatus status2);
 
     Long countByStatusNot(ClaimStatus status);
 

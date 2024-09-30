@@ -1409,7 +1409,7 @@ public class ClaimController {
         return userResponse;
     };
 
-    private ClaimDto convertToDto(Claim claim) {
+    public ClaimDto convertToDto(Claim claim) {
         ClaimDto claimDto = modelMapper.map(claim, ClaimDto.class);
         if (claim.getProduct() != null) {
             claimDto.setProduct(convertToResponse(claim.getProduct()));

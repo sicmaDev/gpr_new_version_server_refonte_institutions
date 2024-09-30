@@ -232,6 +232,8 @@ public class DenunciationController {
         }
 
     }
+ 
+   
 
     @GetMapping(value = "/listTreat")
     public ResponseEntity<ApiResponseDto> getTreatList() {
