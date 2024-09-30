@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.sicmagroup.gpr.domain.model.Poste;
@@ -36,5 +38,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByChatsMemberIn(List<Chat> chats);
     List<User> findByChatsGuestIn(List<Chat> chats);
 
-
+    List<User> findByServicePoint(ServicePoint servicePoint);
+    @Query("SELECT u FROM User u WHERE u.servicePoint.id = :servicePointId AND u.isRa = true")
+    Optional<User> findRaByServicePointId(@Param("servicePointId") Long servicePointId);
 }

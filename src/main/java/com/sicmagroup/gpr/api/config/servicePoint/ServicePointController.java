@@ -270,6 +270,7 @@ public class ServicePointController {
         } else {
             servicePoint.setCreatedAt(LocalDateTime.now());
             servicePoint.setDeleted(false);
+            // servicePoint.setDirection_id(servicePointDto.getDirection_id());
         }
         return servicePoint;
     }

@@ -167,6 +167,10 @@ public class UserController {
         if (request.getAdditionalRole() == "") {
             request.setAdditionalRole(Role.MOLDUE.name());
         }
+
+        // if (request.getIsRa() == "") {
+        //     request.setAdditionalRole(Role.MOLDUE.name());
+        // }
         try {
             return ResponseEntity.ok(authenticationServiceImpl.register(request));
         } catch (AuthenticationException e) {

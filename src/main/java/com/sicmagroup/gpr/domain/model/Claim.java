@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
+import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
@@ -112,6 +113,8 @@ public class Claim {
     private Boolean affectedAnonymous;
     private LocalDateTime onlineUploadDateTime;
     private boolean isTransmitted;
+    @ManyToOne
+    private User transmittedTo;
 
     @OneToOne()
     private Chat session;

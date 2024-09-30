@@ -64,7 +64,10 @@ public class ClaimDto {
     private String receiptDateTime;
     private Boolean affectedAnonymous;
     private String onlineUploadDateTime;
+
     private boolean isTransmitted;
+    private UserResponse transmittedTo;
+
     private ChatDto session;
 
     public String convertDate(LocalDateTime dateTime){

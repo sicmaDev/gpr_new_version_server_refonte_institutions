@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -99,6 +99,8 @@ public class ClaimController {
     private final ClaimAudioServiceImpl claimAudioServiceImpl;
     private final ServicePointServiceImpl spServiceImpl;
     private final ExistingSolutionServiceImpl existingSolutionServiceImpl;
+
+    private final ServicePointRepository spRepository;
 
     @GetMapping("/list/all")
     public ResponseEntity<ApiResponseDto> getAllClaim() {
@@ -191,7 +193,29 @@ public class ClaimController {
         }
         allClaims = service.getAllNotTempSave(ClaimType.CLAIM);
         List<Claim> tmpClaims = new ArrayList<>();
-        if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        List<ServicePoint> allServicePoints = spServiceImpl.all();
+        if (connectedUser.isRa()) {
+            // Récupérer le point de service de l'utilisateur
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            
+            // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
+            List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            
+            if (!relatedServicePoints.isEmpty()) {
+                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
+                relatedServicePoints.add(servicePoint);
+        
+                // Filtrer les réclamations pour tous ces points de service
+                allClaims = allClaims.stream()
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .collect(Collectors.toList());
+            } else {
+                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
+                allClaims = allClaims.stream()
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .collect(Collectors.toList());
+            }
+        }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 && !connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.DE)) {
@@ -266,7 +290,38 @@ public class ClaimController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
 
-        if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        if (connectedUser.isRa()) {
+
+            // Filtrer les réclamations appartenant au même point de service que l'utilisateur
+            allClaims = service.getAllByTypeAndStatusIn(ClaimType.CLAIM, Arrays.asList(ClaimStatus.SAVED,
+            ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
+
+            
+            List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+                            ClaimStatus.CLASSED));
+            allClaims.addAll(moreClaim);
+            // Récupérer le point de service de l'utilisateur
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            
+            // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
+            List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            
+            if (!relatedServicePoints.isEmpty()) {
+                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
+                relatedServicePoints.add(servicePoint);
+        
+                // Filtrer les réclamations pour tous ces points de service
+                allClaims = allClaims.stream()
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .collect(Collectors.toList());
+            } else {
+                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
+                allClaims = allClaims.stream()
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .collect(Collectors.toList());
+            }
+        }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 || connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.DE))) {
@@ -1226,17 +1281,17 @@ public class ClaimController {
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
-                if (claim.getCollector() != connectedUser) {
-                    apiResponseDto = ApiResponseDto
-                            .builder()
-                            .status(false)
-                            .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas le collecteur de cette réclamation.")
-                                    .title("Opération invalide")
-                                    .build())
-                            .build();
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                }
+                // if (claim.getCollector() != connectedUser) {
+                //     apiResponseDto = ApiResponseDto
+                //             .builder()
+                //             .status(false)
+                //             .content(ErrorResponse.builder()
+                //                     .message("Vous n'êtes pas le collecteur de cette réclamation.")
+                //                     .title("Opération invalide")
+                //                     .build())
+                //             .build();
+                //     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                // }
                 try {
                     claim = service.transmitClaim(claim);
                     apiResponseDto = ApiResponseDto
