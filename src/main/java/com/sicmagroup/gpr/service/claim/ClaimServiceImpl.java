@@ -94,6 +94,10 @@ public class ClaimServiceImpl implements ClaimService {
         return repository.findById(id).orElseThrow(() -> new NotFoundException());
     }
 
+    // public List<Claim> getUserClaim(String userCode) {
+    //     return repository.findByCodeStartsWith(userCode);
+    // }
+
     @Override
     public Claim saveClaim(SaveRequest claimPart, ClaimType type) throws Exception {
         ClaimRequest claimToSave = claimPart.getClaimRequest();

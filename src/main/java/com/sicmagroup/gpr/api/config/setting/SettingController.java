@@ -10,8 +10,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
+import com.sicmagroup.gpr.domain.model.ApiKey;
 import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
+import com.sicmagroup.gpr.repository.ApiKeyRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationService;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
@@ -37,6 +39,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -53,6 +56,7 @@ public class SettingController {
     private final SettingServiceImpl serviceImpl;
     private final AuthenticationService authService;
     private final PasswordEncoder passwordEncoder;
+    private final ApiKeyRepository apiKeyRepository;
 
     // @PostMapping(value="/institution/save")
     // public ResponseEntity<ApiResponseDto> configInstit(@RequestBody SomeEnityData
@@ -535,28 +539,35 @@ public class SettingController {
 
     }
 
-    @PostMapping(value = "/apikey/generate")
+    @PostMapping(value = "/key/generate")
     public ResponseEntity<ApiResponseDto> generateApiKey(@RequestBody ApiKeyRequest request) {
-        ObjectMapper Obj = new ObjectMapper();
+     
 
-        try {
-            Setting settingOld = serviceImpl.getbySlug(Constante.API_KEY_SLUG);
+        
+            ApiKey apiKey = ApiKey.builder().build();
 
-            String api_key = generateRandomString(6);
-            String api_secret = generateRandomString(6);
+
+          
+
+            try {
+              
+                String api_key = generateRandomString(6);
+                String api_secret = generateRandomString(6);
+                
+            
+    
+            apiKey.setCle(api_key);
+            apiKey.setName(request.getLibelle());
+            apiKey.setDescription(request.getDescription());
+            apiKey.setSecret(passwordEncoder.encode(api_key));
+
+            apiKeyRepository.save(apiKey);
+
+
             HashMap<String, String> data = new HashMap<>();
-            data.put("api_key", api_key);
-            data.put("api_secret", passwordEncoder.encode(api_key));
-            data.put("libelle", request.getLibelle());
-            data.put("description", request.getDescription());
-            String jsonStr = Obj.writeValueAsString(data);
-            UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
-                    .libelle(Constante.API_KEY_SLUG)
-                    .value(jsonStr)
-                    .build();
-            Setting setting = serviceImpl.update(majSettingRequest);
-
-            data.put("api_secret", api_secret);
+                data.put("api_key", api_key);
+                data.put("api_secret",api_secret );
+            
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
@@ -566,52 +577,8 @@ public class SettingController {
 
         }
 
-        // Catch block to handle exceptions
-        catch (IOException e) {
-            ApiResponseDto apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(true)
-                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-        } catch (Exception e) {
-            if (e.getMessage().equals("The choosen setting doesn't exist")) {
-                // Getting organisation object as a json string
-                String jsonStr;
-                try {
-
-                    String api_key = generateRandomString(10);
-                    String api_secret = generateRandomString(10);
-                    HashMap<String, String> data = new HashMap<>();
-                    data.put("api_key", api_key);
-                    data.put("api_secret", passwordEncoder.encode(api_key));
-                    data.put("libelle", request.getLibelle());
-                    data.put("description", request.getDescription());
-                     jsonStr = Obj.writeValueAsString(data);
-                    AddSettingRequest addSettingRequest = AddSettingRequest.builder()
-                            .libelle(Constante.API_KEY_SLUG)
-                            .value(jsonStr)
-                            .build();
-                    Setting setting = serviceImpl.save(addSettingRequest);
-                    data.put("api_secret", api_secret);
-
-                    ApiResponseDto apiResponseDto = ApiResponseDto
-                            .builder()
-                            .status(true)
-                            .content(data)
-                            .build();
-                    return ResponseEntity.ok(apiResponseDto);
-                } catch (JsonProcessingException e1) {
-                    ApiResponseDto apiResponseDto = ApiResponseDto
-                            .builder()
-                            .status(true)
-                            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
-                                    .build())
-                            .build();
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                }
-
-            } else {
+         catch (Exception e) {
+            
                 ApiResponseDto apiResponseDto = ApiResponseDto
                         .builder()
                         .status(true)
@@ -619,10 +586,36 @@ public class SettingController {
                                 .build())
                         .build();
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-            }
+            
 
         }
+    
 
+    }
+
+
+    @DeleteMapping(value = "key/{id}/delete")
+    public ResponseEntity<ApiResponseDto> deleteFaq(@PathVariable(name = "id") Long id) {
+        ApiResponseDto apiResponseDto;
+        try {
+            ApiKey apiKey = apiKeyRepository.findById(id).orElseThrow(()-> new Exception("No found"));
+
+            apiKeyRepository.delete(apiKey);
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content("Api Key supprimée")
+                    .build();
+            
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(e.getMessage())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        }
+        return ResponseEntity.ok(apiResponseDto);
     }
 
 

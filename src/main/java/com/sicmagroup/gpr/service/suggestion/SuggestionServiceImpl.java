@@ -53,6 +53,7 @@ public class SuggestionServiceImpl implements SuggestionService {
         return repository.findAll();
     }
 
+
     @Override
     public List<Suggestion> getAllByStatus(ClaimStatus status) {
         return repository.findByStatus(status);
@@ -197,6 +198,136 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         return suggestion;
     }
+   
+    
+    @Override
+    public Suggestion botSaveSuggestion(SuggestionAddRequest request,String botName) throws Exception {
+        SuggestionRequest suggestionRequest = request.getSuggestionRequest();
+        Suggestion suggestion = Suggestion
+                .builder()
+                .build();
+      
+
+
+
+        if (suggestionRequest.getId() != null) {
+            Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
+                    .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
+            if (!suggestion.getCode().startsWith("bot")) {
+                throw new Exception("Vous n'avez pas l'autorisation");
+            }
+            suggestion = oldSuggestion;
+        } else {
+            if (suggestionRequest.getCode() == null || !suggestionRequest.getCode().isEmpty()) {
+                throw new Exception("Donnez un identifiant unique à ce utilisateur pour pouvoir relier tous ces plaintes et suggestions à lui");
+            }else if(suggestionRequest.getCode().length()<10){
+                throw new Exception("Le taille de l'identifiant doit etre au moins de 10 carateres");
+            }
+             else {
+                String code ="bot-"+suggestion.getCode()+"-"+botName+"-"+UUID.randomUUID().toString().substring(0,10);
+                suggestion.setCode(code);
+            }
+        }
+
+        CollectionChannel collectionChannel;
+        if (suggestionRequest.getCollectionChannelId() != null) {
+            try {
+                collectionChannel = collectionChannelService.getById(suggestionRequest.getCollectionChannelId());
+                suggestion.setCanal(collectionChannel);
+            } catch (Exception e) {
+                throw new Exception("Collection channelle choosed not found");
+            }
+        }
+
+        ServicePoint servicePoint;
+        if (suggestionRequest.getServicePointId() != null) {
+            try {
+                servicePoint = servicePointServiceImpl.getById(suggestionRequest.getServicePointId());
+                suggestion.setServiceIndexe(servicePoint);
+            } catch (Exception e) {
+                // throw new Exception("Service Point choosed not found");
+            }
+        }
+
+        Product product;
+        if (suggestionRequest.getProductId() != null) {
+            try {
+                product = productServiceImpl.getById(suggestionRequest.getProductId());
+                suggestion.setProduit(product);
+            } catch (Exception e) {
+                // throw new Exception("Product choosed not found");
+            }
+        }
+
+        Language language;
+        if (suggestionRequest.getLanguageId() != null) {
+            try {
+                language = languageServiceImpl.getById(suggestionRequest.getLanguageId());
+                suggestion.setLangue(language);
+            } catch (Exception e) {
+                // throw new Exception("Objet choosed not found");
+            }
+        }
+        if (suggestionRequest.getClientFirstAndLastName() != null) {
+            suggestion.setClientFirstAndLastName(suggestionRequest.getClientFirstAndLastName());
+        }
+
+        if (suggestionRequest.getGender() != null && !suggestionRequest.getGender().equals("")) {
+            suggestion.setGender(Gender.valueOf(suggestionRequest.getGender()));
+        } else {
+            suggestion.setGender(Gender.NON_DEFINI);
+        }
+
+        if (suggestionRequest.getAddress() != null) {
+            suggestion.setAddress(suggestionRequest.getAddress());
+        }
+
+        if (suggestionRequest.getPhone() != null) {
+            suggestion.setTel(suggestionRequest.getPhone());
+        }
+
+        if (suggestionRequest.getCrew() != null) {
+            suggestion.setCrew(suggestionRequest.getCrew());
+        }
+
+        if (suggestionRequest.getFolderCode() != null) {
+            suggestion.setFolderCode(suggestionRequest.getFolderCode());
+        }
+
+        if (suggestionRequest.getContent() != null) {
+            suggestion.setContent(suggestionRequest.getContent());
+        }
+
+        // suggestion.setCollecteur(collector);
+
+        suggestion.setStatus(ClaimStatus.TEMP_SAVED);
+        suggestion.setCreatedAt(LocalDateTime.now());
+        if (suggestionRequest.getReceiptDateTime() != null && !suggestionRequest.getReceiptDateTime().isEmpty()) {
+            suggestion.setReceiptDateTime(Utils.convertStrToLocalDateTime(suggestionRequest.getReceiptDateTime()));
+        }
+        suggestion = repository.save(suggestion);
+
+        if (request.getFiles() != null && request.getFiles().length != 0) {
+            // System.out.println("test");
+            // System.out.println(claim.getCode());
+            List<Media> medias = mediaServiceImpl.store(request.getFiles(), suggestion);
+            suggestion.setUpdatedAt(LocalDateTime.now());
+            suggestion.setFiles(medias);
+            suggestion = repository.save(suggestion);
+        }
+        if (request.getAudios() != null && request.getAudios().length != 0) {
+            List<ClaimAudio> audios = claimAudioServiceImpl.store(request.getAudios(),suggestion);
+            suggestion.setUpdatedAt(LocalDateTime.now());
+            suggestion = repository.save(suggestion);
+            
+            // for (ClaimAudio audio : audios) {
+            // audio.setClaim(null);
+            // }
+            // claim.setAudios(audios);
+        }
+
+        return suggestion;
+    }
 
     @Override
     public Suggestion tempSaveSuggestion(SuggestionAddRequest request) {
@@ -251,7 +382,8 @@ public class SuggestionServiceImpl implements SuggestionService {
 
     @Override
     public List<Suggestion> getAllByCollectorAndStatus(User collector, ClaimStatus status) {
-        return repository.findByCollecteurAndStatus(collector, status);
+        // return repository.findByCollecteurAndStatus(collector, status);
+        return repository.findByCollecteurAndStatusOrCodeStartsWithAndStatus(collector, status,"bot-",status);
     }
 
     @Override
