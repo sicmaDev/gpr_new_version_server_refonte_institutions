@@ -59,7 +59,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/claim/treatClaim")
                                                 .hasAnyAuthority("H2", "H3", "H4")
                                                 .requestMatchers("/api/v1/claim/measureSatisfaction",
-                                                                "/api/v1/claim/classedClaim", "/api/v1/claim/litigate",
+                                                                "/api/v1/claim/classedClaim","api/v1/claim/PARTIAL_SATISFIED", "/api/v1/claim/litigate",
                                                                 "/api/v1/claim/listAssuranceSatisfaction")
                                                 .hasAnyAuthority("H5", "PILOTE")
                                                 .requestMatchers("/api/v1/chat/**").hasAnyAuthority("H2", "H3", "H4")
