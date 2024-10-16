@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -1219,9 +1220,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
         List<Claim> allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
 
-        dashboard.put("tauxSatisfaction",
-               Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
+        // dashboard.put("tauxSatisfaction",
+        //        Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
         
+         // Formater le résultat avec deux chiffres après la virgule
+        DecimalFormat df = new DecimalFormat("#.00");
+        String tauxSatisfactionFormate = df.format(Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
+
+        // Ajout au dashboard
+        dashboard.put("tauxSatisfaction", tauxSatisfactionFormate);
+
         
                 List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
         retardClaims.addAll(alertClaimAndDenun(ClaimType.DENUNCIACION));

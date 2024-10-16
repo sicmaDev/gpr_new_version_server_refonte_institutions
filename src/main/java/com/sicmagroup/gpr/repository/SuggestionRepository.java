@@ -28,7 +28,7 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, S
     List<Suggestion> findByStatusIn(List<ClaimStatus> statuses);
 
     List<Suggestion> findByStatusNot(ClaimStatus status);
-    List<Suggestion> findByServiceIndexeIn(List<ServicePoint> servicePoint);
+    List<Suggestion> findByServiceIndexeInAndStatusNot(List<ServicePoint> servicePoint, ClaimStatus status);
     List<Suggestion> findByStatusNotAndReceiptDateTimeBetween(ClaimStatus status, LocalDateTime start, LocalDateTime end);
 
     Optional<Suggestion> findByCode(String code);

@@ -42,9 +42,9 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
 
         List<Claim> findByType(ClaimType type);
 
-        List<Claim> findByTypeAndServicePointIn(ClaimType type,List<ServicePoint> servicePoints);
+        List<Claim> findByTypeAndServicePointInAndStatusNot(ClaimType type,List<ServicePoint> servicePoints, ClaimStatus status);
         
-        List<Claim> findByServicePointIn(List<ServicePoint> servicePoints);
+        List<Claim> findByServicePointInAndStatusNot(List<ServicePoint> servicePoints, ClaimStatus status);
 
         List<Claim> findByTypeAndStatus(ClaimType type, ClaimStatus status);
 
