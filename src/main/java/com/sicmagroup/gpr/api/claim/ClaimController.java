@@ -1080,7 +1080,7 @@ public class ClaimController {
 
 
     
-    @PutMapping(value = "/classedClaim")
+    @PutMapping(value = "/PartialSatisfait")
     public ResponseEntity<ApiResponseDto> partialSatisfactionClaim(
             @RequestBody ClassedClaimRequest request) {
         ApiResponseDto apiResponseDto = new ApiResponseDto();
