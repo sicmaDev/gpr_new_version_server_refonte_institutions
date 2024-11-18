@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -68,21 +66,10 @@ import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
 
 @Service
 @RequiredArgsConstructor
@@ -104,13 +91,6 @@ public class ClaimServiceImpl implements ClaimService {
     private final ChatRepository chatRepository;
     private final SettingServiceImpl settingServiceImpl;
     private final ServicePointRepository spRepository;
-
-    @Autowired
-    private JobLauncher jobLauncher;
-
-    @Autowired
-    private Job notificationJob;
-
 
     @Override
     public List<Claim> getAll(ClaimType type) {
