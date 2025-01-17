@@ -2,6 +2,8 @@ package com.sicmagroup.gpr.domain.dto;
 
 import java.time.LocalDateTime;
 
+import com.sicmagroup.gpr.domain.model.ServicePoint;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,4 +23,5 @@ public class ServicePointDto {
     private boolean isPrincipalAgence;
     private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
+    private Long direction_id;
 }

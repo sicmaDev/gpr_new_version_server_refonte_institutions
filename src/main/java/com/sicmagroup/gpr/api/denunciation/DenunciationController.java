@@ -84,6 +84,7 @@ import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
+import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -95,6 +96,7 @@ import lombok.RequiredArgsConstructor;
 public class DenunciationController {
     private final ClaimServiceImpl service;
     private final ModelMapper modelMapper;
+    private final ServicePointServiceImpl spServiceImpl;
     private final ExternalRecourseServiceImpl externalRecourseServiceImpl;
     private final ClaimAudioServiceImpl claimAudioServiceImpl;
     private final AuthenticationServiceImpl authService;
@@ -164,7 +166,28 @@ public class DenunciationController {
         allClaims = service.getAllNotTempSave(ClaimType.DENUNCIACION);
 
         List<Claim> tmpClaims = new ArrayList<>();
-        if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        if (connectedUser.isRa()) {
+            // Récupérer le point de service de l'utilisateur
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            
+            // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
+            List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            
+            if (!relatedServicePoints.isEmpty()) {
+                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
+                relatedServicePoints.add(servicePoint);
+        
+                // Filtrer les réclamations pour tous ces points de service
+                allClaims = allClaims.stream()
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .collect(Collectors.toList());
+            } else {
+                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
+                allClaims = allClaims.stream()
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .collect(Collectors.toList());
+            }
+        }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 && !connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.DE)) {
@@ -231,7 +254,38 @@ public class DenunciationController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
 
-        if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        if (connectedUser.isRa()) {
+
+            // Filtrer les réclamations appartenant au même point de service que l'utilisateur
+            allClaims = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.SAVED,
+            ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
+
+            
+            List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION,
+                    Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+                            ClaimStatus.CLASSED));
+            allClaims.addAll(moreClaim);
+            // Récupérer le point de service de l'utilisateur
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            
+            // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
+            List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            
+            if (!relatedServicePoints.isEmpty()) {
+                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
+                relatedServicePoints.add(servicePoint);
+        
+                // Filtrer les réclamations pour tous ces points de service
+                allClaims = allClaims.stream()
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .collect(Collectors.toList());
+            } else {
+                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
+                allClaims = allClaims.stream()
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .collect(Collectors.toList());
+            }
+        }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 || connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.DE))) {
@@ -239,11 +293,19 @@ public class DenunciationController {
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.SAVED,
                     ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
+            if (connectedUser.getAdditionalrole().equals(Role.DE)
+                    || connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION,
+                        Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+                                ClaimStatus.CLASSED));
+                allClaims.addAll(moreClaim);
+            }
+
             if (connectedUser.getAdditionalrole().equals(Role.MEMBRE_CA)
                     || connectedUser.getAdditionalrole().equals(Role.DE)) {
                 allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims);
             }
-        } else {
+        }else {
             // voir les réclamations qu'on à affecter à l'utilisateur et
             allClaims = service.getAllByTypeAndCollectorAndStatusOrTreatmentAffectedToAndStatusIn(
                     ClaimType.DENUNCIACION, ClaimStatus.SAVED, connectedUser,
@@ -938,17 +1000,17 @@ public class DenunciationController {
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
-                if (claim.getCollector() != connectedUser) {
-                    apiResponseDto = ApiResponseDto
-                            .builder()
-                            .status(false)
-                            .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas le collecteur de cette réclamation.")
-                                    .title("Opération invalide")
-                                    .build())
-                            .build();
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                }
+                // if (claim.getCollector() != connectedUser) {
+                //     apiResponseDto = ApiResponseDto
+                //             .builder()
+                //             .status(false)
+                //             .content(ErrorResponse.builder()
+                //                     .message("Vous n'êtes pas le collecteur de cette réclamation.")
+                //                     .title("Opération invalide")
+                //                     .build())
+                //             .build();
+                //     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                // }
                 try {
                     claim = service.transmitClaim(claim);
                     apiResponseDto = ApiResponseDto

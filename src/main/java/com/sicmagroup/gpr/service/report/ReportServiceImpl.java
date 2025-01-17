@@ -282,10 +282,10 @@ public class ReportServiceImpl implements ReportService {
             List<Suggestion> sugges = new ArrayList<>();
             List<Claim> claims = new ArrayList<>();
             if (RSDSelect.equals(ClaimType.SUGGESTION)) {
-                sugges = suggestionRepository.findByServiceIndexeIn(sp);
+                sugges = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
             } else {
 
-                claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+                claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
             }
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
@@ -378,7 +378,7 @@ public class ReportServiceImpl implements ReportService {
             colorList.put(objet.getLibelle(), Utils.generateRandomColor(1).get(0).toBgString());
         }
         for (ClaimType RSDSelect : RDSList) {
-            List<Claim> claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+            List<Claim> claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
             for (ServicePoint agence : sp) {
@@ -448,7 +448,7 @@ public class ReportServiceImpl implements ReportService {
                 Arrays.asList(GravityLevel.GRAVE, GravityLevel.MINEUR, GravityLevel.MOYEN));
 
         for (ClaimType RSDSelect : RDSList) {
-            List<Claim> claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+            List<Claim> claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
             for (ServicePoint agence : sp) {
@@ -522,11 +522,11 @@ public class ReportServiceImpl implements ReportService {
             List<Suggestion> suggestions = new ArrayList<>();
             List<Claim> claims = new ArrayList<>();
             if (RSDSelect.equals(ClaimType.SUGGESTION)) {
-                suggestions = suggestionRepository.findByServiceIndexeIn(sp);
+                suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
 
             } else {
 
-                claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
+                claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
             }
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
@@ -613,8 +613,8 @@ public class ReportServiceImpl implements ReportService {
                 Arrays.asList(Gender.HOMME, Gender.FEMME, Gender.NON_DEFINI));
 
         for (ClaimType RSDSelect : RDSList) {
-            List<Claim> claims = claimRepository.findByTypeAndServicePointIn(RSDSelect, sp);
-            List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeIn(sp);
+            List<Claim> claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
+            List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
             for (ServicePoint agence : sp) {
@@ -696,8 +696,8 @@ public class ReportServiceImpl implements ReportService {
             channels = clRepository.findAll();
         }
 
-        List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeIn(sp);
-        List<Claim> claims = claimRepository.findByServicePointIn(sp);
+        List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
+        List<Claim> claims = claimRepository.findByServicePointInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
 
         HashMap<String, String> colorList = new HashMap<>();
         for (CollectionChannel channel : channels) {
@@ -774,7 +774,7 @@ public class ReportServiceImpl implements ReportService {
             objets = oRepository.findAll();
         }
 
-        List<Claim> claims = claimRepository.findByServicePointIn(sp);
+        List<Claim> claims = claimRepository.findByServicePointInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
 
         HashMap<String, String> colorList = new HashMap<>();
         for (Objet objet : objets) {

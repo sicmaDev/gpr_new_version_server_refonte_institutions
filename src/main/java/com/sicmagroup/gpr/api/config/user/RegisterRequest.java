@@ -22,5 +22,6 @@ public class RegisterRequest {
     private String password;
     private Long servicePointId;
     private Long posteId;
+    private boolean ra;
 
 }

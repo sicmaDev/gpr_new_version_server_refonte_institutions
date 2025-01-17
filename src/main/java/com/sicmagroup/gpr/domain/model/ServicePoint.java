@@ -7,7 +7,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -53,6 +55,12 @@ public class ServicePoint {
 	private boolean isPrincipalAgence;
 	@Column(columnDefinition = "boolean default false")
 	private boolean isDeleted;
+
+	// Nouvelle relation direction_id qui fait référence à un autre ServicePoint
+    // @ManyToOne
+    @JoinColumn(name = "direction_id")
+    private Long direction_id;
+
 
 	@OneToMany(mappedBy = "servicePoint")
 	private List<User> users;

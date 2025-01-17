@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -177,6 +178,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .additionalrole(Role.valueOf(request.getAdditionalRole()))
                         .tel(request.getTel())
                         .poste(poste)
+                        .isRa(request.isRa())
                         .servicePoint(servicePoint)
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())
@@ -207,6 +209,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .email(user.getEmail())
                         .code(user.getCode())
                         .additionalRole(user.getAdditionalrole())
+                        .isRa(user.isRa())
                         .posteDto(convertToResponse(poste))
                         .servicePointDto(convertToResponse(servicePoint))
                         .build();
@@ -960,6 +963,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .additionalrole(Role.valueOf(userDto.getAdditionalRole()))
                 .tel(userDto.getTel())
                 .poste(poste)
+                .isRa(userDto.isRa())
                 .servicePoint(servicePoint)
                 .build();
         if (userDto.getPassword() != null && !userDto.getPassword().isEmpty()) {
@@ -1206,9 +1210,28 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             }
         }
         // taux satisfaction
-        dashboard.put("tauxSatisfaction",
-                Utils.parseDouble(Utils.percentCalculator(Long.valueOf(totalSatisfied), Long.valueOf(claims.size()))));
-        List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
+        List<ClaimStatus> status = Arrays.asList(ClaimStatus.SATISFIED);
+       
+        List<Claim> claimsTreat = new ArrayList<>();
+        claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
+    
+
+        List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
+        List<Claim> allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+
+        // dashboard.put("tauxSatisfaction",
+        //        Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
+        
+         // Formater le résultat avec deux chiffres après la virgule
+        DecimalFormat df = new DecimalFormat("#.00");
+        String tauxSatisfactionFormate = df.format(Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
+
+        // Ajout au dashboard
+        dashboard.put("tauxSatisfaction", tauxSatisfactionFormate);
+
+        
+                List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
         retardClaims.addAll(alertClaimAndDenun(ClaimType.DENUNCIACION));
         dashboard.put("claimDenunRetard", retardClaims);
         dashboard.put("TotalclaimDenunRetard", retardClaims.size());
@@ -1287,5 +1310,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
         System.err.println(receivers);
         return receivers;
+    }
+
+    public List<User> getUsersByServicePoint(ServicePoint servicePoint) {
+        return userRepository.findByServicePoint(servicePoint);
+    }
+
+    public User findRaByServicePoint(Long servicePoint) {
+        return userRepository.findRaByServicePointId(servicePoint)
+                .orElse(null);  // Retourne null si aucun RA n'est trouvé
     }
 }

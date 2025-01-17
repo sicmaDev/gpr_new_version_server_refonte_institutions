@@ -25,6 +25,8 @@ public class ServicePointServiceImpl implements ServicePointService {
         return repository.findAll();
     }
 
+    
+
     @Override
     public boolean isActif(Long id) {
         try {
@@ -50,6 +52,7 @@ public class ServicePointServiceImpl implements ServicePointService {
     @Override
     public ServicePoint saveServicePoint(ServicePoint servicePoint) {
         servicePoint.setUuid(generateUuid());
+        // servicePoint sp = repository.findOne (servicePoint.getDirection_id());
         return repository.save(servicePoint);
     }
 
@@ -102,5 +105,11 @@ public class ServicePointServiceImpl implements ServicePointService {
 
         return code;
     }
+
+    public List<ServicePoint> getByDirectionId(Long servicePointId) {
+        // Récupérer les points de service dont le direction_id correspond à servicePointId
+        return repository.findByDirectionId(servicePointId);
+    }
+    
 
 }

@@ -10,6 +10,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -45,6 +47,7 @@ import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ExistingSolutionRepository;
+import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
@@ -61,6 +64,10 @@ import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
+import com.sicmagroup.gpr.repository.ServicePointRepository;
+
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import lombok.RequiredArgsConstructor;
 
@@ -83,6 +90,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final ExistingSolutionRepository existingSolutionRepository;
     private final ChatRepository chatRepository;
     private final SettingServiceImpl settingServiceImpl;
+    private final ServicePointRepository spRepository;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -258,44 +266,53 @@ public class ClaimServiceImpl implements ClaimService {
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
-        try {
-            Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
-                    " ", settingServiceImpl);
-        } catch (Exception e) {
-            if (e != null) {
-                Log log2 = Log
-                        .builder()
-                        .libelle("Echec mail notification")
-                        .content(e.getMessage())
-                        .createdAt(LocalDateTime.now())
-                        .type(LogType.ERROR)
-                        .userId(0L)
-                        .userIpAddress(claimPart.getRemoteAddress())
-                        .target(LogTarget.APP)
-                        .build();
+         
+            // Lancer le Job de notification
+            // JobParameters jobParameters = new JobParametersBuilder()
+            //         .addParameter("usersToContact", usersToContact)
+            //         .addParameter("message", message)
+            //         .toJobParameters();
 
-                logServiceImpl.saveLog(log2);
-            }
+            // jobLauncher.run(notificationJob, jobParameters); // Lancer le Job
 
-        }
-        try {
-            Utils.sendSms(usersToContact,
-                    "Nouvelle réclamation enregistrée de niveau de gravité "
-                            + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
-        } catch (Exception e) {
-            Log log2 = Log
-                    .builder()
-                    .libelle("Echec sms notification")
-                    .content(e.getMessage())
-                    .createdAt(LocalDateTime.now())
-                    .type(LogType.ERROR)
-                    .userId(0L)
-                    .userIpAddress(claimPart.getRemoteAddress())
-                    .target(LogTarget.APP)
-                    .build();
+                // try {
+        //     Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
+        //             " ", settingServiceImpl);
+        // } catch (Exception e) {
+        //     if (e != null) {
+        //         Log log2 = Log
+        //                 .builder()
+        //                 .libelle("Echec mail notification")
+        //                 .content(e.getMessage())
+        //                 .createdAt(LocalDateTime.now())
+        //                 .type(LogType.ERROR)
+        //                 .userId(0L)
+        //                 .userIpAddress(claimPart.getRemoteAddress())
+        //                 .target(LogTarget.APP)
+        //                 .build();
 
-            logServiceImpl.saveLog(log2);
-        }
+        //         logServiceImpl.saveLog(log2);
+        //     }
+
+        // }
+        // try {
+        //     Utils.sendSms(usersToContact,
+        //             "Nouvelle réclamation enregistrée de niveau de gravité "
+        //                     + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
+        // } catch (Exception e) {
+        //     Log log2 = Log
+        //             .builder()
+        //             .libelle("Echec sms notification")
+        //             .content(e.getMessage())
+        //             .createdAt(LocalDateTime.now())
+        //             .type(LogType.ERROR)
+        //             .userId(0L)
+        //             .userIpAddress(claimPart.getRemoteAddress())
+        //             .target(LogTarget.APP)
+        //             .build();
+
+        //     logServiceImpl.saveLog(log2);
+        // }
 
         return claim;
 
@@ -1728,18 +1745,94 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public Claim transmitClaim(Claim claim) throws Exception {
-
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User connectedUser = User.builder().build();
+        connectedUser = authServiceImpl.getByEmail(collectorDetails.getUsername());  // Assure-toi que ce service retourne l'utilisateur complet
+         // Récupérer le point de service de l'utilisateur connecté
+          
+         ServicePoint servicePoint = connectedUser.getServicePoint();
         if (claim.getStatus().equals(ClaimStatus.SAVED)) {
             claim.setTransmitted(true);
             claim.setUpdatedAt(LocalDateTime.now());
-            claim = repository.save(claim);
-            // TODO send mail
+            //a qui transmettre
+        
+            User transmittedTo = null;
             List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-            if (!pilote.isEmpty()) {
+
+            // Étape 1 : Vérifier si l'utilisateur est un RA
+            if (connectedUser.isRa()) {
+
+                // Étape 2 : Vérifier si direction_id du point de service est null
+                if (servicePoint.getDirection_id() == null) {
+                    // Si direction_id est null, trouver le premier PILOTE dans le point de service actuel
+                    
+                    if (transmittedTo == null) {
+                        transmittedTo = pilote.get(0);
+                    
+                        // Si aucun PILOTE n'a été trouvé, lever une exception
+                        if (transmittedTo == null) {
+                            throw new Exception("Aucun RA ni PILOTE trouvé pour le point de service parent.");
+                        }
+                    }
+                } else {
+                    // Étape 3 : Si direction_id n'est pas null, trouver le point de service correspondant à direction_id
+                    ServicePoint parentServicePoint = spRepository.findById(servicePoint.getDirection_id())
+                            .orElseThrow(() -> new Exception("Point de service parent non trouvé."));
+
+                    // Étape 4 : Trouver les utilisateurs du point de service parent
+                    transmittedTo = authServiceImpl.findRaByServicePoint(parentServicePoint.getId());
+          
+
+                    // Étape 6 : Si aucun RA n'a été trouvé, chercher le PILOTE dans ce point de service
+                    if (transmittedTo == null) {
+                        transmittedTo = pilote.get(0);
+                    
+                        // Si aucun PILOTE n'a été trouvé, lever une exception
+                        if (transmittedTo == null) {
+                            throw new Exception("Aucun RA ni PILOTE trouvé pour le point de service parent.");
+                        }
+                    }
+                }
+            } else {
+               
+              // Étape 1 : Vérifier s'il existe un RA dans le point de service
+          
+                transmittedTo = authServiceImpl.findRaByServicePoint(servicePoint.getId());
+          
+              
+                // Étape 3 : Si aucun RA n'a été trouvé, chercher le PILOTE 
+                if (transmittedTo == null) {
+                    transmittedTo = pilote.get(0);
+                
+                    // Si aucun PILOTE n'a été trouvé, lever une exception
+                    if (transmittedTo == null) {
+                        throw new Exception("Aucun RA ni PILOTE trouvé pour le point de service parent.");
+                    }
+                }
+            }
+
+            // Transmettre la réclamation à l'utilisateur trouvé
+            claim.setTransmittedTo(transmittedTo);
+
+            // Sauvegarder la réclamation mise à jour
+            claim = repository.save(claim);
+
+            // TODO send mail
+            // Initialisation de la liste
+            List<User> destis = new ArrayList<>();
+
+            // Ajouter transmittedTo à la liste destis
+            if (transmittedTo != null) {
+                destis.add(transmittedTo);
+            } else {
+                throw new Exception("Le destinataire (transmittedTo) est null, impossible de l'ajouter à la liste.");
+            }
+
+            // if (!pilote.isEmpty()) {
                 try {
                     Double apercuContent = claim.getContent().length() * 0.5;
                     String message = "" +
-                            "Bonjour " + pilote.get(0).getFirstandlastname() + ",\n\n" +
+                            "Bonjour " + transmittedTo.getFirstandlastname() + ",\n\n" +
                             "Nous vous informons qu'un utilisateur a transmis la gestion d'une réclamation/dénonciation à votre attention, car il est dans l'incapacité de la traiter.\n"
                             +
                             "* Code de la Réclamation : " + claim.getCode() + "\n" +
@@ -1749,10 +1842,10 @@ public class ClaimServiceImpl implements ClaimService {
                             + "\n" +
                             "Veuillez prendre les mesures nécessaires pour permettre le traitement de cette réclamation dans les meilleurs délais.\n\n"
                             +
-                            "Cordialement,\n" +
-                            "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
-                            "Poste : " + claim.getCollector().getPoste().getLibelle();
-                    Utils.sendmail(pilote, "TRANSMISSION DE TRAITEMENT", message, null, "", settingServiceImpl);
+                            "Cordialement,\n" ;
+                            // "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
+                            // "Poste : " + claim.getCollector().getPoste().getLibelle();
+                    Utils.sendmail(destis, "TRANSMISSION DE TRAITEMENT", message, null, "", settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -1760,14 +1853,14 @@ public class ClaimServiceImpl implements ClaimService {
                 try {
                     String message = "La réclamation " + claim.getCode()
                             + " vous a été transmis pour prise en charge. Merci de la prendre en charge.";
-                    Utils.sendSms(pilote, message, settingServiceImpl);
+                    Utils.sendSms(destis, message, settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 return claim;
-            } else {
-                throw new Exception("Plateforme mal configurée. Pilote introuvable");
-            }
+            // } else {
+            //     throw new Exception("Plateforme mal configurée. Pilote introuvable");
+            // }
 
         } else {
             throw new Exception("Le statut de la réclamation est invalide");
