@@ -66,6 +66,7 @@ public class BotKeyServiceImpl implements BotKeyService {
     private final ServicePointRepository servicePointRepository;
 
     private final PosteRepository posteRepository;
+    private final ApiKeyRepository apiKeyRepository;
     private final ProductRepository productRepository;
     private final ObjetRepository objetRepository;
     private final LanguageRepository languageRepository;
@@ -78,6 +79,7 @@ public class BotKeyServiceImpl implements BotKeyService {
     private final ClaimAudioServiceImpl claimAudioServiceImpl;
     private final MediaServiceImpl mediaServiceImpl;
     private final LogServiceImpl logServiceImpl;
+    private final PasswordEncoder passwordEncoder;
 
     private final ClaimController claimController;
 
@@ -90,17 +92,17 @@ public class BotKeyServiceImpl implements BotKeyService {
         String secret = request.getHeader("API_SECRET");
         if (key == null || secret == null) {
             return false;
-        } else {
-            return true;
         }
-        // List<ApiKey> apiKeys = apiKeyRepository.findByCle(key);
-        // Boolean result = false;
-        // if(apiKeys.size() == 1){
-        // ApiKey apiKey = apiKeys.get(0);
-        // return passwordEncoder.matches(apiKey.getSecret(), secret);
-        // }
+         
+        Optional<ApiKey> optApiKey = apiKeyRepository.findByCle(key);
+        if(optApiKey.isPresent()){
+           ApiKey apiKey = optApiKey.get();
+           return passwordEncoder.matches(secret,apiKey.getSecret());
+        }else{
 
-        // return result;
+            return false;
+        }
+       
     }
 
     @Override

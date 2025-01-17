@@ -30,6 +30,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 
 import org.apache.tomcat.util.bcel.classfile.Constant;
@@ -539,35 +540,59 @@ public class SettingController {
 
     }
 
+
+    
+
+    @GetMapping(value = "/key")
+    public ResponseEntity<ApiResponseDto> apiKeys() {
+
+        List<ApiKey> apiKeys = apiKeyRepository.findAll();
+        try {
+
+           
+
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(apiKeys)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }
+
+        catch (Exception e) {
+
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+
+        }
+
+    }
     @PostMapping(value = "/key/generate")
     public ResponseEntity<ApiResponseDto> generateApiKey(@RequestBody ApiKeyRequest request) {
-     
 
-        
-            ApiKey apiKey = ApiKey.builder().build();
+        ApiKey apiKey = ApiKey.builder().build();
+        try {
 
+            String api_key = generateRandomString(6);
+            String api_secret = generateRandomString(6);
 
-          
-
-            try {
-              
-                String api_key = generateRandomString(6);
-                String api_secret = generateRandomString(6);
-                
-            
-    
             apiKey.setCle(api_key);
             apiKey.setName(request.getLibelle());
             apiKey.setDescription(request.getDescription());
-            apiKey.setSecret(passwordEncoder.encode(api_key));
+            apiKey.setSecret(passwordEncoder.encode(api_secret));
 
             apiKeyRepository.save(apiKey);
 
-
             HashMap<String, String> data = new HashMap<>();
-                data.put("api_key", api_key);
-                data.put("api_secret",api_secret );
-            
+            data.put("api_key", api_key);
+            data.put("api_secret", api_secret);
+
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
@@ -577,28 +602,25 @@ public class SettingController {
 
         }
 
-         catch (Exception e) {
-            
-                ApiResponseDto apiResponseDto = ApiResponseDto
-                        .builder()
-                        .status(true)
-                        .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
-                                .build())
-                        .build();
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-            
+        catch (Exception e) {
+
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage())
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
 
         }
-    
 
     }
 
-
     @DeleteMapping(value = "key/{id}/delete")
-    public ResponseEntity<ApiResponseDto> deleteFaq(@PathVariable(name = "id") Long id) {
+    public ResponseEntity<ApiResponseDto> deleteApiKey(@PathVariable(name = "id") Long id) {
         ApiResponseDto apiResponseDto;
         try {
-            ApiKey apiKey = apiKeyRepository.findById(id).orElseThrow(()-> new Exception("No found"));
+            ApiKey apiKey = apiKeyRepository.findById(id).orElseThrow(() -> new Exception("No found"));
 
             apiKeyRepository.delete(apiKey);
             apiResponseDto = ApiResponseDto
@@ -606,7 +628,7 @@ public class SettingController {
                     .status(true)
                     .content("Api Key supprimée")
                     .build();
-            
+
         } catch (Exception e) {
             apiResponseDto = ApiResponseDto
                     .builder()
@@ -618,6 +640,37 @@ public class SettingController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
+    @PutMapping(value = "key/generate/{id}")
+    public ResponseEntity<ApiResponseDto> regenerateApiKey(@PathVariable(name = "id") Long id) {
+         
+        try {
+            ApiKey apiKey = apiKeyRepository.findById(id).orElseThrow(() -> new Exception("No found"));
+            
+            String api_secret = generateRandomString(6);
+            apiKey.setSecret(passwordEncoder.encode(api_secret));
+
+            apiKeyRepository.save(apiKey);
+
+            HashMap<String, String> data = new HashMap<>();
+            data.put("api_key", apiKey.getCle());
+            data.put("api_secret", api_secret);
+
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(data)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        } catch (Exception e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(e.getMessage())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        }
+    }
 
     private static String generateRandomString(int count) {
         String SALTCHARS = "ABCDEFGHIJKLMNOPQRST_abcdefghijkklmnopqrstuv:@uUVWXYZ1234567890";

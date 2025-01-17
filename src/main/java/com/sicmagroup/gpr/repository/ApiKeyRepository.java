@@ -9,5 +9,5 @@ import java.util.List;
 
 
 public interface ApiKeyRepository extends JpaRepository<ApiKey, Long> {
-   List<ApiKey> findByCle(String key);
+   Optional<ApiKey> findByCle(String key);
 }
