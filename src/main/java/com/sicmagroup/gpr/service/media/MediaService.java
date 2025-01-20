@@ -20,6 +20,9 @@ public interface MediaService {
 
     List<Media> storeFromString(List<String> files, Claim claim);
 
+
+    Media storeFileWhatsapp(String fileContent, String mimeType);
+
     Stream<Path> loadAll(Long claimId);
 
     Path load(Long mediaId);

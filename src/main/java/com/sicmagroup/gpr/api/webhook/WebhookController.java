@@ -35,11 +35,13 @@ import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
 import com.sicmagroup.gpr.domain.model.Inbox;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
+import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.repository.InboxMessageRepository;
 import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.botkey.BotKeyServiceImpl;
+import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -55,6 +57,7 @@ public class WebhookController {
     private final ClaimController claimController;
     private final InboxMessageRepository inboxMessageRepository;
     private final InboxRepository inboxRepository;
+     private final MediaServiceImpl mediaServiceImpl;
 
     @PostMapping("/save")
     public ResponseEntity<ApiResponseDto> saveMessage(HttpServletRequest request,
@@ -69,14 +72,21 @@ public class WebhookController {
             //     throw new Exception("Vous n'etes pas authentifier");
             // }
 
+           
             if (data != null && !data.get("from").equals("status@broadcast")) {
                 String event = (String) data.get("event");
                 boolean isGroupMsg = (boolean) data.get("isGroupMsg");
                 InboxMessage messageArray = null;
-
+                System.out.println(">>>>>");
+                System.out.println((String) data.get("event"));
+                System.out.println(">>>>>");
+              
                 if ("onmessage".equals(event) && !isGroupMsg) {
                     messageArray = formatData(data, (String) data.get("body"), (String) data.get("sender.pushname"));
-                } else if ("onack".equals(event)) {
+                } else if ("onselfmessage".equals(event)) {
+                 
+                    System.out.println((String) data.get("notifyName"));
+                    System.out.println(">>>>>");
                     messageArray = formatData(data, (String) data.get("body"), (String) data.get("notifyName"));
                 }
 
@@ -175,7 +185,9 @@ public class WebhookController {
     }
 
     private String saveBase64File(String content, String type) {
-        return "file_path_or_url"; // Remplacez par le chemin réel ou l'URL du fichier
+       Media media =  mediaServiceImpl.storeFileWhatsapp(content, type);
+
+        return media.getPath(); // Remplacez par le chemin réel ou l'URL du fichier
     }
 
 }
