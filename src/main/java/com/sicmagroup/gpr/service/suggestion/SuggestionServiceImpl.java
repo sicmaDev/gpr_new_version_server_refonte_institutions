@@ -70,7 +70,6 @@ public class SuggestionServiceImpl implements SuggestionService {
         User collector;
         Suggestion suggestion = Suggestion
                 .builder()
-
                 .build();
         try {
             collector = authServiceImpl.getById(suggestionRequest.getCollectorId());
@@ -88,6 +87,8 @@ public class SuggestionServiceImpl implements SuggestionService {
             } else {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
                 suggestion.setCode(code);
+                String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
+                suggestion.setCodeClient(codeClient);
             }
         }
 
@@ -390,9 +391,9 @@ public class SuggestionServiceImpl implements SuggestionService {
     public void saveSuggestionOffline(SuggestionAddRequest request, ClaimStatus status) throws Exception {
         SuggestionRequest suggestionRequest = request.getSuggestionRequest();
         User collector;
+     
         Suggestion suggestion = Suggestion
                 .builder()
-
                 .build();
         try {
             collector = authServiceImpl.getById(suggestionRequest.getCollectorId());
@@ -411,6 +412,8 @@ public class SuggestionServiceImpl implements SuggestionService {
             } else {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
                 suggestion.setCode(code);
+                String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
+                suggestion.setCodeClient(codeClient);
             }
         }
 

@@ -47,6 +47,8 @@ public class Claim {
 	private String clientFirstAndLastName;
     @Column(unique = true)
 	private String code;
+    @Column(nullable = true)
+    private String codeClient;
     @Enumerated(EnumType.STRING)
 	private Gender gender;
     @Enumerated(EnumType.STRING)
@@ -56,6 +58,7 @@ public class Claim {
 	private String crew;
 	private String folderCode;
     private boolean isInChatSession;
+
     @ManyToOne
     @JoinColumn(name = "collection_channel_id")
     private CollectionChannel collectionChannel;

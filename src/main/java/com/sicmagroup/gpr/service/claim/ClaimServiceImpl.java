@@ -122,6 +122,8 @@ public class ClaimServiceImpl implements ClaimService {
 
         // }
 
+        String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+
         Claim claim = Claim
                 .builder()
                 .clientFirstAndLastName(claimToSave.getClientFirstAndLastName())
@@ -133,6 +135,7 @@ public class ClaimServiceImpl implements ClaimService {
                 .folderCode(claimToSave.getFolderCode())
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
+                .codeClient(codeClient)
                 .createdAt(LocalDateTime.now())
                 .receiptDateTime(Utils.convertStrToLocalDateTime(claimToSave.getReceiptDateTime()))
                 .build();
@@ -516,6 +519,7 @@ public class ClaimServiceImpl implements ClaimService {
         }
         String code = start + UUID.randomUUID().toString().substring(0, 5) + "-" + servicePointIndexeCode + "-"
                 + collectorCode;
+        
 
         while (repository.findByCode(code).isPresent()) {
             code = start + UUID.randomUUID().toString().substring(0, 5) + "-" + servicePointIndexeCode + "-"
@@ -1040,11 +1044,12 @@ public class ClaimServiceImpl implements ClaimService {
 
         // }
 
+        String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+
         Claim claim = Claim
                 .builder()
-
                 .type(type)
-
+                .codeClient(codeClient)
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -1245,6 +1250,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         // }
 
+        String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
         Claim claim = Claim
                 .builder()
                 .clientFirstAndLastName(claimToSave.getClientFirstAndLastName())
@@ -1255,6 +1261,7 @@ public class ClaimServiceImpl implements ClaimService {
                 .crew(claimToSave.getCrew())
                 .folderCode(claimToSave.getFolderCode())
                 .content(claimToSave.getContent())
+                .codeClient(codeClient)
                 .collector(collector)
                 .status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -1535,11 +1542,12 @@ public class ClaimServiceImpl implements ClaimService {
             throw new Exception("Collector " + claimToSave.getCollectorId() + " of the denun not found");
         }
 
+        String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
         Claim claim = Claim
                 .builder()
 
                 .type(type)
-
+                .codeClient(codeClient)
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())

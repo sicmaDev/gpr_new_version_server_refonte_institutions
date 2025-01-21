@@ -37,7 +37,9 @@ public class Suggestion {
 	private String clientFirstAndLastName;
     @Column(unique = true)
 	private String code;
-     @Enumerated(EnumType.STRING)
+    @Column(nullable = true)
+    private String codeClient;
+    @Enumerated(EnumType.STRING)
 	private Gender gender;
     private String address;
 	private String tel;

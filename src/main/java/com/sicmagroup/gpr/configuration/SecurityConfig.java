@@ -103,7 +103,7 @@ public class SecurityConfig {
         CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
                 // TODO spécifier l'URL du serveur prod
-                config.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:3001", "http://192.168.100.5:81", "http://192.168.100.5",
+                config.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8000", "http://192.168.100.174", "http://192.168.100.5",
                 "http://localhost:9195", "http://localhost:8080", "http://196.168.30.157:81", "https://196.168.30.157", "http://196.168.30.157", "https://196.168.30.157:81", "https://196.168.30.157:443", "https://196.168.30.157:444",
                  "http://localhost:81", "https://gpsassilassime.sicmagroup.com", "http://192.168.100.51:21465"));
                 // config.setAllowedOrigins(Arrays.asList("https://gpr-sicma:9001"));

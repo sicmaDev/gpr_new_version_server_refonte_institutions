@@ -197,15 +197,17 @@ public class BotKeyServiceImpl implements BotKeyService {
             }
             suggestion = oldSuggestion;
         } else {
-            if (suggestionRequest.getCode() == null || suggestionRequest.getCode().isEmpty()) {
-                throw new Exception("Donnez un identifiant unique à ce utilisateur pour pouvoir relier tous ces plaintes et suggestions à lui");
-            }else if(suggestionRequest.getCode().trim().length()<10){
-                throw new Exception("Le taille de l'identifiant doit etre au moins de 10 carateres");
-            }
-             else {
-                String code ="bot-"+suggestionRequest.getCode().trim()+"-"+botName+"-"+UUID.randomUUID().toString().substring(0,10);
+            // if (suggestionRequest.getCode() == null || suggestionRequest.getCode().isEmpty()) {
+            //     throw new Exception("Donnez un identifiant unique à ce utilisateur pour pouvoir relier tous ces plaintes et suggestions à lui");
+            // }else if(suggestionRequest.getCode().trim().length()<10){
+            //     throw new Exception("Le taille de l'identifiant doit etre au moins de 10 carateres");
+            // }
+            //  else {
+                String code ="bot-"+"-"+botName+"-"+UUID.randomUUID().toString().substring(0,8);
                 suggestion.setCode(code);
-            }
+                String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
+                suggestion.setCodeClient(codeClient);
+            // }
         }
 
         CollectionChannel collectionChannel;
@@ -253,10 +255,6 @@ public class BotKeyServiceImpl implements BotKeyService {
             suggestion.setTel(suggestionRequest.getPhone());
         }
 
-        if (suggestionRequest.getCrew() != null) {
-            suggestion.setCrew(suggestionRequest.getCrew());
-        }
-
         if (suggestionRequest.getFolderCode() != null) {
             suggestion.setFolderCode(suggestionRequest.getFolderCode());
         }
@@ -269,9 +267,10 @@ public class BotKeyServiceImpl implements BotKeyService {
 
         suggestion.setStatus(ClaimStatus.TEMP_SAVED);
         suggestion.setCreatedAt(LocalDateTime.now());
-        if (suggestionRequest.getReceiptDateTime() != null && !suggestionRequest.getReceiptDateTime().isEmpty()) {
-            suggestion.setReceiptDateTime(Utils.convertStrToLocalDateTime(suggestionRequest.getReceiptDateTime()));
-        }
+        // if (suggestionRequest.getReceiptDateTime() != null && !suggestionRequest.getReceiptDateTime().isEmpty()) {
+        //     suggestion.setReceiptDateTime(Utils.convertStrToLocalDateTime(suggestionRequest.getReceiptDateTime()));
+            suggestion.setReceiptDateTime(LocalDateTime.now());
+        // }
         suggestion = suggestionRepository.save(suggestion);
 
         if (request.getFiles() != null && request.getFiles().length != 0) {
@@ -316,15 +315,18 @@ public class BotKeyServiceImpl implements BotKeyService {
             }
             claim = oldClaim;
         } else {
-            if (claimToSave.getCode() == null || claimToSave.getCode().isEmpty()) {
-                throw new Exception("Donnez un identifiant unique à ce utilisateur pour pouvoir relier tous ces plaintes et suggestions à lui");
-            }else if(claimToSave.getCode().trim().length()<10){
-                throw new Exception("Le taille de l'identifiant doit etre au moins de 10 carateres");
-            }
-             else {
+            // if (claimToSave.getCode() == null || claimToSave.getCode().isEmpty()) {
+            //     throw new Exception("Donnez un identifiant unique à ce utilisateur pour pouvoir relier tous ces plaintes et suggestions à lui");
+            // }else if(claimToSave.getCode().trim().length()<10){
+            //     throw new Exception("Le taille de l'identifiant doit etre au moins de 10 carateres");
+            // }
+            //  else {
                 String code ="bot-"+claimToSave.getCode().trim()+"-"+botName+"-"+UUID.randomUUID().toString().substring(0,10);
                 claim.setCode(code);
-            }
+                String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
+
+            // }
         }
 
         // if (claimToSave.getCode() != null && !claimToSave.getCode().isEmpty()) {
