@@ -7,7 +7,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.sicmagroup.gpr.api.config.documentation.DocumentationPathRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sicmagroup.gpr.api.chat.ChatInitRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.DocumentationDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
@@ -131,6 +133,22 @@ public class DocumentationController {
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName)
                     .body(serviceImpl.loadAsResource(id));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+    @PostMapping(value = "/doc/get/filename")
+    public ResponseEntity<Resource> getDocumentByFileName(@RequestBody DocumentationPathRequest request) {
+        Documentation documentation;
+        String newPath = request.getPath();
+        System.out.println(newPath);
+        try {
+            documentation = serviceImpl.getDocumentationByPath(newPath);
+            String fileName = documentation.getName();
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName)
+                    .body(serviceImpl.loadAsResource(newPath));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }

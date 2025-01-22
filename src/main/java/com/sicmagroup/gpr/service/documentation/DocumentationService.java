@@ -14,8 +14,12 @@ public interface DocumentationService {
     List<Documentation> stores(MultipartFile[] files, String[] libelle, User user);
 
     Documentation getDocumentation(Long id) throws FileNotFoundException;
+    
+    Documentation getDocumentationByPath(String path) throws FileNotFoundException;
 
     Resource loadAsResource(Long docId);
+
+    Resource loadAsResource(String path);
 
     void deleteDocumentation(Long id) throws FileNotFoundException;
 

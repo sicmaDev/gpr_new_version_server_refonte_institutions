@@ -76,6 +76,28 @@ public class MediaServiceImpl implements MediaService {
             throw new FileStorageException("Media introuvable catch " + media.getName());
         }
     }
+    @Override
+    public Resource loadAsResource(String mediaId) {
+        // FileStorageProperties fileStorageProperties = new FileStorageProperties();
+        Path fileStorageLocation = Paths
+                .get(Constante.DEVMODE ? Constante.TEST_PATH_PIECE_JOINTES : Constante.PROD_PATH_PIECE_JOINTES)
+                .toAbsolutePath().normalize();
+        Media media = repository.findByPath(mediaId).orElseThrow(() -> new FileStorageException("Media introuvable"));
+        try {
+            System.out.println("store fnction");
+            Path filePath = fileStorageLocation.resolve(media.getName()).normalize();
+            System.out.println(filePath.toUri().toString());
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists()) {
+                return resource;
+            } else {
+                throw new FileStorageException("Media introuvable " + media.getName());
+            }
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            throw new FileStorageException("Media introuvable catch " + media.getName());
+        }
+    }
 
     private Media storeOneFile(MultipartFile file, Claim claim) {
         // System.out.println("store fnction");
@@ -201,6 +223,10 @@ public class MediaServiceImpl implements MediaService {
     @Override
     public Media getFile(Long id) throws FileNotFoundException {
         return repository.findById(id).orElseThrow(() -> new FileNotFoundException("File not found with id " + id));
+    }
+    @Override
+    public Media getFileByPath(String path) throws FileNotFoundException {
+        return repository.findByPath(path).orElseThrow(() -> new FileNotFoundException("File not found with path " + path));
     }
 
     @Override

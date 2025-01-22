@@ -29,7 +29,10 @@ public interface MediaService {
 
     Resource loadAsResource(Long mediaId);
 
+    Resource loadAsResource(String path);
+
     Media getFile(Long id) throws FileNotFoundException;
+    Media getFileByPath(String path) throws FileNotFoundException;
 
     List<Media> getFileByClaim(Claim claim);
 

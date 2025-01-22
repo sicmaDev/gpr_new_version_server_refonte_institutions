@@ -57,7 +57,7 @@ public class WebhookController {
     private final ClaimController claimController;
     private final InboxMessageRepository inboxMessageRepository;
     private final InboxRepository inboxRepository;
-     private final MediaServiceImpl mediaServiceImpl;
+    private final MediaServiceImpl mediaServiceImpl;
 
     @PostMapping("/save")
     public ResponseEntity<ApiResponseDto> saveMessage(HttpServletRequest request,
@@ -69,10 +69,9 @@ public class WebhookController {
 
             // Boolean isAuth = service.checkApiKeyBoolean(request);
             // if (isAuth == false) {
-            //     throw new Exception("Vous n'etes pas authentifier");
+            // throw new Exception("Vous n'etes pas authentifier");
             // }
 
-           
             if (data != null && !data.get("from").equals("status@broadcast")) {
                 String event = (String) data.get("event");
                 boolean isGroupMsg = (boolean) data.get("isGroupMsg");
@@ -80,11 +79,11 @@ public class WebhookController {
                 System.out.println(">>>>>");
                 System.out.println((String) data.get("event"));
                 System.out.println(">>>>>");
-              
+
                 if ("onmessage".equals(event) && !isGroupMsg) {
                     messageArray = formatData(data, (String) data.get("body"), (String) data.get("sender.pushname"));
                 } else if ("onselfmessage".equals(event)) {
-                 
+
                     System.out.println((String) data.get("notifyName"));
                     System.out.println(">>>>>");
                     messageArray = formatData(data, (String) data.get("body"), (String) data.get("notifyName"));
@@ -120,7 +119,24 @@ public class WebhookController {
             String content = inboxMessage.getContent();
             InboxMessage inboxMessageSaved = new InboxMessage();
 
+            Optional<Inbox> inbox = inboxRepository.findByCode(inboxMessage.getChatId());
+            if (inbox.isEmpty()) {
+                System.out.println("IS NEW CHAT");
+                Inbox inbox2 = new Inbox();
+                inbox2.setCode(inboxMessage.getChatId());
+                inbox2.setPhone(inboxMessage.getChatId().split("@")[0]);
+                inbox2.setFirstMessage(inboxMessageSaved.getId());
+                inbox2 = inboxRepository.save(inbox2);
+                inboxMessage.setInbox(inbox2);
+
+            }else{
+                inboxMessage.setInbox(inbox.get());
+            }
+
+
+
             if ("chat".equals(type)) {
+
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
             } else if ("image".equals(type)) {
                 String fileName = saveBase64File(inboxMessage.getContent(), "image/png");
@@ -150,16 +166,6 @@ public class WebhookController {
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
             }
 
-            Optional<Inbox> inbox = inboxRepository.findByCode(inboxMessage.getChat_id());
-            if (inbox.isEmpty()) {
-                System.out.println("IS NEW CHAT");
-                Inbox inbox2 = new Inbox();
-                inbox2.setCode(inboxMessage.getChat_id());
-                inbox2.setPhone(inboxMessage.getChat_id().split("@")[0]);
-                inbox2.setFirst_message(inboxMessageSaved.getId());
-                inboxRepository.save(inbox2);
-            }
-
         } catch (Exception e) {
 
         }
@@ -172,11 +178,11 @@ public class WebhookController {
         String type = (String) data.get("type");
 
         InboxMessage message = new InboxMessage();
-        message.setChat_id(chatId);
-        message.setSender_id((String) data.get("from"));
+        message.setChatId(chatId);
+        message.setSenderId((String) data.get("from"));
         message.setDate(System.currentTimeMillis() + " ");
-        message.setSender_name(senderName);
-        message.setSender_phone(chatId.split("@")[0]);
+        message.setSenderName(senderName);
+        message.setSenderPhone(chatId.split("@")[0]);
         message.setContent(body);
         message.setType(type);
         message.setMessage_id(messageId);
@@ -185,9 +191,9 @@ public class WebhookController {
     }
 
     private String saveBase64File(String content, String type) {
-       Media media =  mediaServiceImpl.storeFileWhatsapp(content, type);
+        Media media = mediaServiceImpl.storeFileWhatsapp(content, type);
 
-        return media.getPath(); // Remplacez par le chemin réel ou l'URL du fichier
+        return media.getName(); // Remplacez par le chemin réel ou l'URL du fichier
     }
 
 }
