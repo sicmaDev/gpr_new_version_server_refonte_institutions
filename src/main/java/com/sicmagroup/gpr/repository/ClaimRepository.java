@@ -31,6 +31,7 @@ import com.sicmagroup.gpr.domain.enumeration.SolutionStatus;
 public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimRepositoryCustom {
 
         Optional<Claim> findByCode(String code);
+        Optional<Claim> findByCodeClient(String codeClient);
 
         List<Claim> findByTypeAndCodeStartsWith(ClaimType type,String code);
 

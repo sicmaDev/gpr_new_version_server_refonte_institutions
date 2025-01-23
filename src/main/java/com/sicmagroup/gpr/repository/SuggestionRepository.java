@@ -32,6 +32,7 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, S
     List<Suggestion> findByStatusNotAndReceiptDateTimeBetween(ClaimStatus status, LocalDateTime start, LocalDateTime end);
 
     Optional<Suggestion> findByCode(String code);
+    Optional<Suggestion> findByCodeClient(String codeClient);
 
     List<Suggestion> findByCodeStartsWith(String code);
 

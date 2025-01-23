@@ -32,6 +32,7 @@ import lombok.NoArgsConstructor;
 public class ClaimDto {
     private Long id;
     private String code;
+    private String codeClient;
     private String clientFirstAndLastName;
     private Gender gender;
     private ClaimType type;

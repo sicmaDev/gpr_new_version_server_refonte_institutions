@@ -153,12 +153,37 @@ public class BotKeyController {
             if (isAuth == false) {
                 throw new Exception("Vous n'etes pas authentifier");
             }
+            // if (!code.startsWith("bot")) {
+            //     return null;
+            // }
             SuggestionDto suggestion = service.getSuggestion(code);
+
+            String contenu="";
+
+            if (suggestion != null) {
+                switch ((suggestion.getStatus()).toString()) {
+                    case "TEMP_SAVED":
+                        contenu = "La suggestion portant le code  "+suggestion.getCodeClient()+ " est en attente !!!";
+                        break;
+                    case "SAVED":
+                        contenu = "La suggestion portant le code  "+suggestion.getCodeClient()+" est en cours de traitement !!!";
+                        break;
+                    case "TREAT":
+                        String stat= suggestion.isAccepted() ? "Prise en compte" : "Non pris en compte";
+                        contenu = "La suggestion portant le code : "+suggestion.getCodeClient()+ ". Statut : "+stat;
+                        break;
+            
+                    default:
+                        break;
+                }
+            }else{
+                contenu = "La suggestion portant le code "+code+" est introuvable !!!";
+            }
 
             apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
-                    .content(suggestion)
+                    .content(contenu)
                     .build();
             return ResponseEntity.ok(apiResponseDto);
         } catch (Exception e) {
@@ -273,7 +298,7 @@ public class BotKeyController {
         try {
 
             Boolean isAuth = service.checkApiKeyBoolean(request);
-            if (isAuth == false || !code.startsWith("bot") || code.length() < 10) {
+            if (isAuth == false) {
                 throw new Exception("Un probleme est subvenu");
             }
             return denunciationController.getClaim(code);
@@ -327,7 +352,7 @@ public class BotKeyController {
             @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto;
-
+        
         ObjectMapper mapper = new ObjectMapper();
         ClaimRequest claimRequest2 = mapper.readValue(claimRequest, ClaimRequest.class);
 
@@ -345,7 +370,7 @@ public class BotKeyController {
                     SaveRequest saveRequest = SaveRequest.builder().claimRequest(claimRequest2).files(files)
                             .audios(audios)
                             .remoteAddress(request.getRemoteAddr()).build();
-
+                            
                     ClaimDto claim = service.saveClaim(saveRequest, request.getHeader("API_KEY"),
                             ClaimType.CLAIM);
                     apiResponseDto = ApiResponseDto
@@ -385,17 +410,68 @@ public class BotKeyController {
 
     @GetMapping("/claim/{code}")
     public ResponseEntity<ApiResponseDto> getClaim(@PathVariable(name = "code") String code,
-            HttpServletRequest request) {
-
+        HttpServletRequest request) {
+        ApiResponseDto apiResponseDto;
         try {
 
             Boolean isAuth = service.checkApiKeyBoolean(request);
-            if (isAuth == false || !code.startsWith("bot") || code.length() < 10) {
-                throw new Exception("Un probleme est subvenu");
+            if (isAuth == false) {
+                throw new Exception("Vous n'etes pas authentifier");
             }
-            return claimController.getClaim(code);
+            // if (!code.startsWith("bot")) {
+            //     return null;
+            // }
+            ClaimDto claim = service.getClaim(code);
+
+            String contenu="";
+
+            if (claim != null) {
+                
+                switch ((claim.getStatus()).toString()) {
+                    case "TEMP_SAVED":
+                        contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en attente !!!";
+                        break;
+                        case "AFFECTED":
+                        contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                        break;
+                    case "DESAPPROUVED":
+                        contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                        break;
+                    case "TRANSMITTED":
+                        contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                        break;
+                    case "SAVED":
+                        contenu = "La réclamation portant le code  "+claim.getCodeClient()+" est en cours de traitement !!!";
+                        break;
+                    case "TREAT":
+                        String solution = "" +
+                        "La réclamation portant le code : "+ claim.getCodeClient() +
+                        " a été traitée."
+                        + "\n\n" +
+                        "Détails de la réclamation :" + "\n\n" +
+                        "* Code de réclamation : " + claim.getCodeClient() + "\n" +
+                        "* Solution : " + (claim.getSolutionDtos())+ "\n\n";
+                        // "* Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1) + "\n\n";
+                    
+                        contenu = solution;
+                        break;
+                    default:
+                        break;
+                }
+            
+            }else{
+                contenu = "La réclamation portant le code "+code+" est introuvable !!!";
+            }
+
+         
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(contenu)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
         } catch (Exception e) {
-            ApiResponseDto apiResponseDto = ApiResponseDto
+            apiResponseDto = ApiResponseDto
                     .builder()
                     .status(false)
                     .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION")
@@ -405,6 +481,7 @@ public class BotKeyController {
         }
     }
 
+   
     @GetMapping("/claim/user/{userCode}")
     public ResponseEntity<ApiResponseDto> getClaims(@PathVariable(name = "userCode") String userCode,
             HttpServletRequest request) {
