@@ -91,12 +91,36 @@ public class DocumentationServiceImpl implements DocumentationService {
 	public Documentation getDocumentation(Long id) throws FileNotFoundException {
 		return documentationRepository.findById(id).orElseThrow(() -> new  FileNotFoundException("File not found with id " + id));
 	}
+	@Override
+	public Documentation getDocumentationByPath(String path) throws FileNotFoundException {
+		return documentationRepository.findByPath(path).orElseThrow(() -> new  FileNotFoundException("File not found with id " + path));
+	}
 
 	public Resource loadAsResource(Long id) {
 		   FileStorageProperties fileStorageProperties = new FileStorageProperties();
         Path fileStorageLocation = Paths.get(Constante.DEVMODE ? Constante.TEST_PATH_RESSOURCE :Constante.PROD_PATH_RESSOURCE)
             .toAbsolutePath().normalize();  
         Documentation documentation = documentationRepository.findById(id).orElseThrow(() -> new FileStorageException("Document introuvable"));
+        try {
+             System.out.println("store fnction");
+            Path filePath = fileStorageLocation.resolve(documentation.getName()).normalize();
+             System.out.println(filePath.toUri().toString());
+            Resource resource = new UrlResource(filePath.toUri());
+            if(resource.exists()){
+                return resource;
+            } else {
+                throw new FileStorageException("Document introuvable "+documentation.getName());
+            }
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            throw new FileStorageException("Document introuvable catch "+documentation.getName());
+        }
+	}
+	public Resource loadAsResource(String id) {
+		   FileStorageProperties fileStorageProperties = new FileStorageProperties();
+        Path fileStorageLocation = Paths.get(Constante.DEVMODE ? Constante.TEST_PATH_RESSOURCE :Constante.PROD_PATH_RESSOURCE)
+            .toAbsolutePath().normalize();  
+        Documentation documentation = documentationRepository.findByPath(id).orElseThrow(() -> new FileStorageException("Document introuvable"));
         try {
              System.out.println("store fnction");
             Path filePath = fileStorageLocation.resolve(documentation.getName()).normalize();
