@@ -1234,6 +1234,11 @@ public class ClaimServiceImpl implements ClaimService {
         return repository.findByCode(code).orElseThrow(() -> new Exception("Réclamation introuvable"));
     }
 
+    // @Override
+    public Claim getByCodeClient(String code) throws Exception {
+        return repository.findByCodeClient(code).orElseThrow(() -> new Exception("Réclamation introuvable"));
+    }
+
     @Override
     public void saveClaimOffline(SaveRequest claimPart, ClaimType type) throws Exception {
         ClaimRequest claimToSave = claimPart.getClaimRequest();

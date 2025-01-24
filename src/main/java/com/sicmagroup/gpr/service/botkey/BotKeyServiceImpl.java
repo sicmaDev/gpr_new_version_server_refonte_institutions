@@ -460,18 +460,24 @@ public class BotKeyServiceImpl implements BotKeyService {
     }
 
     @Override
-    public ClaimDto getClaim(String code) {
+    public Claim getClaim(String code) {
         try {
 
             Claim claim = claimRepository.findByCodeClient(code)
                     .orElseThrow(() -> new Exception("La réclamation est introuvable"));
 
-            return convertToDto(claim);
+            return claim;
+            // return convertToDto(claim);
 
         } catch (Exception e) {
             return null;
         }
     }
+
+    // @Override
+    // public Claim getClaim(String code) throws Exception {
+    //     return claimRepository.findByCodeClient(code).orElseThrow(() -> new Exception("Réclamation introuvable"));
+    // }
 
     @Override
     public Claim updateClaim(Long code) {

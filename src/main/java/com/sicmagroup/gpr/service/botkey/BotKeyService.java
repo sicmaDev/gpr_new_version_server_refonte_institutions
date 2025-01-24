@@ -26,7 +26,7 @@ public interface BotKeyService {
     
     
     public List<ClaimDto> getClaims(String userCode,ClaimType claimType);
-    public ClaimDto getClaim(String code);
+    public Claim getClaim(String code);
     public ClaimDto saveClaim (SaveRequest request,String botName,ClaimType claimType) throws Exception;
 
 

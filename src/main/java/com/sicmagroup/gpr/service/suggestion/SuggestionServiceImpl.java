@@ -384,7 +384,7 @@ public class SuggestionServiceImpl implements SuggestionService {
     @Override
     public List<Suggestion> getAllByCollectorAndStatus(User collector, ClaimStatus status) {
         // return repository.findByCollecteurAndStatus(collector, status);
-        return repository.findByCollecteurAndStatusOrCodeStartsWithAndStatus(collector, status,"bot-",status);
+        return repository.findByCollecteurAndStatus(collector, status);
     }
 
     @Override

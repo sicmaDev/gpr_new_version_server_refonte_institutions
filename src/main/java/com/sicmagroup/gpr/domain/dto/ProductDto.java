@@ -18,4 +18,5 @@ public class ProductDto {
     private boolean isDeleted;
     private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
+    private String uuid;
 }

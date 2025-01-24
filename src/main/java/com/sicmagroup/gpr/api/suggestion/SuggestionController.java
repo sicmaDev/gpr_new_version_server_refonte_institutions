@@ -15,6 +15,8 @@ import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
+import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
@@ -89,14 +91,44 @@ public class SuggestionController {
     public ResponseEntity<ApiResponseDto> getTreaTableList(@PathVariable ClaimStatus status) {
         ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
         List<Suggestion> suggestions = new ArrayList<>();
+        User connectedUser = User.builder().build();
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                    .getPrincipal();
+           
+        try {
+            connectedUser = authService.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                            .title("NOT FOUND EXCEPTION")
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
 
         if (status == ClaimStatus.TEMP_SAVED) {
-            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                    .getPrincipal();
+            
             User collector;
             try {
                 collector = authService.getByEmail(collectorDetails.getUsername());
                 suggestions = service.getAllByCollectorAndStatus(collector, status);
+
+                List<Suggestion> filteredSuggestions = new ArrayList<>();
+                //recuperer pour le pilote les suggestions du bot   *
+                // System.out.println("tolotolo : "+connectedUser.getAdditionalrole() );              
+                if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                    List<Suggestion> allSuggestions = service.getAllByStatusIn(Arrays.asList(status));
+                    //    suggestions = allSuggestions;
+                    for (Suggestion suggestion : allSuggestions) {
+                        if (suggestion.getCode().startsWith("bot")) {
+                            suggestions.add(suggestion);
+                        }
+                    }
+                }
+
+
             } catch (Exception e) {
                 apiResponseDto = ApiResponseDto
                         .builder()

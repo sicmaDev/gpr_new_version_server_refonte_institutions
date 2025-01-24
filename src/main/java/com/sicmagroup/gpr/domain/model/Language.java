@@ -35,6 +35,8 @@ public class Language {
 	private Long id;
 	@Column(unique = true)
 	private String libelle;
+	@Column(unique = true)
+	private String uuid;
 	@Lob
 	@Column(columnDefinition = "TEXT")
 	private String description;
