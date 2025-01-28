@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -35,6 +36,8 @@ import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.ExistingSolution;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
+import com.sicmagroup.gpr.domain.model.Inbox;
+import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Log;
 import com.sicmagroup.gpr.domain.model.Media;
@@ -47,6 +50,8 @@ import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ExistingSolutionRepository;
+import com.sicmagroup.gpr.repository.InboxMessageRepository;
+import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
@@ -91,6 +96,8 @@ public class ClaimServiceImpl implements ClaimService {
     private final ChatRepository chatRepository;
     private final SettingServiceImpl settingServiceImpl;
     private final ServicePointRepository spRepository;
+    private final InboxRepository inboxRepository;
+    private final InboxMessageRepository messageRepository;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -252,6 +259,19 @@ public class ClaimServiceImpl implements ClaimService {
             // audio.setClaim(null);
             // }
             // claim.setAudios(audios);
+        }
+
+        //Whatsapp
+        if(claimToSave.getFromWhatsapp()){
+            System.out.println("From Whatsapp");
+            Boolean isOk = mediaServiceImpl.attachFileToClaim(claim, claimToSave.getFilesWhatsapp());
+            if(isOk && claimToSave.getInboxWhatsapp() != null){
+                List<InboxMessage> messages = messageRepository.findByInbox(claimToSave.getInboxWhatsapp());
+                for (InboxMessage message : messages) {
+                    messageRepository.delete(message);
+                }
+                inboxRepository.delete(claimToSave.getInboxWhatsapp());
+            }
         }
 
         claim = repository.save(claim);
@@ -1135,6 +1155,19 @@ public class ClaimServiceImpl implements ClaimService {
             // audio.setClaim(null);
             // }
             // claim.setAudios(audios);
+        }
+
+        //Whatsapp
+        if(claimToSave.getFromWhatsapp()){
+            System.out.println("From Whatsapp");
+            Boolean isOk = mediaServiceImpl.attachFileToClaim(claim, claimToSave.getFilesWhatsapp());
+            if(isOk && claimToSave.getInboxWhatsapp() != null){
+                List<InboxMessage> messages = messageRepository.findByInbox(claimToSave.getInboxWhatsapp());
+                for (InboxMessage message : messages) {
+                    messageRepository.delete(message);
+                }
+                inboxRepository.delete(claimToSave.getInboxWhatsapp());
+            }
         }
 
         List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));

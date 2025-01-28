@@ -1,8 +1,11 @@
 package com.sicmagroup.gpr.api.suggestion;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
+import com.sicmagroup.gpr.domain.model.Inbox;
+import com.sicmagroup.gpr.domain.model.InboxMessage;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +25,9 @@ public class SuggestionRequest {
     private String address;
     private String phone;
     private String crew;
+     private Boolean fromWhatsapp;
+    private List<InboxMessage> filesWhatsapp;
+    private Inbox inboxWhatsapp;
     private String folderCode;
     private Long collectionChannelId;
     private Long servicePointId;

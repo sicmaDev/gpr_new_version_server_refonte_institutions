@@ -64,7 +64,7 @@ public class MediaController {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName)
-                    .body(service.loadAsResource(newPath));
+                    .body(service.loadAsResource(media.getPath()));
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }

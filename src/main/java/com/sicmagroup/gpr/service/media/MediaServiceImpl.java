@@ -9,6 +9,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -19,8 +20,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.Inbox;
+import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
+import com.sicmagroup.gpr.repository.InboxMessageRepository;
+import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.utils.Constante;
 
@@ -31,6 +36,8 @@ import lombok.RequiredArgsConstructor;
 public class MediaServiceImpl implements MediaService {
 
     private final MediaRepository repository;
+    private final InboxMessageRepository messageRepository;
+    private final InboxRepository inboxRepository;
 
     @Override
     public List<Media> store(MultipartFile[] files, Claim claim) {
@@ -139,7 +146,7 @@ public class MediaServiceImpl implements MediaService {
         return repository.save(media);
     }
 
-    private Media storeOneFile(String fileContent, String mimeType) {
+    private Media storeOneFile(InboxMessage inboxMessage, String mimeType) {
         // System.out.println("store fnction");
         // FileStorageProperties fileStorageProperties = new FileStorageProperties();
         Path fileStorageLocation = Paths
@@ -155,7 +162,7 @@ public class MediaServiceImpl implements MediaService {
         }
 
         String extension = mimeType.substring(mimeType.lastIndexOf('/') + 1);
-        String fileName = UUID.randomUUID().toString() + "." + extension;
+        String fileName = inboxMessage.getInbox().getId()+"-"+UUID.randomUUID().toString() + "." + extension;
 
         if (fileName.contains("..")) {
             throw new FileStorageException("Sorry! Filename contains invalid path sequence " + fileName);
@@ -163,7 +170,7 @@ public class MediaServiceImpl implements MediaService {
 
         Path targetLocation = fileStorageLocation.resolve(fileName);
         try {
-            byte[] file = Base64.getDecoder().decode(fileContent);
+            byte[] file = Base64.getDecoder().decode(inboxMessage.getContent());
             Files.write(targetLocation, file);
             // Files.copy(file.getInputStream(), targetLocation,
             // StandardCopyOption.REPLACE_EXISTING);
@@ -175,7 +182,7 @@ public class MediaServiceImpl implements MediaService {
         media = Media
                 .builder()
                 .name(fileName)
-                .size((long) fileContent.length())
+                .size((long) inboxMessage.getContent().length())
                 .path(targetLocation.toAbsolutePath().toFile().getAbsolutePath())
                 .build();
         return repository.save(media);
@@ -226,7 +233,7 @@ public class MediaServiceImpl implements MediaService {
     }
     @Override
     public Media getFileByPath(String path) throws FileNotFoundException {
-        return repository.findByPath(path).orElseThrow(() -> new FileNotFoundException("File not found with path " + path));
+        return repository.findByName(path).orElseThrow(() -> new FileNotFoundException("File not found with path " + path));
     }
 
     @Override
@@ -240,10 +247,40 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
-    public Media storeFileWhatsapp(String fileContent, String mimeType) {
-        Media media = storeOneFile(fileContent, mimeType);
+    public Media storeFileWhatsapp(InboxMessage inboxMessage, String mimeType) {
+        Media media = storeOneFile(inboxMessage, mimeType);
         return media;
     }
+    @Override
+    public Boolean attachFileToClaim(Claim claim, List<InboxMessage> inboxMessages) {
+        for (InboxMessage message : inboxMessages) {
+            Optional<Media> media =  repository.findByName(message.getContent());
+            if(media.isPresent()){
+                Media median = media.get();
+                median.setClaim(claim);
+                repository.save(median);
+            }
+
+        }
+    
+        return true;
+    }
+    @Override
+    public Boolean attachFileToClaim(Suggestion suggestion, List<InboxMessage> inboxMessages) {
+        for (InboxMessage message : inboxMessages) {
+            Optional<Media> media =  repository.findByName(message.getContent());
+            if(media.isPresent()){
+                Media median = media.get();
+                median.setSuggestion(suggestion);
+                repository.save(median);
+            }
+
+        }
+    
+        return true;
+    }
+
+
 
     // private Media storeOneFileFromString(String file, Claim claim){
     // // byte[] filecontent = Base64.getDecoder().decode(file);

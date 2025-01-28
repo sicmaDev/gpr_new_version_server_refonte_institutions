@@ -136,32 +136,31 @@ public class WebhookController {
 
 
             if ("chat".equals(type)) {
-
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
             } else if ("image".equals(type)) {
-                String fileName = saveBase64File(inboxMessage.getContent(), "image/png");
+                String fileName = saveBase64File(inboxMessage, "image/png");
                 inboxMessage.setContent(fileName);
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
             } else if ("video".equals(type)) {
-                String fileName = saveBase64File(inboxMessage.getContent(), "video/mp4");
+                String fileName = saveBase64File(inboxMessage, "video/mp4");
                 inboxMessage.setContent(fileName);
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
             } else if ("document".equals(type)) {
 
-                String fileName = saveBase64File(inboxMessage.getContent(), "document/pdf");
+                String fileName = saveBase64File(inboxMessage, "document/pdf");
                 inboxMessage.setContent(fileName);
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
             } else if ("audio".equals(type)) {
-                String fileName = saveBase64File(inboxMessage.getContent(), "audio/mp3");
+                String fileName = saveBase64File(inboxMessage, "audio/mp3");
                 inboxMessage.setContent(fileName);
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
 
             } else if ("ptt".equals(type)) {
-                String fileName = saveBase64File(inboxMessage.getContent(), "audio/mp3");
+                String fileName = saveBase64File(inboxMessage, "audio/mp3");
                 inboxMessage.setContent(fileName);
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
             } else if ("sticker".equals(type)) {
-                String fileName = saveBase64File(inboxMessage.getContent(), "image/webp");
+                String fileName = saveBase64File(inboxMessage, "image/webp");
                 inboxMessage.setContent(fileName);
                 inboxMessageSaved = inboxMessageRepository.save(inboxMessage);
             }
@@ -190,10 +189,10 @@ public class WebhookController {
         return message;
     }
 
-    private String saveBase64File(String content, String type) {
-        Media media = mediaServiceImpl.storeFileWhatsapp(content, type);
+    private String saveBase64File(InboxMessage inboxMessage, String type) {
+        Media media = mediaServiceImpl.storeFileWhatsapp(inboxMessage, type);
 
         return media.getName(); // Remplacez par le chemin réel ou l'URL du fichier
     }
-
+ 
 }
