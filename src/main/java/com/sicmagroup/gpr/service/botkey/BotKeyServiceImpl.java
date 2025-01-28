@@ -167,11 +167,9 @@ public class BotKeyServiceImpl implements BotKeyService {
     public SuggestionDto getSuggestion(String code) {
         try {
 
-            if (!code.startsWith("bot")) {
-                return null;
-            }
-            Suggestion suggestion = suggestionRepository.findByCode(code)
-                    .orElseThrow(() -> new Exception("La réclamation est introuvable"));
+            Suggestion suggestion = suggestionRepository.findByCodeClient(code)
+                    .orElseThrow(() -> new Exception("La suggestion est introuvable"));
+
             return convertToDto(suggestion);
 
         } catch (Exception e) {
@@ -321,7 +319,7 @@ public class BotKeyServiceImpl implements BotKeyService {
             //     throw new Exception("Le taille de l'identifiant doit etre au moins de 10 carateres");
             // }
             //  else {
-                String code ="bot-"+claimToSave.getCode().trim()+"-"+botName+"-"+UUID.randomUUID().toString().substring(0,10);
+                String code ="bot-"+"-"+botName+"-"+UUID.randomUUID().toString().substring(0,10);
                 claim.setCode(code);
                 String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
                 claim.setCodeClient(codeClient);
@@ -354,8 +352,8 @@ public class BotKeyServiceImpl implements BotKeyService {
         Product product;
         if (claimToSave.getProductId() != null) {
             
-                product = productRepository.findById(claimToSave.getProductId()).orElseThrow(()-> new Exception("Prodcut choosed not found"));;
-                claim.setProduct(product);
+            product = productRepository.findById(claimToSave.getProductId()).orElseThrow(()-> new Exception("Prodcut choosed not found"));;
+            claim.setProduct(product);
            
         }
 
@@ -392,9 +390,6 @@ public class BotKeyServiceImpl implements BotKeyService {
             claim.setTel(claimToSave.getPhone());
         }
 
-        if (claimToSave.getCrew() != null) {
-            claim.setCrew(claimToSave.getCrew());
-        }
 
         if (claimToSave.getFolderCode() != null) {
             claim.setFolderCode(claimToSave.getFolderCode());
@@ -407,9 +402,10 @@ public class BotKeyServiceImpl implements BotKeyService {
        
         claim.setStatus(ClaimStatus.TEMP_SAVED);
         claim.setCreatedAt(LocalDateTime.now());
-        if (claimToSave.getReceiptDateTime() != null && !claimToSave.getReceiptDateTime().isEmpty()) {
-            claim.setReceiptDateTime(Utils.convertStrToLocalDateTime(claimToSave.getReceiptDateTime()));
-        }
+        // if (claimToSave.getReceiptDateTime() != null && !claimToSave.getReceiptDateTime().isEmpty()) {
+            claim.setReceiptDateTime(LocalDateTime.now());
+        
+        // }
         if (claimToSave.getOnlineUploadDateTime() != null) {
             claim.setOnlineUploadDateTime(claimToSave.getOnlineUploadDateTime());
         }
@@ -418,7 +414,7 @@ public class BotKeyServiceImpl implements BotKeyService {
         log.setContent("code: " + claim.getCode());
         log.setCreatedAt(LocalDateTime.now());
         log.setType(LogType.INFO);
-        log.setUserId(claim.getCollector().getId());
+        // log.setUserId(claim.getCollector().getId());
         log.setUserIpAddress(claimPart.getRemoteAddress());
         
 
@@ -464,10 +460,24 @@ public class BotKeyServiceImpl implements BotKeyService {
     }
 
     @Override
-    public ClaimDto getClaim(String code) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getClaim'");
+    public Claim getClaim(String code) {
+        try {
+
+            Claim claim = claimRepository.findByCodeClient(code)
+                    .orElseThrow(() -> new Exception("La réclamation est introuvable"));
+
+            return claim;
+            // return convertToDto(claim);
+
+        } catch (Exception e) {
+            return null;
+        }
     }
+
+    // @Override
+    // public Claim getClaim(String code) throws Exception {
+    //     return claimRepository.findByCodeClient(code).orElseThrow(() -> new Exception("Réclamation introuvable"));
+    // }
 
     @Override
     public Claim updateClaim(Long code) {
@@ -514,5 +524,28 @@ public class BotKeyServiceImpl implements BotKeyService {
 
         return suggestionDto;
     }
+
+    private ClaimDto convertToDto(Claim claim) {
+        ClaimDto claimDto = modelMapper.map(claim, ClaimDto.class);
+        if (claim.getCreatedAt() != null) {
+            claimDto.setCreatedAt(claim.getCreatedAt().toString());
+            // System.out.println(suggestionDto.getCreatedAt());
+        }
+        if (claim.getUpdatedAt() != null) {
+            claimDto.setUpdatedAt(claim.getUpdatedAt().toString());
+            // System.out.println(suggestionDto.getUpdatedAt());
+        }
+
+        if (claim.getReceiptDateTime() != null) {
+            claimDto.setReceiptDateTime(claim.getReceiptDateTime().toString());
+        }
+
+        // if (claim.getTreatAt() != null) {
+        //     claimDto.setTreatAt(claim.getTreatAt().toString());
+        // }
+
+        return claimDto;
+    }
+
 
 }

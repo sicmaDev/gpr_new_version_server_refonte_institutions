@@ -2,6 +2,7 @@ package com.sicmagroup.gpr.service.objet;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class ObjetServcieImpl implements ObjetService {
 
     @Override
     public Objet saveObjet(Objet objet) {
+        objet.setUuid(generateUuid());
         return repository.save(objet);
     }
 
@@ -64,6 +66,16 @@ public class ObjetServcieImpl implements ObjetService {
     public Objet getDeletedById(Long id, boolean deleted) throws NotFoundException {
         return repository.findByIdAndIsDeleted(id, deleted).orElseThrow(() -> new NotFoundException());
 
+    }
+
+     private String generateUuid() {
+        String code = "obj-" + UUID.randomUUID().toString().substring(0, 5);
+
+        while (repository.findByUuid(code).isPresent()) {
+            code = "obj-" + UUID.randomUUID().toString().substring(0, 5);
+        }
+
+        return code;
     }
 
 }

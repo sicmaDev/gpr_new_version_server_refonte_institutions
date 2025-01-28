@@ -42,7 +42,6 @@ public class Objet {
 
     @Column(unique = true,name = "libelle")
     private String libelle;
-
     @Lob
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -54,7 +53,8 @@ public class Objet {
     private LocalDateTime deletedAt;
     @Column(columnDefinition = "boolean default false")
     private boolean isDeleted;
-
+    @Column(unique = true)
+	private String uuid;
     @OneToMany(mappedBy = "objet")
     private List<Claim> claims;
 

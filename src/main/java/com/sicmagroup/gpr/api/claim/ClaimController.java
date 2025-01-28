@@ -65,6 +65,7 @@ import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.domain.model.SatisfactionMeasure;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Solution;
+import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.domain.model.chat.Message;
@@ -266,6 +267,32 @@ public class ClaimController {
 
     }
 
+    // @GetMapping("/{code}/details/client")
+    public ClaimDto getClaimClient(@PathVariable String code) {
+        ApiResponseDto apiResponseDto;
+        Claim claim;
+        try {
+            claim = service.getByCodeClient(code);
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(convertToDto(claim))
+                    .build();
+            // return ResponseEntity.ok(apiResponseDto);
+            return convertToDto(claim);
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Claim not found").title("NOT FOUND EXCEPTION").build())
+                    .build();
+            return null;
+            // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+
+    }
+
+
     @GetMapping(value = "/listTreat")
     public ResponseEntity<ApiResponseDto> getTreatList() {
 
@@ -368,14 +395,43 @@ public class ClaimController {
         // System.out.println(claimStatus.toString());
         List<Claim> allClaims = new ArrayList<>();
         ApiResponseDto apiResponseDto;
+        User collector;
+        // 
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+        .getPrincipal();
+
+        User connectedUser = User.builder().build();
+        try {
+            connectedUser = authService.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                            .title("NOT FOUND EXCEPTION")
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
         if (status == ClaimStatus.TEMP_SAVED) {
-            // get only what user save
-            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                    .getPrincipal();
-            User collector;
+           
             try {
                 collector = authService.getByEmail(collectorDetails.getUsername());
                 allClaims = service.getAllByTypeStatusCollector(ClaimType.CLAIM, status, collector);
+
+
+                 List<Claim> filteredClaims = new ArrayList<>();
+                //recuperer pour le pilote les suggestions du bot 
+                // System.out.println("tolotolo : "+connectedUser.getAdditionalrole() );               
+                if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                    List<Claim> allClaimsTmp = service.getClaimByStatus(ClaimType.CLAIM, status);
+                   
+                    for (Claim claim : allClaimsTmp) {
+                       if (claim.getCode().startsWith("bot")) {
+                           allClaims.add(claim);
+                       }
+                    }
+                }
             } catch (Exception e) {
                 apiResponseDto = ApiResponseDto
                         .builder()
@@ -1439,10 +1495,10 @@ public class ClaimController {
         // }
 
         if (claim.getSolutions() != null) {
-            System.out.println("Here 10 ");
+            // System.out.println("Here 10 ");
             claimDto.setSolutionDtos(
                     claim.getSolutions().stream().map(this::convertToDto).collect(Collectors.toList()));
-            System.out.println("Here 11 ");
+            // System.out.println("Here 11 ");
             Collections.reverse(claimDto.getSolutionDtos());
 
         }

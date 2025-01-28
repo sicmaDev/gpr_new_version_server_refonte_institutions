@@ -23,4 +23,5 @@ public class ObjetDto {
     private LocalDateTime updatedAt;
     private boolean isDeleted;
     private Long categorie;
+    private String uuid;
 }
