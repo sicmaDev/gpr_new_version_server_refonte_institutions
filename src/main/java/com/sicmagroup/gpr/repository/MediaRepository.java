@@ -13,6 +13,7 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
     
     List<Media> findByClaim(Claim claim);
     Optional<Media> findByPath(String path);
+    Optional<Media> findByName(String name);
 
     List<Media> findBySuggestion(Suggestion suggestion);
 }

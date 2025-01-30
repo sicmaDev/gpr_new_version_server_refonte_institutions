@@ -15,12 +15,15 @@ import com.sicmagroup.gpr.domain.enumeration.Gender;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
+import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
+import com.sicmagroup.gpr.repository.InboxMessageRepository;
+import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.SuggestionRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
@@ -47,6 +50,11 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final LanguageServiceImpl languageServiceImpl;
     private final AuthenticationServiceImpl authServiceImpl;
     private final MediaServiceImpl mediaServiceImpl;
+    private final InboxMessageRepository messageRepository;
+    private final InboxRepository inboxRepository;
+
+    
+
 
     @Override
     public List<Suggestion> getAll() {
@@ -195,6 +203,19 @@ public class SuggestionServiceImpl implements SuggestionService {
             // audio.setClaim(null);
             // }
             // claim.setAudios(audios);
+        }
+
+        //Whatsapp
+        if(suggestionRequest.getFromWhatsapp()){
+            System.out.println("From Whatsapp");
+            Boolean isOk = mediaServiceImpl.attachFileToClaim(suggestion, suggestionRequest.getFilesWhatsapp());
+            if(isOk && suggestionRequest.getInboxWhatsapp() != null){
+                List<InboxMessage> messages = messageRepository.findByInbox(suggestionRequest.getInboxWhatsapp());
+                for (InboxMessage message : messages) {
+                    messageRepository.delete(message);
+                }
+                inboxRepository.delete(suggestionRequest.getInboxWhatsapp());
+            }
         }
 
         return suggestion;
