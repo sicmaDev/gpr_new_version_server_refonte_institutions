@@ -28,11 +28,11 @@ public class SyncClaimRequest {
     private String crew;
     private String folderCode;
     private Long collectionChannelId;
-    private String servicePointUuid;
-    private String productUuid;
+    private Long servicePointId;
+    private Long productId;
     private ClaimStatus status;
-    private String objetUuid;
-    private String languageUuid;
+    private Long objetId;
+    private Long languageId;
     private Long collectorId;
     private String content;
     private String receiptDateTime;

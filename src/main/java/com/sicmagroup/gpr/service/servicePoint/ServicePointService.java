@@ -30,7 +30,7 @@ public interface ServicePointService {
 
     public ServicePoint getDeletedById (Long id, boolean deleted) throws NotFoundException ;
     
-    public ServicePoint findPointDeServiceByUuid(String uuid);
+    public ServicePoint findServicePointByUuid(String uuid);
 
     
 }

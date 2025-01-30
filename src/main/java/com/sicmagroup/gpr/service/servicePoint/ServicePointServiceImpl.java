@@ -113,7 +113,7 @@ public class ServicePointServiceImpl implements ServicePointService {
     
     
     @Override
-    public ServicePoint findPointDeServiceByUuid(String uuid){
+    public ServicePoint findServicePointByUuid(String uuid){
         try {
             return repository.findByUuid(uuid).orElseThrow(() -> new Exception("Ce point de service n'existe pas."));
         } catch (Exception e) {
