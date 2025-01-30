@@ -189,9 +189,9 @@ public class ClaimServiceImpl implements ClaimService {
             }
         }
         ServicePoint servicePoint;
-        if (claimToSave.getServicePointUuid() != null) {
+        if (claimToSave.getServicePointId() != null) {
             try {
-                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(claimToSave.getServicePointUuid());
+                servicePoint = servicePointServiceImpl.getById(claimToSave.getServicePointId());
                 claim.setServicePoint(servicePoint);
             } catch (Exception e) {
                 throw new Exception("Point Service introuvable");
@@ -199,9 +199,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Product product;
-        if (claimToSave.getProductUuid() != null) {
+        if (claimToSave.getProductId() != null) {
             try {
-                product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
+                product = productServiceImpl.getById(claimToSave.getProductId());
                 claim.setProduct(product);
             } catch (Exception e) {
                 throw new Exception("Product introuvable");
@@ -209,9 +209,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Objet objet;
-        if (claimToSave.getObjetUuid() != null) {
+        if (claimToSave.getObjetId() != null) {
             try {
-                objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
+                objet = objetServcieImpl.getById(claimToSave.getObjetId());
                 claim.setObjet(objet);
             } catch (Exception e) {
                 throw new Exception("Objet introuvable");
@@ -219,14 +219,15 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Language language;
-        if (claimToSave.getLanguageUuid() != null) {
+        if (claimToSave.getLanguageId() != null) {
             try {
-                language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
+                language = languageServiceImpl.getById(claimToSave.getLanguageId());
                 claim.setLanguage(language);
             } catch (Exception e) {
                 throw new Exception("Langage introuvable");
             }
         }
+
 
         claim = repository.save(claim);
         Log log = Log
@@ -415,47 +416,47 @@ public class ClaimServiceImpl implements ClaimService {
                 throw new Exception("Collection channelle choosed not found");
             }
         }
-        ServicePoint servicePoint;
-        if (claimToSave.getServicePointUuid() != null) {
-            try {
-                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(claimToSave.getServicePointUuid());
-                claim.setServicePoint(servicePoint);
-            } catch (Exception e) {
-                throw new Exception("Service Point choosed not found");
-            }
-        }
+        // ServicePoint servicePoint;
+        // if (claimToSave.getServicePointUuid() != null) {
+        //     try {
+        //         servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(claimToSave.getServicePointUuid());
+        //         claim.setServicePoint(servicePoint);
+        //     } catch (Exception e) {
+        //         throw new Exception("Service Point choosed not found");
+        //     }
+        // }
 
-        Product product;
-        if (claimToSave.getProductUuid() != null) {
-            try {
-                product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
-                claim.setProduct(product);
-            } catch (Exception e) {
-                throw new Exception("Product choosed not found");
-            }
-        }
+        // Product product;
+        // if (claimToSave.getProductUuid() != null) {
+        //     try {
+        //         product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
+        //         claim.setProduct(product);
+        //     } catch (Exception e) {
+        //         throw new Exception("Product choosed not found");
+        //     }
+        // }
 
-        Objet objet;
-        // System.out.println("objet id");
-        // System.out.println(claimToSave.getObjetId());
-        if (claimToSave.getObjetUuid() != null) {
-            try {
-                objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
-                claim.setObjet(objet);
-            } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
-            }
-        }
+        // Objet objet;
+        // // System.out.println("objet id");
+        // // System.out.println(claimToSave.getObjetId());
+        // if (claimToSave.getObjetUuid() != null) {
+        //     try {
+        //         objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
+        //         claim.setObjet(objet);
+        //     } catch (Exception e) {
+        //         throw new Exception("Objet choosed not found");
+        //     }
+        // }
 
-        Language language;
-        if (claimToSave.getLanguageUuid() != null) {
-            try {
-                language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
-                claim.setLanguage(language);
-            } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
-            }
-        }
+        // Language language;
+        // if (claimToSave.getLanguageUuid() != null) {
+        //     try {
+        //         language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
+        //         claim.setLanguage(language);
+        //     } catch (Exception e) {
+        //         throw new Exception("Objet choosed not found");
+        //     }
+        // }
 
         if (claimToSave.getClientFirstAndLastName() != null) {
             claim.setClientFirstAndLastName(claimToSave.getClientFirstAndLastName());
@@ -1355,9 +1356,9 @@ public class ClaimServiceImpl implements ClaimService {
             }
         }
         ServicePoint servicePoint;
-        if (claimToSave.getServicePointUuid() != null) {
+        if (claimToSave.getServicePointId() != null) {
             try {
-                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(claimToSave.getServicePointUuid());
+                servicePoint = servicePointServiceImpl.getById(claimToSave.getServicePointId());
                 claim.setServicePoint(servicePoint);
             } catch (Exception e) {
                 throw new Exception("Point Service introuvable");
@@ -1365,9 +1366,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Product product;
-        if (claimToSave.getProductUuid() != null) {
+        if (claimToSave.getProductId() != null) {
             try {
-                product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
+                product = productServiceImpl.getById(claimToSave.getProductId());
                 claim.setProduct(product);
             } catch (Exception e) {
                 throw new Exception("Product introuvable");
@@ -1375,9 +1376,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Objet objet;
-        if (claimToSave.getObjetUuid() != null) {
+        if (claimToSave.getObjetId() != null) {
             try {
-                objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
+                objet = objetServcieImpl.getById(claimToSave.getObjetId());
                 claim.setObjet(objet);
             } catch (Exception e) {
                 throw new Exception("Objet introuvable");
@@ -1385,14 +1386,15 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Language language;
-        if (claimToSave.getLanguageUuid() != null) {
+        if (claimToSave.getLanguageId() != null) {
             try {
-                language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
+                language = languageServiceImpl.getById(claimToSave.getLanguageId());
                 claim.setLanguage(language);
             } catch (Exception e) {
                 throw new Exception("Langage introuvable");
             }
         }
+
 
         claim = repository.save(claim);
 
@@ -1469,50 +1471,49 @@ public class ClaimServiceImpl implements ClaimService {
                 collectionChannel = collectionChannelService.getById(claimToSave.getCollectionChannelId());
                 claim.setCollectionChannel(collectionChannel);
             } catch (Exception e) {
-                throw new Exception("Collection channelle choosed not found");
+                throw new Exception("Canal de collecte introuvable");
             }
         }
         ServicePoint servicePoint;
-        if (claimToSave.getServicePointUuid() != null) {
+        if (claimToSave.getServicePointId() != null) {
             try {
-                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(claimToSave.getServicePointUuid());
+                servicePoint = servicePointServiceImpl.getById(claimToSave.getServicePointId());
                 claim.setServicePoint(servicePoint);
             } catch (Exception e) {
-                throw new Exception("Service Point choosed not found");
+                throw new Exception("Point Service introuvable");
             }
         }
 
         Product product;
-        if (claimToSave.getProductUuid() != null) {
+        if (claimToSave.getProductId() != null) {
             try {
-                product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
+                product = productServiceImpl.getById(claimToSave.getProductId());
                 claim.setProduct(product);
             } catch (Exception e) {
-                throw new Exception("Product choosed not found");
+                throw new Exception("Product introuvable");
             }
         }
 
         Objet objet;
-        // System.out.println("objet id");
-        // System.out.println(claimToSave.getObjetId());
-        if (claimToSave.getObjetUuid() != null) {
+        if (claimToSave.getObjetId() != null) {
             try {
-                objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
+                objet = objetServcieImpl.getById(claimToSave.getObjetId());
                 claim.setObjet(objet);
             } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
+                throw new Exception("Objet introuvable");
             }
         }
 
         Language language;
-        if (claimToSave.getLanguageUuid() != null) {
+        if (claimToSave.getLanguageId() != null) {
             try {
-                language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
+                language = languageServiceImpl.getById(claimToSave.getLanguageId());
                 claim.setLanguage(language);
             } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
+                throw new Exception("Langage introuvable");
             }
         }
+
 
         if (claimToSave.getClientFirstAndLastName() != null) {
             claim.setClientFirstAndLastName(claimToSave.getClientFirstAndLastName());
