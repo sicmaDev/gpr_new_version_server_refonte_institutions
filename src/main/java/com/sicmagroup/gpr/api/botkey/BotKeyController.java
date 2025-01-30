@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.api.claim.ClaimController;
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
+import com.sicmagroup.gpr.api.claim.MeasureSatisfactionBotRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunciationController;
 import com.sicmagroup.gpr.api.suggestion.SuggestionAddRequest;
@@ -29,11 +31,16 @@ import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.dto.botkey.BotKeyConfigResponse;
+import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
+import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.Solution;
+import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.botkey.BotKeyServiceImpl;
+import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
 import com.sicmagroup.gpr.service.language.LanguageServiceImpl;
 import com.sicmagroup.gpr.service.product.ProductServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
@@ -50,6 +57,7 @@ public class BotKeyController {
     private final AuthenticationServiceImpl authService;
     private final DenunciationController denunciationController;
     private final ClaimController claimController;
+    private final ClaimServiceImpl claimService;
     private final ServicePointServiceImpl pointDeServiceService;
     private final LanguageServiceImpl languageServiceImpl;
     private final ProductServiceImpl productServiceImpl;
@@ -606,7 +614,95 @@ public class BotKeyController {
     //     }
     // }
 
-   
+    // @PostMapping("/claim/mesure")
+    // public ResponseEntity<ApiResponseDto> measureSatisfactionBotEntity(@RequestBody MeasureSatisfactionBotRequest request) {
+    // ApiResponseDto apiResponseDto = new ApiResponseDto();
+    // apiResponseDto = Utils.verifyLicence();
+
+    //     // if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+    //         LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+    //         if (lc.isActif()) {
+    //             Claim claim;
+    //             try {
+    //                 claim = claimService.getByCodeClient(request.getCodeClient());
+    //             } catch (Exception e) {
+    //                 apiResponseDto = ApiResponseDto
+    //                         .builder()
+    //                         .status(false)
+    //                         .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+    //                         .build();
+    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    //             }
+
+    //             if (claim.getStatus() != ClaimStatus.TREAT) {
+    //                 apiResponseDto = ApiResponseDto
+    //                         .builder()
+    //                         .status(false)
+    //                         .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
+    //                                 .title("Opération impossible").build())
+    //                         .build();
+    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    //             }
+
+    //             Solution solution;
+    //             try {
+    //                 solution = solutionServiceImpl.getLastSolutionByClaim(claim.getId());
+    //             } catch (Exception e) {
+    //                 apiResponseDto = ApiResponseDto
+    //                         .builder()
+    //                         .status(false)
+    //                         .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+    //                         .build();
+    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    //             }
+
+    //             User measurer;
+    //             try {
+    //                 measurer = authService.getByCodeClient(request.getCodeClient());
+    //             } catch (Exception e) {
+    //                 apiResponseDto = ApiResponseDto
+    //                         .builder()
+    //                         .status(false)
+    //                         .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+    //                         .build();
+    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    //             }
+
+    //             if (!measurer.canMeasureClaim() && !measurer.getAdditionalrole().equals(Role.PILOTE)) {
+    //                 apiResponseDto = ApiResponseDto
+    //                         .builder()
+    //                         .status(false)
+    //                         .content(
+    //                                 ErrorResponse.builder().message("Vous n'êtes pas habilité à mesurer une réclamation")
+    //                                         .title("Habilitation manquante").build())
+    //                         .build();
+    //                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
+    //             }
+
+    //             claim = service.measureClaim(claim, solution, measurer, request.getSatisfactionStatus(),
+    //                     request.getCommentaire());
+
+    //             apiResponseDto = ApiResponseDto
+    //                     .builder()
+    //                     .status(true)
+    //                     .content(convertToDto(claim))
+    //                     .build();
+    //             return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
+    //         } else {
+    //             apiResponseDto = ApiResponseDto
+    //                     .builder()
+    //                     .status(false)
+    //                     .content(lc)
+    //                     .build();
+
+    //             return ResponseEntity.ok(apiResponseDto);
+    //         }
+
+    //     // } else {
+    //     //     return ResponseEntity.ok(apiResponseDto);
+    //     // }
+    // }
+
 
 
 

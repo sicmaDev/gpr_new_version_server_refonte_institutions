@@ -111,5 +111,14 @@ public class ServicePointServiceImpl implements ServicePointService {
         return repository.findByDirectionId(servicePointId);
     }
     
+    
+    @Override
+    public ServicePoint findPointDeServiceByUuid(String uuid){
+        try {
+            return repository.findByUuid(uuid).orElseThrow(() -> new Exception("Ce point de service n'existe pas."));
+        } catch (Exception e) {
+            throw new RuntimeException("Ce point de service n'existe pas.", e);
+        }
+    }
 
 }

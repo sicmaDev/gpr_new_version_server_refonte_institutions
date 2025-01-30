@@ -29,6 +29,8 @@ public interface ServicePointService {
     public void deleteServicePoint(ServicePoint servicePoint) throws Exception ;
 
     public ServicePoint getDeletedById (Long id, boolean deleted) throws NotFoundException ;
+    
+    public ServicePoint findPointDeServiceByUuid(String uuid);
 
     
 }

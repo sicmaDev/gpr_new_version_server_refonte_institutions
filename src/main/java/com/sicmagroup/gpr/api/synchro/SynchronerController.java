@@ -138,12 +138,12 @@ public class SynchronerController {
 					// .crew(syncClaimRequest.getCrew())
 					// .folderCode(syncClaimRequest.getFolderCode())
 					// .gender(syncClaimRequest.getGender())
-					.languageId(syncClaimRequest.getLanguageId())
-					.objetId(syncClaimRequest.getObjetId())
+					.languageUuid(syncClaimRequest.getLanguageUuid())
+					.objetUuid(syncClaimRequest.getObjetUuid())
 					// .phone(syncClaimRequest.getPhone())
-					.productId(syncClaimRequest.getProductId())
+					.productUuid(syncClaimRequest.getProductUuid())
 					.receiptDateTime(syncClaimRequest.getReceiptDateTime())
-					.servicePointId(syncClaimRequest.getServicePointId())
+					.servicePointUuid(syncClaimRequest.getServicePointUuid())
 					.build();
 			if (syncClaimRequest.getId() != null) {
 				claimRequest.setId(syncClaimRequest.getId());
@@ -239,12 +239,12 @@ public class SynchronerController {
 					.crew(syncSuggestionRequest.getCrew())
 					.folderCode(syncSuggestionRequest.getFolderCode())
 					.gender(syncSuggestionRequest.getGender())
-					.languageId(syncSuggestionRequest.getLanguageId())
-					.objetId(syncSuggestionRequest.getObjetId())
+					.languageUuid(syncSuggestionRequest.getLanguageUuid())
+					.objetUuid(syncSuggestionRequest.getObjetUuid())
 					.phone(syncSuggestionRequest.getPhone())
-					.productId(syncSuggestionRequest.getProductId())
+					.productUuid(syncSuggestionRequest.getProductUuid())
 					.receiptDateTime(syncSuggestionRequest.getReceiptDateTime())
-					.servicePointId(syncSuggestionRequest.getServicePointId())
+					.servicePointUuid(syncSuggestionRequest.getServicePointUuid())
 					.build();
 			if (syncSuggestionRequest.getId() != null) {
 				suggestionRequest.setId(syncSuggestionRequest.getId());
@@ -638,12 +638,12 @@ public class SynchronerController {
 					.crew(syncClaimRequest.getCrew())
 					.folderCode(syncClaimRequest.getFolderCode())
 					.gender(syncClaimRequest.getGender())
-					.languageId(syncClaimRequest.getLanguageId())
-					.objetId(syncClaimRequest.getObjetId())
+					.languageUuid(syncClaimRequest.getLanguageUuid())
+					.objetUuid(syncClaimRequest.getObjetUuid())
 					.phone(syncClaimRequest.getPhone())
-					.productId(syncClaimRequest.getProductId())
+					.productUuid(syncClaimRequest.getProductUuid())
 					.receiptDateTime(syncClaimRequest.getReceiptDateTime())
-					.servicePointId(syncClaimRequest.getServicePointId())
+					.servicePointUuid(syncClaimRequest.getServicePointUuid())
 					.onlineUploadDateTime(LocalDateTime.now())
 					.build();
 
@@ -758,12 +758,12 @@ public class SynchronerController {
 					.collectorId(syncClaimRequest.getCollectorId())
 					.content(syncClaimRequest.getContent())
 
-					.languageId(syncClaimRequest.getLanguageId())
-					.objetId(syncClaimRequest.getObjetId())
+					.languageUuid(syncClaimRequest.getLanguageUuid())
+					.objetUuid(syncClaimRequest.getObjetUuid())
 
-					.productId(syncClaimRequest.getProductId())
+					.productUuid(syncClaimRequest.getProductUuid())
 					.receiptDateTime(syncClaimRequest.getReceiptDateTime())
-					.servicePointId(syncClaimRequest.getServicePointId())
+					.servicePointUuid(syncClaimRequest.getServicePointUuid())
 					.onlineUploadDateTime(LocalDateTime.now())
 					.build();
 			if (syncClaimRequest.getId() != null) {
@@ -868,8 +868,8 @@ public class SynchronerController {
 
 		// List<Suggestion> suggestions = new ArrayList<>();
 		syncSuggestionRequests.removeIf(syncSugg -> syncSugg.getCollectionChannelId() == null
-				&& syncSugg.getCollectorId() == null && syncSugg.getProductId() == null
-				&& syncSugg.getLanguageId() == null && syncSugg.getServicePointId() == null);
+				&& syncSugg.getCollectorId() == null && syncSugg.getProductUuid() == null
+				&& syncSugg.getLanguageUuid() == null && syncSugg.getServicePointUuid() == null);
 
 		for (SyncSuggestionRequest syncSuggestionRequest : syncSuggestionRequests) {
 			suggestionRequest = SuggestionRequest
@@ -884,12 +884,12 @@ public class SynchronerController {
 					.crew(syncSuggestionRequest.getCrew())
 					.folderCode(syncSuggestionRequest.getFolderCode())
 					.gender(syncSuggestionRequest.getGender())
-					.languageId(syncSuggestionRequest.getLanguageId())
-					.objetId(syncSuggestionRequest.getObjetId())
+					.languageUuid(syncSuggestionRequest.getLanguageUuid())
+					.objetUuid(syncSuggestionRequest.getObjetUuid())
 					.phone(syncSuggestionRequest.getPhone())
-					.productId(syncSuggestionRequest.getProductId())
+					.productUuid(syncSuggestionRequest.getProductUuid())
 					.receiptDateTime(syncSuggestionRequest.getReceiptDateTime())
-					.servicePointId(syncSuggestionRequest.getServicePointId())
+					.servicePointUuid(syncSuggestionRequest.getServicePointUuid())
 					.createdAt(syncSuggestionRequest.getCreatedAt())
 					.onlineUploadDateTime(LocalDateTime.now())
 					.build();

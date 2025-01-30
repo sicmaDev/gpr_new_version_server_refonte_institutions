@@ -25,11 +25,11 @@ public class ClaimRequest {
     private String crew;
     private String folderCode;
     private Long collectionChannelId;
-    private Long servicePointId;
-    private Long productId;
-    private Long objetId;
+    private String servicePointUuid;
+    private String productUuid;
+    private String objetUuid;
     private ClaimStatus status;
-    private Long languageId;
+    private String languageUuid;
     private Long collectorId;
     private String content;
     private String receiptDateTime;

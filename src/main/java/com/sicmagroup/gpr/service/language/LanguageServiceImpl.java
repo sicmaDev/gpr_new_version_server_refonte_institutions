@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Poste;
+import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.repository.LanguageRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -76,6 +77,14 @@ public class LanguageServiceImpl implements LanguageService {
         }
 
         return code;
+    }
+     @Override
+    public Language findByUuid(String uuid){
+        try {
+            return repository.findByUuid(uuid).orElseThrow(() -> new Exception("Cette langue  n'existe pas."));
+        } catch (Exception e) {
+            throw new RuntimeException("Cette langue  n'existe pas.", e);
+        }
     }
 
 }

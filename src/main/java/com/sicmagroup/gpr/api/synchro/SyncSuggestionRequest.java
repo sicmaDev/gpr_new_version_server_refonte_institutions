@@ -26,10 +26,10 @@ public class SyncSuggestionRequest {
     private String crew;
     private String folderCode;
     private Long collectionChannelId;
-    private Long servicePointId;
-    private Long productId;
-    private Long objetId;
-    private Long languageId;
+    private String servicePointUuid;
+    private String productUuid;
+    private String ObjetUuid;
+    private String languageUuid;
     private Long collectorId;
     private String content;
     private String receiptDateTime;

@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 
+import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.repository.ObjetRepository;
 
@@ -76,6 +77,14 @@ public class ObjetServcieImpl implements ObjetService {
         }
 
         return code;
+    }
+
+    public Objet findByUuid(String uuid){
+        try {
+            return repository.findByUuid(uuid).orElseThrow(() -> new Exception("Cette langue  n'existe pas."));
+        } catch (Exception e) {
+            throw new RuntimeException("Cette langue  n'existe pas.", e);
+        }
     }
 
 }

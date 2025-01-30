@@ -23,4 +23,6 @@ public interface LanguageService {
     public void deleteLanguage(Language language) throws Exception ;
 
     public Language getDeletedById(Long id, boolean deleted) throws NotFoundException;
+    
+    public Language findByUuid(String uuid) throws NotFoundException;
 }

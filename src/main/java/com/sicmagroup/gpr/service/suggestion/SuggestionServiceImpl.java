@@ -111,9 +111,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         ServicePoint servicePoint;
-        if (suggestionRequest.getServicePointId() != null) {
+        if (suggestionRequest.getServicePointUuid() != null) {
             try {
-                servicePoint = servicePointServiceImpl.getById(suggestionRequest.getServicePointId());
+                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(suggestionRequest.getServicePointUuid());
                 suggestion.setServiceIndexe(servicePoint);
             } catch (Exception e) {
                 throw new Exception("Service Point choosed not found");
@@ -121,9 +121,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         Product product;
-        if (suggestionRequest.getProductId() != null) {
+        if (suggestionRequest.getProductUuid() != null) {
             try {
-                product = productServiceImpl.getById(suggestionRequest.getProductId());
+                product = productServiceImpl.findProductByUuid(suggestionRequest.getProductUuid());
                 suggestion.setProduit(product);
             } catch (Exception e) {
                 throw new Exception("Product choosed not found");
@@ -131,9 +131,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         Language language;
-        if (suggestionRequest.getLanguageId() != null) {
+        if (suggestionRequest.getLanguageUuid() != null) {
             try {
-                language = languageServiceImpl.getById(suggestionRequest.getLanguageId());
+                language = languageServiceImpl.findByUuid(suggestionRequest.getLanguageUuid());
                 suggestion.setLangue(language);
             } catch (Exception e) {
                 throw new Exception("Objet choosed not found");
@@ -208,9 +208,6 @@ public class SuggestionServiceImpl implements SuggestionService {
                 .builder()
                 .build();
       
-
-
-
         if (suggestionRequest.getId() != null) {
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
                     .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
@@ -241,9 +238,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         ServicePoint servicePoint;
-        if (suggestionRequest.getServicePointId() != null) {
+        if (suggestionRequest.getServicePointUuid()!= null) {
             try {
-                servicePoint = servicePointServiceImpl.getById(suggestionRequest.getServicePointId());
+                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(suggestionRequest.getServicePointUuid());
                 suggestion.setServiceIndexe(servicePoint);
             } catch (Exception e) {
                 // throw new Exception("Service Point choosed not found");
@@ -251,9 +248,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         Product product;
-        if (suggestionRequest.getProductId() != null) {
+        if (suggestionRequest.getProductUuid() != null) {
             try {
-                product = productServiceImpl.getById(suggestionRequest.getProductId());
+                product = productServiceImpl.findProductByUuid(suggestionRequest.getProductUuid());
                 suggestion.setProduit(product);
             } catch (Exception e) {
                 // throw new Exception("Product choosed not found");
@@ -261,14 +258,15 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         Language language;
-        if (suggestionRequest.getLanguageId() != null) {
+        if (suggestionRequest.getLanguageUuid() != null) {
             try {
-                language = languageServiceImpl.getById(suggestionRequest.getLanguageId());
+                language = languageServiceImpl.findByUuid(suggestionRequest.getLanguageUuid());
                 suggestion.setLangue(language);
             } catch (Exception e) {
-                // throw new Exception("Objet choosed not found");
+                throw new Exception("Objet choosed not found");
             }
         }
+
         if (suggestionRequest.getClientFirstAndLastName() != null) {
             suggestion.setClientFirstAndLastName(suggestionRequest.getClientFirstAndLastName());
         }
@@ -436,19 +434,19 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         ServicePoint servicePoint;
-        if (suggestionRequest.getServicePointId() != null) {
+        if (suggestionRequest.getServicePointUuid() != null) {
             try {
-                servicePoint = servicePointServiceImpl.getById(suggestionRequest.getServicePointId());
+                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(suggestionRequest.getServicePointUuid());
                 suggestion.setServiceIndexe(servicePoint);
             } catch (Exception e) {
                 throw new Exception("Service Point choosed not found");
             }
-        }
+        } 
 
         Product product;
-        if (suggestionRequest.getProductId() != null) {
+        if (suggestionRequest.getProductUuid() != null) {
             try {
-                product = productServiceImpl.getById(suggestionRequest.getProductId());
+                product = productServiceImpl.findProductByUuid(suggestionRequest.getProductUuid());
                 suggestion.setProduit(product);
             } catch (Exception e) {
                 throw new Exception("Product choosed not found");
@@ -456,9 +454,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         Language language;
-        if (suggestionRequest.getLanguageId() != null) {
+        if (suggestionRequest.getLanguageUuid() != null) {
             try {
-                language = languageServiceImpl.getById(suggestionRequest.getLanguageId());
+                language = languageServiceImpl.findByUuid(suggestionRequest.getLanguageUuid());
                 suggestion.setLangue(language);
             } catch (Exception e) {
                 throw new Exception("Objet choosed not found");
@@ -518,5 +516,8 @@ public class SuggestionServiceImpl implements SuggestionService {
             suggestion = repository.save(suggestion);
         }
     }
+
+    
+   
 
 }

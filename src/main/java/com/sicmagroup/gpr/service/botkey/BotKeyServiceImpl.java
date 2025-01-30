@@ -215,23 +215,23 @@ public class BotKeyServiceImpl implements BotKeyService {
         }
 
         ServicePoint servicePoint;
-        if (suggestionRequest.getServicePointId() != null) {
-                servicePoint = servicePointRepository.findById(suggestionRequest.getServicePointId()).orElseThrow(()-> new Exception("Service point choosed not found"));
+        if (suggestionRequest.getServicePointUuid() != null) {
+                servicePoint = servicePointRepository.findByUuid(suggestionRequest.getServicePointUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));
                 suggestion.setServiceIndexe(servicePoint);
         }
 
         Product product;
-        if (suggestionRequest.getProductId() != null) {
+        if (suggestionRequest.getProductUuid() != null) {
             
-                product = productRepository.findById(suggestionRequest.getProductId()).orElseThrow(()-> new Exception("Prodcut choosed not found"));;
+                product = productRepository.findByUuid(suggestionRequest.getProductUuid()).orElseThrow(()-> new Exception("Prodcut choosed not found"));;
                 suggestion.setProduit(product);
            
         }
 
         Language language;
-        if (suggestionRequest.getLanguageId() != null) {
+        if (suggestionRequest.getLanguageUuid() != null) {
           
-                language = languageRepository.findById(suggestionRequest.getLanguageId()).orElseThrow(()-> new Exception("Language choosed not found"));;
+                language = languageRepository.findByUuid(suggestionRequest.getLanguageUuid()).orElseThrow(()-> new Exception("Language choosed not found"));;
                 suggestion.setLangue(language);
             
         }
@@ -344,30 +344,30 @@ public class BotKeyServiceImpl implements BotKeyService {
         }
 
         ServicePoint servicePoint;
-        if (claimToSave.getServicePointId() != null) {
-                servicePoint = servicePointRepository.findById(claimToSave.getServicePointId()).orElseThrow(()-> new Exception("Service point choosed not found"));
+        if (claimToSave.getServicePointUuid() != null) {
+                servicePoint = servicePointRepository.findByUuid(claimToSave.getServicePointUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));
                 claim.setServicePoint(servicePoint);
         }
 
         Product product;
-        if (claimToSave.getProductId() != null) {
+        if (claimToSave.getProductUuid() != null) {
             
-            product = productRepository.findById(claimToSave.getProductId()).orElseThrow(()-> new Exception("Prodcut choosed not found"));;
+            product = productRepository.findByUuid(claimToSave.getProductUuid()).orElseThrow(()-> new Exception("Prodcut choosed not found"));;
             claim.setProduct(product);
            
         }
 
         Language language;
-        if (claimToSave.getLanguageId() != null) {
+        if (claimToSave.getLanguageUuid() != null) {
           
-                language = languageRepository.findById(claimToSave.getLanguageId()).orElseThrow(()-> new Exception("Language choosed not found"));;
+                language = languageRepository.findByUuid(claimToSave.getLanguageUuid()).orElseThrow(()-> new Exception("Language choosed not found"));;
                 claim.setLanguage(language);
             
         }
         Objet objet;
-        if (claimToSave.getLanguageId() != null) {
+        if (claimToSave.getLanguageUuid() != null) {
           
-                objet = objetRepository.findById(claimToSave.getObjetId()).orElseThrow(()-> new Exception("Objet choosed not found"));;
+                objet = objetRepository.findByUuid(claimToSave.getObjetUuid()).orElseThrow(()-> new Exception("Objet choosed not found"));;
                 claim.setObjet(objet);
             
         }

@@ -24,13 +24,14 @@ public class SuggestionRequest {
     private String crew;
     private String folderCode;
     private Long collectionChannelId;
-    private Long servicePointId;
-    private Long productId;
-    private Long objetId;
-    private Long languageId;
+    private String servicePointUuid;
+    private String productUuid;
+    private String objetUuid;
+    private String languageUuid;
     private Long collectorId;
     private String content;
     private String receiptDateTime;
     private String createdAt;
     private LocalDateTime onlineUploadDateTime;
+
 }

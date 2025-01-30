@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.Product;
+import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -82,5 +83,15 @@ public class ProductServiceImpl implements ProductService {
 
         return code;
     }
+
+     @Override
+    public Product findProductByUuid(String uuid){
+        try {
+            return repository.findByUuid(uuid).orElseThrow(() -> new Exception("Ce point de service n'existe pas."));
+        } catch (Exception e) {
+            throw new RuntimeException("Ce point de service n'existe pas.", e);
+        }
+    }
+
 
 }
