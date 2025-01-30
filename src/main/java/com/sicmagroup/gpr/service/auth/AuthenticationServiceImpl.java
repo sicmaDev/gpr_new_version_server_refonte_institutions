@@ -382,7 +382,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         settings.put("others", settingServiceImpl.getAll());
 
         // recuperer le contenu du fichier data
-        // settingServiceImpl.updateLicence();
+        settingServiceImpl.updateLicence();
         try {
             // Le fichier d'entrée
             File file = new File("data.txt");
@@ -533,7 +533,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         settings.put("others", settingServiceImpl.getAll());
 
         // recuperer le contenu du fichier data
-        // settingServiceImpl.updateLicence();
+        settingServiceImpl.updateLicence();
         try {
             // Le fichier d'entrée
             File file = new File("data.txt");
