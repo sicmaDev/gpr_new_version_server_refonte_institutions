@@ -30,10 +30,10 @@ public class SuggestionRequest {
     private Inbox inboxWhatsapp;
     private String folderCode;
     private Long collectionChannelId;
-    private String servicePointUuid;
-    private String productUuid;
-    private String objetUuid;
-    private String languageUuid;
+    private Long servicePointId;
+    private Long productId;
+    private Long objetId;
+    private Long languageId;
     private Long collectorId;
     private String content;
     private String receiptDateTime;

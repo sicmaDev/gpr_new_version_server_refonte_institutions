@@ -119,9 +119,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         ServicePoint servicePoint;
-        if (suggestionRequest.getServicePointUuid() != null) {
+        if (suggestionRequest.getServicePointId() != null) {
             try {
-                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(suggestionRequest.getServicePointUuid());
+                servicePoint = servicePointServiceImpl.getById(suggestionRequest.getServicePointId());
                 suggestion.setServiceIndexe(servicePoint);
             } catch (Exception e) {
                 throw new Exception("Service Point choosed not found");
@@ -129,9 +129,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         Product product;
-        if (suggestionRequest.getProductUuid() != null) {
+        if (suggestionRequest.getProductId() != null) {
             try {
-                product = productServiceImpl.findProductByUuid(suggestionRequest.getProductUuid());
+                product = productServiceImpl.getById(suggestionRequest.getProductId());
                 suggestion.setProduit(product);
             } catch (Exception e) {
                 throw new Exception("Product choosed not found");
@@ -139,14 +139,16 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         Language language;
-        if (suggestionRequest.getLanguageUuid() != null) {
+        if (suggestionRequest.getLanguageId() != null) {
             try {
-                language = languageServiceImpl.findByUuid(suggestionRequest.getLanguageUuid());
+                language = languageServiceImpl.getById(suggestionRequest.getLanguageId());
                 suggestion.setLangue(language);
             } catch (Exception e) {
                 throw new Exception("Objet choosed not found");
             }
         }
+
+       
         if (suggestionRequest.getClientFirstAndLastName() != null) {
             suggestion.setClientFirstAndLastName(suggestionRequest.getClientFirstAndLastName());
         }
@@ -258,35 +260,35 @@ public class SuggestionServiceImpl implements SuggestionService {
             }
         }
 
-        ServicePoint servicePoint;
-        if (suggestionRequest.getServicePointUuid()!= null) {
-            try {
-                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(suggestionRequest.getServicePointUuid());
-                suggestion.setServiceIndexe(servicePoint);
-            } catch (Exception e) {
-                // throw new Exception("Service Point choosed not found");
-            }
-        }
+        // ServicePoint servicePoint;
+        // if (suggestionRequest.getServicePointUuid()!= null) {
+        //     try {
+        //         servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(suggestionRequest.getServicePointUuid());
+        //         suggestion.setServiceIndexe(servicePoint);
+        //     } catch (Exception e) {
+        //         // throw new Exception("Service Point choosed not found");
+        //     }
+        // }
 
-        Product product;
-        if (suggestionRequest.getProductUuid() != null) {
-            try {
-                product = productServiceImpl.findProductByUuid(suggestionRequest.getProductUuid());
-                suggestion.setProduit(product);
-            } catch (Exception e) {
-                // throw new Exception("Product choosed not found");
-            }
-        }
+        // Product product;
+        // if (suggestionRequest.getProductUuid() != null) {
+        //     try {
+        //         product = productServiceImpl.findProductByUuid(suggestionRequest.getProductUuid());
+        //         suggestion.setProduit(product);
+        //     } catch (Exception e) {
+        //         // throw new Exception("Product choosed not found");
+        //     }
+        // }
 
-        Language language;
-        if (suggestionRequest.getLanguageUuid() != null) {
-            try {
-                language = languageServiceImpl.findByUuid(suggestionRequest.getLanguageUuid());
-                suggestion.setLangue(language);
-            } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
-            }
-        }
+        // Language language;
+        // if (suggestionRequest.getLanguageUuid() != null) {
+        //     try {
+        //         language = languageServiceImpl.findByUuid(suggestionRequest.getLanguageUuid());
+        //         suggestion.setLangue(language);
+        //     } catch (Exception e) {
+        //         throw new Exception("Objet choosed not found");
+        //     }
+        // }
 
         if (suggestionRequest.getClientFirstAndLastName() != null) {
             suggestion.setClientFirstAndLastName(suggestionRequest.getClientFirstAndLastName());
@@ -455,19 +457,19 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         ServicePoint servicePoint;
-        if (suggestionRequest.getServicePointUuid() != null) {
+        if (suggestionRequest.getServicePointId() != null) {
             try {
-                servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(suggestionRequest.getServicePointUuid());
+                servicePoint = servicePointServiceImpl.getById(suggestionRequest.getServicePointId());
                 suggestion.setServiceIndexe(servicePoint);
             } catch (Exception e) {
                 throw new Exception("Service Point choosed not found");
             }
-        } 
+        }
 
         Product product;
-        if (suggestionRequest.getProductUuid() != null) {
+        if (suggestionRequest.getProductId() != null) {
             try {
-                product = productServiceImpl.findProductByUuid(suggestionRequest.getProductUuid());
+                product = productServiceImpl.getById(suggestionRequest.getProductId());
                 suggestion.setProduit(product);
             } catch (Exception e) {
                 throw new Exception("Product choosed not found");
@@ -475,9 +477,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         Language language;
-        if (suggestionRequest.getLanguageUuid() != null) {
+        if (suggestionRequest.getLanguageId() != null) {
             try {
-                language = languageServiceImpl.findByUuid(suggestionRequest.getLanguageUuid());
+                language = languageServiceImpl.getById(suggestionRequest.getLanguageId());
                 suggestion.setLangue(language);
             } catch (Exception e) {
                 throw new Exception("Objet choosed not found");
