@@ -34,10 +34,10 @@ public class SuggestionRequest {
     private Long productId;
     private Long objetId;
     private Long languageId;
-    private Long servicePointUuid;
-    private Long productUuid;
-    private Long objetUuid;
-    private Long languageUuid;
+    private String servicePointUuid;
+    private String productUuid;
+    private String objetUuid;
+    private String languageUuid;
     private Long collectorId;
     private String content;
     private String receiptDateTime;

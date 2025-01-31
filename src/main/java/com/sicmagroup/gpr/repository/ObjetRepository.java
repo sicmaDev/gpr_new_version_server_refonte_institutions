@@ -12,5 +12,5 @@ public interface ObjetRepository extends JpaRepository<Objet, Long> {
       List<Objet> findByIsDeleted(boolean deleted);
 
     Optional<Objet> findByIdAndIsDeleted(Long id, boolean deleted);
-    Optional<Objet> findByUuid(String uuid);
+    Optional<Objet> findFirstByUuid(String uuid);
 }

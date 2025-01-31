@@ -737,7 +737,9 @@ public class Utils {
                 .builder()
 
                 .build();
+                System.err.println("licensia1 : ");
         try {
+            System.err.println("licensia2 : ");
             // Le fichier d'entrée
             File file = new File("data.txt");
             // Créer l'objet File Reader
@@ -752,9 +754,9 @@ public class Utils {
                 sb.append("\n");
             }
             fr.close();
-
+            System.err.println("licensia3 : ");
             license = sb.toString();
-
+            System.err.println("licensia : "+ license);
             if (license != "") {
                 LicenceControl licenceControl = LicenceControl
                         .builder()

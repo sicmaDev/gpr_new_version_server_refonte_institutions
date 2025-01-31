@@ -484,7 +484,7 @@ public class ClaimController {
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto;
         apiResponseDto = Utils.verifyLicence();
-
+        System.out.println("VDR : ");
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {

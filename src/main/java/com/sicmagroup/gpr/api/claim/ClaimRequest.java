@@ -41,5 +41,9 @@ public class ClaimRequest {
     private String receiptDateTime;
     private String createdAt;
     private LocalDateTime onlineUploadDateTime;
+    private String servicePointUuid;
+    private String productUuid;
+    private String objetUuid;
+    private String languageUuid;
 
 }

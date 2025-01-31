@@ -209,26 +209,23 @@ public class BotKeyServiceImpl implements BotKeyService {
             // }
         }
 
-        CollectionChannel collectionChannel;
-        if (suggestionRequest.getCollectionChannelId() != null) {
-            collectionChannel = collectionChannelRespository.findById(suggestionRequest.getCollectionChannelId()).orElseThrow(()-> new Exception("Collection channelle choosed not found"));
-            suggestion.setCanal(collectionChannel);
-        }
-
-        ServicePoint servicePoint;
-        if (suggestionRequest.getServicePointId() != null) {
-                servicePoint = servicePointRepository.findById(suggestionRequest.getServicePointId()).orElseThrow(()-> new Exception("Service point choosed not found"));
-                suggestion.setServiceIndexe(servicePoint);
-        }
-
-        // if (suggestionRequest.getServicePointUuid() != null) { 
-        //     servicePoint = servicePointRepository.findByUuid(suggestionRequest.getServicePointUuid());
-
-        //         suggestion.setServicePoint(servicePoint); // Enregistre l'ID du ServicePoint dans claim
+        // CollectionChannel collectionChannel;
+        // if (suggestionRequest.getCollectionChannelId() != null) {
+        //     collectionChannel = collectionChannelRespository.findById(suggestionRequest.getCollectionChannelId()).orElseThrow(()-> new Exception("Collection channelle choosed not found"));
+        //     suggestion.setCanal(collectionChannel);
         // }
 
+        ServicePoint servicePoint;
+        // if (suggestionRequest.getServicePointId() != null) {
+        //         servicePoint = servicePointRepository.findById(suggestionRequest.getServicePointId()).orElseThrow(()-> new Exception("Service point choosed not found"));
+        //         suggestion.setServiceIndexe(servicePoint);
+        // }
 
-        
+        if (suggestionRequest.getServicePointUuid() != null) { 
+            servicePoint = servicePointRepository.findByUuid(suggestionRequest.getServicePointUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+                suggestion.setServiceIndexe(servicePoint);
+        }
 
         Product product;
         if (suggestionRequest.getProductId() != null) {
@@ -238,12 +235,22 @@ public class BotKeyServiceImpl implements BotKeyService {
            
         }
 
+        if (suggestionRequest.getProductUuid() != null) { 
+            product  = productRepository.findByUuid(suggestionRequest.getProductUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+            suggestion.setProduit(product);
+        }
         Language language;
         if (suggestionRequest.getLanguageId() != null) {
           
                 language = languageRepository.findById(suggestionRequest.getLanguageId()).orElseThrow(()-> new Exception("Language choosed not found"));;
                 suggestion.setLangue(language);
             
+        }
+        if (suggestionRequest.getLanguageUuid() != null) { 
+            language  = languageRepository.findByUuid(suggestionRequest.getLanguageUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+            suggestion.setLangue(language);
         }
         if (suggestionRequest.getGender() != null && !suggestionRequest.getGender().equals("")) {
             suggestion.setGender(Gender.valueOf(suggestionRequest.getGender()));
@@ -354,6 +361,11 @@ public class BotKeyServiceImpl implements BotKeyService {
             servicePoint = servicePointRepository.findById(claimToSave.getServicePointId()).orElseThrow(()-> new Exception("Service point choosed not found"));
             claim.setServicePoint(servicePoint);
     }
+    if (claimToSave.getServicePointUuid() != null) { 
+        servicePoint  = servicePointRepository.findByUuid(claimToSave.getServicePointUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+        claim.setServicePoint(servicePoint);
+    }
     
 
     Product product;
@@ -364,6 +376,12 @@ public class BotKeyServiceImpl implements BotKeyService {
        
     }
 
+    if (claimToSave.getProductUuid() != null) { 
+        product  = productRepository.findByUuid(claimToSave.getProductUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+        claim.setProduct(product);
+    }
+
     Language language;
     if (claimToSave.getLanguageId() != null) {
       
@@ -371,12 +389,24 @@ public class BotKeyServiceImpl implements BotKeyService {
             claim.setLanguage(language);
         
     }
+
+    if (claimToSave.getLanguageUuid() != null) { 
+        language  = languageRepository.findByUuid(claimToSave.getLanguageUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+        claim.setLanguage(language);
+    }
     Objet objet;
     if (claimToSave.getLanguageId() != null) {
       
             objet = objetRepository.findById(claimToSave.getObjetId()).orElseThrow(()-> new Exception("Objet choosed not found"));;
             claim.setObjet(objet);
         
+    }
+
+    if (claimToSave.getLanguageUuid() != null) { 
+        objet = objetRepository.findFirstByUuid(claimToSave.getObjetUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+        claim.setObjet(objet);
     }
       
 

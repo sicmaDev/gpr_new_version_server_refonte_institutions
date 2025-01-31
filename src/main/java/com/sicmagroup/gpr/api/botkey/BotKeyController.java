@@ -104,7 +104,7 @@ public class BotKeyController {
 
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
-            if (lc.isActif()) {
+            // if (lc.isActif()) {
                 Boolean isAuth = service.checkApiKeyBoolean(request);
 
                 ObjectMapper mapper = new ObjectMapper();
@@ -142,15 +142,15 @@ public class BotKeyController {
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
                     }
                 }
-            } else {
-                apiResponseDto = ApiResponseDto
-                        .builder()
-                        .status(false)
-                        .content(lc)
-                        .build();
+            // } else {
+            //     apiResponseDto = ApiResponseDto
+            //             .builder()
+            //             .status(false)
+            //             .content(lc)
+            //             .build();
 
-                return ResponseEntity.ok(apiResponseDto);
-            }
+            //     return ResponseEntity.ok(apiResponseDto);
+            // }
 
         } else {
 
@@ -266,7 +266,7 @@ public class BotKeyController {
 
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
-            if (lc.isActif()) {
+            // if (lc.isActif()) {
                 try {
                     Boolean isAuth = service.checkApiKeyBoolean(request);
 
@@ -298,15 +298,15 @@ public class BotKeyController {
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
                     }
                 }
-            } else {
-                apiResponseDto = ApiResponseDto
-                        .builder()
-                        .status(false)
-                        .content(lc)
-                        .build();
+            // } else {
+            //     apiResponseDto = ApiResponseDto
+            //             .builder()
+            //             .status(false)
+            //             .content(lc)
+            //             .build();
 
-                return ResponseEntity.ok(apiResponseDto);
-            }
+            //     return ResponseEntity.ok(apiResponseDto);
+            // }
 
         } else {
 
@@ -383,7 +383,7 @@ public class BotKeyController {
 
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
-            if (lc.isActif()) {
+            // if (lc.isActif()) {
                 try {
                     Boolean isAuth = service.checkApiKeyBoolean(request);
 
@@ -415,15 +415,15 @@ public class BotKeyController {
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
                     }
                 }
-            } else {
-                apiResponseDto = ApiResponseDto
-                        .builder()
-                        .status(false)
-                        .content(lc)
-                        .build();
+            // } else {
+            //     apiResponseDto = ApiResponseDto
+            //             .builder()
+            //             .status(false)
+            //             .content(lc)
+            //             .build();
 
-                return ResponseEntity.ok(apiResponseDto);
-            }
+            //     return ResponseEntity.ok(apiResponseDto);
+            // }
 
         } else {
 

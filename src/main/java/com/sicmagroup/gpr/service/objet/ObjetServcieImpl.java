@@ -72,7 +72,7 @@ public class ObjetServcieImpl implements ObjetService {
      private String generateUuid() {
         String code = "obj-" + UUID.randomUUID().toString().substring(0, 5);
 
-        while (repository.findByUuid(code).isPresent()) {
+        while (repository.findFirstByUuid(code).isPresent()) {
             code = "obj-" + UUID.randomUUID().toString().substring(0, 5);
         }
 
@@ -81,7 +81,7 @@ public class ObjetServcieImpl implements ObjetService {
 
     public Objet findByUuid(String uuid){
         try {
-            return repository.findByUuid(uuid).orElseThrow(() -> new Exception("Cette langue  n'existe pas."));
+            return repository.findFirstByUuid(uuid).orElseThrow(() -> new Exception("Cette langue  n'existe pas."));
         } catch (Exception e) {
             throw new RuntimeException("Cette langue  n'existe pas.", e);
         }
