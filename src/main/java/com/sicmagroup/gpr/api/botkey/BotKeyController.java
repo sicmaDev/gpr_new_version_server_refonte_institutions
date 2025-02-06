@@ -494,7 +494,7 @@ public class BotKeyController {
                         statut = "Mesurer et partiellement satisfait";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée et mesurer." +
-                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() + "Vous êtes partiellement satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous offrir une nouvelle solution.";
+                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() + "  Vous êtes partiellement satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous offrir une nouvelle solution.";
                     
                         // contenu = solution;
                         break;
@@ -502,7 +502,7 @@ public class BotKeyController {
                         statut = "Mesurer et non";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée et mesurer." +
-                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() +"Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
+                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() +"  Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
                     
                         // contenu = solution;
                         break;
