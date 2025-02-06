@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 public class ClaimRequest {
     private Long id;
     private String code;
+    private String codeClient;
     private String clientFirstAndLastName;
     private String gender;
     private String address;

@@ -1558,7 +1558,12 @@ public class ClaimController {
     private SatisfactionMeasureDto convertToDto(SatisfactionMeasure satisfactionMeasure) {
         SatisfactionMeasureDto satisfactionMeasureDto = modelMapper.map(satisfactionMeasure,
                 SatisfactionMeasureDto.class);
-        satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+        // satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+        if (satisfactionMeasure.getMeasurer() != null) {
+            satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+        } else {
+            satisfactionMeasureDto.setMeasurer(null); // Optionnel, par défaut en Java c'est null
+        }
         return satisfactionMeasureDto;
     }
 
