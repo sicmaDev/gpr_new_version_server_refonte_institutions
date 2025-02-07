@@ -1,5 +1,7 @@
 package com.sicmagroup.gpr.api.denunciation;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1283,6 +1285,43 @@ public class DenunciationController {
             claimDto.setSession(convertToDto(claim.getSession()));
         }
 
+        //Date déclenchement de retard de traitement
+        if (claim.getObjet() != null) {
+            LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+            // calculateDate = calculateDate.minusDays(7);
+            if (LocalDateTime.now().isAfter(calculateDate)) {
+
+                Long hoursRetard = LocalDateTime.now().until(calculateDate, ChronoUnit.HOURS);
+                Long days = hoursRetard / 24;
+                Long hours = hoursRetard % 24;
+                if (days == 0) {
+                    claimDto.setRetardDay(hours);
+                } else {
+                    claimDto.setRetardDay(days);
+                }
+                claimDto.setDeclenchedDate(days + " jr(s) " + hours + " heure(s)");
+                
+            } else {
+                if(claim.getObjet().getProcessingTime() <= 7){
+                        Long day = LocalDateTime.now().until((claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime())), ChronoUnit.DAYS);
+                        if (day == 0) {
+                            day = LocalDateTime.now().until((claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime())), ChronoUnit.HOURS);
+                            claimDto.setDeclenchedDate(day + " heure(s) ");
+                            claimDto.setRetardDay(Long.parseLong(""+day));
+                        } else {
+                            claimDto.setDeclenchedDate(day + " jr(s) ");
+                            claimDto.setRetardDay(Long.parseLong(""+day));
+                        }
+                        
+                    }else{
+                        claimDto.setDeclenchedDate("-");
+                        claimDto.setRetardDay(Long.parseLong(""+(claim.getObjet().getProcessingTime() - 7)));
+                    }
+                
+            }
+        }
+
+        
         // if (claim.getAffectedAt() != null) {
         // claimDto.setAffectedAt(claimDto.convertDate(claim.getAffectedAt()));
         // }
