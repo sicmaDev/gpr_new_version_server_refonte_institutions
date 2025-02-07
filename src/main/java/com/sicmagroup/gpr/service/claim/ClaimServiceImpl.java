@@ -2158,5 +2158,9 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
    
+    @Override
+    public List<Claim> getAllByStatusIn(List<ClaimStatus> status) {
+        return repository.findByStatusIn(status);
+    }
 
 }

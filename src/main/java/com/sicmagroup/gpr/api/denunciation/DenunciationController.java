@@ -355,44 +355,65 @@ public class DenunciationController {
     }
 
     @GetMapping(value = "/list/{status}")
-    public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable ClaimStatus status) {
-        // ClaimStatus claimStatus = ClaimStatus.valueOf(status);
-        // System.out.println(claimStatus.toString());
-        List<Claim> allClaims = new ArrayList<>();
-        ApiResponseDto apiResponseDto;
-        if (status == ClaimStatus.TEMP_SAVED) {
-            // get only what user save
-            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                    .getPrincipal();
-            User collector;
-            try {
-                collector = authService.getByEmail(collectorDetails.getUsername());
-                allClaims = service.getAllByTypeStatusCollector(ClaimType.DENUNCIACION, status, collector);
-            } catch (Exception e) {
-                apiResponseDto = ApiResponseDto
-                        .builder()
-                        .status(false)
-                        .content(ErrorResponse.builder().message("Utilisateur introuvable").title("NOT FOUND EXCEPTION")
-                                .build())
-                        .build();
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-            }
+public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable ClaimStatus status) {
+    List<Claim> allClaims = new ArrayList<>();
+    ApiResponseDto apiResponseDto;
 
+    // Récupérer l'utilisateur connecté
+    UserDetails connectedUserDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    User connectedUser;
+    
+    try {
+        connectedUser = authService.getByEmail(connectedUserDetails.getUsername());
+    } catch (Exception e) {
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder().message("Utilisateur introuvable").title("NOT FOUND EXCEPTION").build())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    }
+
+    // Si l'utilisateur est un PILOTE
+    if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+        List<Claim> allFilteredClaims = service.getAllByStatusIn(Arrays.asList(status));
+
+        // Ajouter toutes les dénonciations "bot"
+        for (Claim claim : allFilteredClaims) {
+            if (claim.getCode().startsWith("bot")) {
+                allClaims.add(claim);
+            }
+        }
+
+        // Si le statut est TEMP_SAVED, ajouter les dénonciations sauvegardées par le pilote
+        if (status == ClaimStatus.TEMP_SAVED) {
+            List<Claim> savedByPilot = service.getAllByTypeStatusCollector(ClaimType.DENUNCIACION, status, connectedUser);
+            allClaims.addAll(savedByPilot);
+        }
+    } else {
+        // Si l'utilisateur n'est pas un PILOTE, appliquer la logique normale
+        if (status == ClaimStatus.TEMP_SAVED) {
+            allClaims = service.getAllByTypeStatusCollector(ClaimType.DENUNCIACION, status, connectedUser);
         } else if (status == ClaimStatus.TREAT) {
-            allClaims = service.getAllWithLatestApprouvedSolutionByTypeAndStatusIn(ClaimType.DENUNCIACION,
-                    Arrays.asList(ClaimStatus.TREAT));
+            allClaims = service.getAllWithLatestApprouvedSolutionByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.TREAT));
         } else {
             allClaims = service.getClaimByStatus(ClaimType.DENUNCIACION, status);
         }
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
-
-        apiResponseDto = ApiResponseDto
-                .builder()
-                .status(true)
-                .content(allClaimDtos)
-                .build();
-        return ResponseEntity.ok(apiResponseDto);
     }
+
+    // Conversion en DTO
+    List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+
+    // Création de la réponse API
+    apiResponseDto = ApiResponseDto
+            .builder()
+            .status(true)
+            .content(allClaimDtos)
+            .build();
+
+    return ResponseEntity.ok(apiResponseDto);
+}
+
 // @GetMapping("/{code}/details/client")
     public ClaimDto getClaimClient(@PathVariable String code) {
     ApiResponseDto apiResponseDto;
