@@ -70,6 +70,8 @@ public class ClaimDto {
     private UserResponse transmittedTo;
 
     private ChatDto session;
+    private String declenchedDate;
+    private Long retardDay;
 
     public String convertDate(LocalDateTime dateTime){
         
