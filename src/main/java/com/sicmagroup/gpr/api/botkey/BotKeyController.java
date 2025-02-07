@@ -16,19 +16,23 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.api.claim.ClaimController;
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.MeasureSatisfactionBotRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
+import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunciationController;
+import com.sicmagroup.gpr.api.denunciation.SaveDenunRequest;
 import com.sicmagroup.gpr.api.suggestion.SuggestionAddRequest;
 import com.sicmagroup.gpr.api.suggestion.SuggestionRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ClaimDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
+import com.sicmagroup.gpr.domain.dto.SolutionDto;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.dto.botkey.BotKeyConfigResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
@@ -44,6 +48,7 @@ import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
 import com.sicmagroup.gpr.service.language.LanguageServiceImpl;
 import com.sicmagroup.gpr.service.product.ProductServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
+import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,6 +67,7 @@ public class BotKeyController {
     private final LanguageServiceImpl languageServiceImpl;
     private final ProductServiceImpl productServiceImpl;
     private final BotKeyConfigResponse BotKeyConfigResponse;
+    private final SolutionServiceImpl solutionServiceImpl;
     //Configuration
     @GetMapping("/setting")
     public ResponseEntity<ApiResponseDto> getConfiguration(HttpServletRequest request) {
@@ -251,89 +257,146 @@ public class BotKeyController {
 
 
     //Denunciation
+    
     @PostMapping(value = "/denunciation/save", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
-            MediaType.MULTIPART_FORM_DATA_VALUE })
-    public ResponseEntity<ApiResponseDto> saveDenunciation(@RequestPart("claim") String claimRequest,
-            @RequestPart(name = "files", required = false) MultipartFile[] files,
-            @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request)
-            throws JsonMappingException, JsonProcessingException {
-        ApiResponseDto apiResponseDto;
+        MediaType.MULTIPART_FORM_DATA_VALUE })
+    public ResponseEntity<ApiResponseDto> saveDenunciation(@RequestPart("denun")String denunRequest,
+        @RequestPart(name = "files", required = false) MultipartFile[] files,
+        @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request)
+        throws JsonMappingException, JsonProcessingException {
 
-        ObjectMapper mapper = new ObjectMapper();
-        ClaimRequest claimRequest2 = mapper.readValue(claimRequest, ClaimRequest.class);
+    ApiResponseDto apiResponseDto;
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    DenunRequest denunRequest2 = mapper.readValue(denunRequest, DenunRequest.class);
+    apiResponseDto = Utils.verifyLicence();
+    if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+        LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+        // if (lc.isActif()) {
+            try {
+                Boolean isAuth = service.checkApiKeyBoolean(request);
+               
+                if (isAuth == false) {
+                    throw new Exception("Vous n'etes pas authentifier");
+                }
+                
+                SaveDenunRequest saveRequest = SaveDenunRequest.builder().claimRequest(denunRequest2).files(files)
+                        .audios(audios)
+                        .remoteAddress(request.getRemoteAddr()).build();
+                     
+                ClaimDto claim = service.saveDenunciation(saveRequest, request.getHeader("API_KEY"),
+                        ClaimType.DENUNCIACION);
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(claim)
+                        .build();
+                return ResponseEntity.ok(apiResponseDto);
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                .build();
+                if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                } else {
+                    //System.out.println("CC");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+            }
+        // } else {
+        //     apiResponseDto = ApiResponseDto
+        //             .builder()
+        //             .status(false)
+        //             .content(lc)
+        //             .build();
 
-        apiResponseDto = Utils.verifyLicence();
+        //     return ResponseEntity.ok(apiResponseDto);
+        // }
 
-        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
-            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
-            // if (lc.isActif()) {
+    } else {
+
+        return ResponseEntity.ok(apiResponseDto);
+    }
+}
+
+
+    @GetMapping("/denunciation/{code}")
+    public ResponseEntity<ApiResponseDto> getDenunciation(@PathVariable(name = "code") String code,
+            HttpServletRequest request) {
+                ApiResponseDto apiResponseDto;
                 try {
-                    Boolean isAuth = service.checkApiKeyBoolean(request);
 
+                    Boolean isAuth = service.checkApiKeyBoolean(request);
                     if (isAuth == false) {
                         throw new Exception("Vous n'etes pas authentifier");
                     }
-                    SaveRequest saveRequest = SaveRequest.builder().claimRequest(claimRequest2).files(files)
-                            .audios(audios)
-                            .remoteAddress(request.getRemoteAddr()).build();
-
-                    ClaimDto claim = service.saveClaim(saveRequest, request.getHeader("API_KEY"),
-                            ClaimType.DENUNCIACION);
+                    // if (!code.startsWith("bot")) {
+                    //     return null;
+                    // }
+                    ClaimDto claim = denunciationController.getClaimClient(code);
+                    // ClaimDto claimDto = convert
+                    String contenu="";
+                    String statut="";
+                    if (claim != null) {
+                        
+                        switch ((claim.getStatus()).toString()) {
+                            case "TEMP_SAVED":
+                                statut = "En attente";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+ " est en attente !!!";
+                                break;
+                            case "AFFECTED":
+                                statut = "En cours";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                            break;
+                            case "DESAPPROUVED":
+                                statut = "En cours";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                                break;
+                            case "TRANSMITTED":
+                                statut = "En cours";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                                break;
+                            case "SAVED":
+                                statut = "En cours";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+" est en cours de traitement !!!";
+                                break;
+                            case "TREAT":
+                                statut = "Traitée";
+                                contenu = "La dénonciation portant le code : "+ claim.getCodeClient() +
+                                " a été traitée." +
+                                " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent();
+                            
+                                // contenu = solution;
+                                break;
+                            default:
+                                break;
+                        }
+                    
+                    }else{
+                        statut = "Introuvable";
+                        contenu = "La dénonciation portant le code "+code+" est introuvable !!!";
+                    }
+        
+                   // Formatez le JSON manuellement
+                   String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\"}", statut, contenu);
+        
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
-                            .content(claim)
+                            .content(jsonContent)
                             .build();
                     return ResponseEntity.ok(apiResponseDto);
                 } catch (Exception e) {
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
-                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION")
+                                    .build())
                             .build();
-                    if (e.getMessage() != null && e.getMessage().contains("not found")) {
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-                    } else {
-                        // System.out.println(claimRequest2.getContent());
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                    }
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
-            // } else {
-            //     apiResponseDto = ApiResponseDto
-            //             .builder()
-            //             .status(false)
-            //             .content(lc)
-            //             .build();
-
-            //     return ResponseEntity.ok(apiResponseDto);
-            // }
-
-        } else {
-
-            return ResponseEntity.ok(apiResponseDto);
-        }
-    }
-
-    @GetMapping("/denunciation/{code}")
-    public ResponseEntity<ApiResponseDto> getDenunciation(@PathVariable(name = "code") String code,
-            HttpServletRequest request) {
-
-        try {
-
-            Boolean isAuth = service.checkApiKeyBoolean(request);
-            if (isAuth == false) {
-                throw new Exception("Un probleme est subvenu");
-            }
-            return denunciationController.getClaim(code);
-        } catch (Exception e) {
-            ApiResponseDto apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION")
-                            .build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
     }
 
     // @GetMapping("/denunciation/user/{userCode}")
@@ -448,7 +511,6 @@ public class BotKeyController {
             // ClaimDto claimDto = convert
             String contenu="";
             String statut="";
-
             if (claim != null) {
                 
                 switch ((claim.getStatus()).toString()) {
@@ -456,10 +518,10 @@ public class BotKeyController {
                         statut = "En attente";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en attente !!!";
                         break;
-                        case "AFFECTED":
+                    case "AFFECTED":
                         statut = "En cours";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
-                        break;
+                    break;
                     case "DESAPPROUVED":
                         statut = "En cours";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
@@ -477,6 +539,30 @@ public class BotKeyController {
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée." +
                         " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent();
+                    
+                        // contenu = solution;
+                        break;
+                    case "SATISFIED":
+                        statut = "Mesurer et non satisfait";
+                        contenu = "La réclamation portant le code :  "+ claim.getCodeClient() +
+                        "  a été traitée et mesurer." +
+                        "  Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() + "  Vous êtes satisfait de la solution proposée, et nous nous réjouissons d’avoir répondu à vos attentes. N’hésitez pas à nous contacter pour toute autre demande.";
+                    
+                        // contenu = solution;
+                        break;
+                    case "PARTIAL_SATISFIED":
+                        statut = "Mesurer et partiellement satisfait";
+                        contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
+                        " a été traitée et mesurer." +
+                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() + "  Vous êtes partiellement satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous offrir une nouvelle solution.";
+                    
+                        // contenu = solution;
+                        break;
+                    case "UNSATISFIED":
+                        statut = "Mesurer et non";
+                        contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
+                        " a été traitée et mesurer." +
+                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() +"  Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
                     
                         // contenu = solution;
                         break;
@@ -614,94 +700,98 @@ public class BotKeyController {
     //     }
     // }
 
-    // @PostMapping("/claim/mesure")
-    // public ResponseEntity<ApiResponseDto> measureSatisfactionBotEntity(@RequestBody MeasureSatisfactionBotRequest request) {
-    // ApiResponseDto apiResponseDto = new ApiResponseDto();
-    // apiResponseDto = Utils.verifyLicence();
+    @PostMapping("/claim/mesure")
+    public ResponseEntity<ApiResponseDto> measureSatisfactionBotEntity(@RequestBody MeasureSatisfactionBotRequest request) {
+    ApiResponseDto apiResponseDto = new ApiResponseDto();
+    apiResponseDto = Utils.verifyLicence();
 
-    //     // if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
-    //         LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
-    //         if (lc.isActif()) {
-    //             Claim claim;
-    //             try {
-    //                 claim = claimService.getByCodeClient(request.getCodeClient());
-    //             } catch (Exception e) {
-    //                 apiResponseDto = ApiResponseDto
-    //                         .builder()
-    //                         .status(false)
-    //                         .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-    //                         .build();
-    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    //             }
+        // if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            // LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            // if (lc.isActif()) {
+                Claim claim;
+                ClaimDto claimdto;
+                try {
+                    claim = claimService.getByCodeClient(request.getCodeClient());
+                    claimdto = claimController.getClaimClient(request.getCodeClient());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
 
-    //             if (claim.getStatus() != ClaimStatus.TREAT) {
-    //                 apiResponseDto = ApiResponseDto
-    //                         .builder()
-    //                         .status(false)
-    //                         .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
-    //                                 .title("Opération impossible").build())
-    //                         .build();
-    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    //             }
+                if (claim.getStatus() != ClaimStatus.TREAT) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
+                                    .title("Opération impossible").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+                // claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent()
+                Solution solution;
+                SolutionDto solutiondto;
+                try {
+                    solutiondto = claimdto.getSolutionDtos().get(((claimdto.getSolutionDtos()).size()) - 1);
+                    solution = solutionServiceImpl.getById(solutiondto.getId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
 
-    //             Solution solution;
-    //             try {
-    //                 solution = solutionServiceImpl.getLastSolutionByClaim(claim.getId());
-    //             } catch (Exception e) {
-    //                 apiResponseDto = ApiResponseDto
-    //                         .builder()
-    //                         .status(false)
-    //                         .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-    //                         .build();
-    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    //             }
+                User measurer = null;
+                // try {
+                //     measurer = authService.getByCodeClient(request.getCodeClient());
+                // } catch (Exception e) {
+                //     apiResponseDto = ApiResponseDto
+                //             .builder()
+                //             .status(false)
+                //             .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                //             .build();
+                //     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                // }
 
-    //             User measurer;
-    //             try {
-    //                 measurer = authService.getByCodeClient(request.getCodeClient());
-    //             } catch (Exception e) {
-    //                 apiResponseDto = ApiResponseDto
-    //                         .builder()
-    //                         .status(false)
-    //                         .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
-    //                         .build();
-    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    //             }
+                // if (!measurer.canMeasureClaim() && !measurer.getAdditionalrole().equals(Role.PILOTE)) {
+                //     apiResponseDto = ApiResponseDto
+                //             .builder()
+                //             .status(false)
+                //             .content(
+                //                     ErrorResponse.builder().message("Vous n'êtes pas habilité à mesurer une réclamation")
+                //                             .title("Habilitation manquante").build())
+                //             .build();
+                //     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
+                // }
+              
+                claim = claimService.measureClaim(claim, solution, measurer, request.getSatisfactionStatus(),
+                        request.getCommentaire());
 
-    //             if (!measurer.canMeasureClaim() && !measurer.getAdditionalrole().equals(Role.PILOTE)) {
-    //                 apiResponseDto = ApiResponseDto
-    //                         .builder()
-    //                         .status(false)
-    //                         .content(
-    //                                 ErrorResponse.builder().message("Vous n'êtes pas habilité à mesurer une réclamation")
-    //                                         .title("Habilitation manquante").build())
-    //                         .build();
-    //                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
-    //             }
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(claimdto)
+                        .build();
+                return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
+            // } else {
+            //     apiResponseDto = ApiResponseDto
+            //             .builder()
+            //             .status(false)
+            //             .content(lc)
+            //             .build();
 
-    //             claim = service.measureClaim(claim, solution, measurer, request.getSatisfactionStatus(),
-    //                     request.getCommentaire());
+            //     return ResponseEntity.ok(apiResponseDto);
+            // }
 
-    //             apiResponseDto = ApiResponseDto
-    //                     .builder()
-    //                     .status(true)
-    //                     .content(convertToDto(claim))
-    //                     .build();
-    //             return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
-    //         } else {
-    //             apiResponseDto = ApiResponseDto
-    //                     .builder()
-    //                     .status(false)
-    //                     .content(lc)
-    //                     .build();
-
-    //             return ResponseEntity.ok(apiResponseDto);
-    //         }
-
-    //     // } else {
-    //     //     return ResponseEntity.ok(apiResponseDto);
-    //     // }
-    // }
+        // } else {
+        //     return ResponseEntity.ok(apiResponseDto);
+        // }
+    }
 
 
 

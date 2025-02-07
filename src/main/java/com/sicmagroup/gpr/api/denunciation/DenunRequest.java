@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 public class DenunRequest {
     private Long id;
     private String code;
+    private String codeClient;
     private Long collectionChannelId;
     private String servicePointUuid;
     private String productUuid;

@@ -395,6 +395,31 @@ public class DenunciationController {
                 .build();
         return ResponseEntity.ok(apiResponseDto);
     }
+// @GetMapping("/{code}/details/client")
+    public ClaimDto getClaimClient(@PathVariable String code) {
+    ApiResponseDto apiResponseDto;
+    Claim claim;
+    try {
+        claim = service.getByCodeClient(code);
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(true)
+                .content(convertToDto(claim))
+                .build();
+        // return ResponseEntity.ok(apiResponseDto);
+        return convertToDto(claim);
+    } catch (Exception e) {
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder().message("Claim not found").title("NOT FOUND EXCEPTION").build())
+                .build();
+        return null;
+        // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    }
+
+}
+
 
 
 
@@ -1223,7 +1248,7 @@ public class DenunciationController {
         return userResponse;
     };
 
-    private ClaimDto convertToDto(Claim claim) {
+    public ClaimDto convertToDto(Claim claim) {
         ClaimDto claimDto = modelMapper.map(claim, ClaimDto.class);
         if (claim.getProduct() != null) {
             claimDto.setProduct(convertToResponse(claim.getProduct()));
