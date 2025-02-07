@@ -3,6 +3,7 @@ package com.sicmagroup.gpr.service.botkey;
 import java.util.List;
 
 import com.sicmagroup.gpr.api.claim.SaveRequest;
+import com.sicmagroup.gpr.api.denunciation.SaveDenunRequest;
 import com.sicmagroup.gpr.api.suggestion.SuggestionAddRequest;
 import com.sicmagroup.gpr.domain.dto.ClaimDto;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
@@ -28,6 +29,11 @@ public interface BotKeyService {
     public List<ClaimDto> getClaims(String userCode,ClaimType claimType);
     public Claim getClaim(String code);
     public ClaimDto saveClaim (SaveRequest request,String botName,ClaimType claimType) throws Exception;
+
+    // public List<ClaimDto> getDenun(String userCode,ClaimType claimType);
+    // public Claim getDenun(String code);
+    public ClaimDto saveDenunciation(SaveDenunRequest claimPart,String botName,ClaimType claimType) throws Exception;
+
 
 
 

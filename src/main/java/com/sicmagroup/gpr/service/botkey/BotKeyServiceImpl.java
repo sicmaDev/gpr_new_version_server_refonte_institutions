@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import com.sicmagroup.gpr.api.claim.ClaimController;
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
+import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunciationController;
+import com.sicmagroup.gpr.api.denunciation.SaveDenunRequest;
 import com.sicmagroup.gpr.api.suggestion.SuggestionAddRequest;
 import com.sicmagroup.gpr.api.suggestion.SuggestionRequest;
 import com.sicmagroup.gpr.domain.dto.ClaimDto;
@@ -83,6 +85,8 @@ public class BotKeyServiceImpl implements BotKeyService {
     private final PasswordEncoder passwordEncoder;
 
     private final ClaimController claimController;
+
+    private final DenunciationController denunciationController;
 
     private final ModelMapper modelMapper;
 
@@ -515,6 +519,138 @@ public class BotKeyServiceImpl implements BotKeyService {
     //     return claimRepository.findByCodeClient(code).orElseThrow(() -> new Exception("Réclamation introuvable"));
     // }
 
+    
+    @Override
+    public ClaimDto saveDenunciation(SaveDenunRequest claimPart, String botName, ClaimType type) throws Exception {
+        DenunRequest claimToSave = claimPart.getClaimRequest();
+        Log log = Log.builder().build();
+        Claim claim = Claim.builder().build();
+    
+        log.setTarget(LogTarget.CLAIM);
+        log.setLibelle("Enregistrement d'une denonciation depuis un bot");
+    
+        // Si l'ID de la réclamation existe
+        if (claimToSave.getId() != null) {
+            Claim oldClaim = claimRepository.findById(claimToSave.getId())
+                    .orElseThrow(() -> new Exception("Aucune denonciation ne porte ce code"));
+            if (!oldClaim.getCode().startsWith("bot")) {
+                throw new Exception("Vous n'avez pas l'autorisation");
+            }
+            claim = oldClaim;
+        } else {
+            // Sinon, créer une nouvelle réclamation
+            String code = "bot-" + "-" + botName + "-" + UUID.randomUUID().toString().substring(0, 10);
+            claim.setCode(code);
+            String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+            claim.setCodeClient(codeClient);
+        }
+        
+        // Créer un ClaimDto à partir de l'objet claim
+        CollectionChannel collectionChannel;
+        if (claimToSave.getCollectionChannelId() != null) {
+            collectionChannel = collectionChannelRespository.findById(claimToSave.getCollectionChannelId()).orElseThrow(()-> new Exception("Collection channelle choosed not found"));
+            claim.setCollectionChannel(collectionChannel);
+        }
+
+        ServicePoint servicePoint;
+        if (claimToSave.getServicePointId() != null) {
+            servicePoint = servicePointRepository.findById(claimToSave.getServicePointId()).orElseThrow(()-> new Exception("Service point choosed not found"));
+            claim.setServicePoint(servicePoint);
+    }
+    if (claimToSave.getServicePointUuid() != null) { 
+        servicePoint  = servicePointRepository.findByUuid(claimToSave.getServicePointUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+        claim.setServicePoint(servicePoint);
+    }
+    
+
+    Product product;
+    if (claimToSave.getProductId() != null) {
+        
+        product = productRepository.findById(claimToSave.getProductId()).orElseThrow(()-> new Exception("Prodcut choosed not found"));;
+        claim.setProduct(product);
+       
+    }
+
+    if (claimToSave.getProductUuid() != null) { 
+        product  = productRepository.findByUuid(claimToSave.getProductUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+        claim.setProduct(product);
+    }
+
+    Language language;
+    if (claimToSave.getLanguageId() != null) {
+      
+            language = languageRepository.findById(claimToSave.getLanguageId()).orElseThrow(()-> new Exception("Language choosed not found"));;
+            claim.setLanguage(language);
+        
+    }
+
+    if (claimToSave.getLanguageUuid() != null) { 
+        language  = languageRepository.findByUuid(claimToSave.getLanguageUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+        claim.setLanguage(language);
+    }
+    Objet objet;
+    if (claimToSave.getLanguageId() != null) {
+      
+            objet = objetRepository.findById(claimToSave.getObjetId()).orElseThrow(()-> new Exception("Objet choosed not found"));;
+            claim.setObjet(objet);
+        
+    }
+
+    if (claimToSave.getLanguageUuid() != null) { 
+        objet = objetRepository.findFirstByUuid(claimToSave.getObjetUuid()).orElseThrow(()-> new Exception("Service point choosed not found"));;
+
+        claim.setObjet(objet);
+    }
+      
+        if (claimToSave.getContent() != null) {
+            claim.setContent(claimToSave.getContent());
+        }
+
+       
+        claim.setStatus(ClaimStatus.TEMP_SAVED);
+        claim.setCreatedAt(LocalDateTime.now());
+        // if (claimToSave.getReceiptDateTime() != null && !claimToSave.getReceiptDateTime().isEmpty()) {
+            claim.setReceiptDateTime(LocalDateTime.now());
+        
+        // }
+        if (claimToSave.getOnlineUploadDateTime() != null) {
+            claim.setOnlineUploadDateTime(claimToSave.getOnlineUploadDateTime());
+        }
+        claim = claimRepository.save(claim);
+
+        log.setContent("code: " + claim.getCode());
+        log.setCreatedAt(LocalDateTime.now());
+        log.setType(LogType.INFO);
+        // log.setUserId(claim.getCollector().getId());
+        log.setUserIpAddress(claimPart.getRemoteAddress());
+        
+
+        logServiceImpl.saveLog(log);
+
+        if (claimPart.getAudios() != null && claimPart.getAudios().length != 0) {
+            List<ClaimAudio> audios = claimAudioServiceImpl.store(claimPart.getAudios(), claim);
+            claim.setUpdatedAt(LocalDateTime.now());
+            // for (ClaimAudio audio : audios) {
+            // audio.setClaim(null);
+            // }
+            // claim.setAudios(audios);
+
+        }
+
+        if (claimPart.getFiles() != null && claimPart.getFiles().length != 0) {
+            // System.out.println("test");
+            // System.out.println(claim.getCode());
+            List<Media> medias = mediaServiceImpl.store(claimPart.getFiles(), claim);
+            claim.setUpdatedAt(LocalDateTime.now());
+            // claim.setMedias(medias);
+        }
+        claim = claimRepository.save(claim);
+        return denunciationController.convertToDto(claim);
+    }
+    
     @Override
     public Claim updateClaim(Long code) {
         // TODO Auto-generated method stub

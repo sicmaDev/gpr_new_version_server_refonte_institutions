@@ -1072,12 +1072,11 @@ public class ClaimServiceImpl implements ClaimService {
 
         // }
 
-        String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+       
 
         Claim claim = Claim
                 .builder()
                 .type(type)
-                .codeClient(codeClient)
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -1086,10 +1085,10 @@ public class ClaimServiceImpl implements ClaimService {
         if (claimToSave.getCode() != null && claimToSave.getId() != null) {
             claim.setId(claimToSave.getId());
             claim.setCode(claimToSave.getCode());
-            claim.setCodeClient(claimToSave.getCodeClient());
             // Only TEMP_SAVED can be saved
             Claim oldClaim = repository.findByCode(claimToSave.getCode())
                     .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
+                    claim.setCodeClient(oldClaim.getCodeClient());
             if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
                 throw new ClaimException(
                         "Invalid operation! this claim is not temporarly saved, you can't change it again");
@@ -1098,6 +1097,8 @@ public class ClaimServiceImpl implements ClaimService {
         } else {
             String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
             claim.setCode(code);
+            String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+            claim.setCodeClient(codeClient);
         }
         CollectionChannel collectionChannel;
         if (claimToSave.getCollectionChannelId() != null) {

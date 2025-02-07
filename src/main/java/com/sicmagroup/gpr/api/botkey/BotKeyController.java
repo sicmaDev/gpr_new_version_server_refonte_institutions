@@ -16,13 +16,16 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.api.claim.ClaimController;
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.MeasureSatisfactionBotRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
+import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunciationController;
+import com.sicmagroup.gpr.api.denunciation.SaveDenunRequest;
 import com.sicmagroup.gpr.api.suggestion.SuggestionAddRequest;
 import com.sicmagroup.gpr.api.suggestion.SuggestionRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
@@ -254,89 +257,146 @@ public class BotKeyController {
 
 
     //Denunciation
+    
     @PostMapping(value = "/denunciation/save", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
-            MediaType.MULTIPART_FORM_DATA_VALUE })
-    public ResponseEntity<ApiResponseDto> saveDenunciation(@RequestPart("claim") String claimRequest,
-            @RequestPart(name = "files", required = false) MultipartFile[] files,
-            @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request)
-            throws JsonMappingException, JsonProcessingException {
-        ApiResponseDto apiResponseDto;
+        MediaType.MULTIPART_FORM_DATA_VALUE })
+    public ResponseEntity<ApiResponseDto> saveDenunciation(@RequestPart("denun")String denunRequest,
+        @RequestPart(name = "files", required = false) MultipartFile[] files,
+        @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request)
+        throws JsonMappingException, JsonProcessingException {
 
-        ObjectMapper mapper = new ObjectMapper();
-        ClaimRequest claimRequest2 = mapper.readValue(claimRequest, ClaimRequest.class);
+    ApiResponseDto apiResponseDto;
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    DenunRequest denunRequest2 = mapper.readValue(denunRequest, DenunRequest.class);
+    apiResponseDto = Utils.verifyLicence();
+    if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+        LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+        // if (lc.isActif()) {
+            try {
+                Boolean isAuth = service.checkApiKeyBoolean(request);
+               
+                if (isAuth == false) {
+                    throw new Exception("Vous n'etes pas authentifier");
+                }
+                
+                SaveDenunRequest saveRequest = SaveDenunRequest.builder().claimRequest(denunRequest2).files(files)
+                        .audios(audios)
+                        .remoteAddress(request.getRemoteAddr()).build();
+                     
+                ClaimDto claim = service.saveDenunciation(saveRequest, request.getHeader("API_KEY"),
+                        ClaimType.DENUNCIACION);
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(claim)
+                        .build();
+                return ResponseEntity.ok(apiResponseDto);
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                .build();
+                if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                } else {
+                    //System.out.println("CC");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+            }
+        // } else {
+        //     apiResponseDto = ApiResponseDto
+        //             .builder()
+        //             .status(false)
+        //             .content(lc)
+        //             .build();
 
-        apiResponseDto = Utils.verifyLicence();
+        //     return ResponseEntity.ok(apiResponseDto);
+        // }
 
-        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
-            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
-            // if (lc.isActif()) {
+    } else {
+
+        return ResponseEntity.ok(apiResponseDto);
+    }
+}
+
+
+    @GetMapping("/denunciation/{code}")
+    public ResponseEntity<ApiResponseDto> getDenunciation(@PathVariable(name = "code") String code,
+            HttpServletRequest request) {
+                ApiResponseDto apiResponseDto;
                 try {
-                    Boolean isAuth = service.checkApiKeyBoolean(request);
 
+                    Boolean isAuth = service.checkApiKeyBoolean(request);
                     if (isAuth == false) {
                         throw new Exception("Vous n'etes pas authentifier");
                     }
-                    SaveRequest saveRequest = SaveRequest.builder().claimRequest(claimRequest2).files(files)
-                            .audios(audios)
-                            .remoteAddress(request.getRemoteAddr()).build();
-
-                    ClaimDto claim = service.saveClaim(saveRequest, request.getHeader("API_KEY"),
-                            ClaimType.DENUNCIACION);
+                    // if (!code.startsWith("bot")) {
+                    //     return null;
+                    // }
+                    ClaimDto claim = denunciationController.getClaimClient(code);
+                    // ClaimDto claimDto = convert
+                    String contenu="";
+                    String statut="";
+                    if (claim != null) {
+                        
+                        switch ((claim.getStatus()).toString()) {
+                            case "TEMP_SAVED":
+                                statut = "En attente";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+ " est en attente !!!";
+                                break;
+                            case "AFFECTED":
+                                statut = "En cours";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                            break;
+                            case "DESAPPROUVED":
+                                statut = "En cours";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                                break;
+                            case "TRANSMITTED":
+                                statut = "En cours";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                                break;
+                            case "SAVED":
+                                statut = "En cours";
+                                contenu = "La dénonciation portant le code  "+claim.getCodeClient()+" est en cours de traitement !!!";
+                                break;
+                            case "TREAT":
+                                statut = "Traitée";
+                                contenu = "La dénonciation portant le code : "+ claim.getCodeClient() +
+                                " a été traitée." +
+                                " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent();
+                            
+                                // contenu = solution;
+                                break;
+                            default:
+                                break;
+                        }
+                    
+                    }else{
+                        statut = "Introuvable";
+                        contenu = "La dénonciation portant le code "+code+" est introuvable !!!";
+                    }
+        
+                   // Formatez le JSON manuellement
+                   String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\"}", statut, contenu);
+        
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
-                            .content(claim)
+                            .content(jsonContent)
                             .build();
                     return ResponseEntity.ok(apiResponseDto);
                 } catch (Exception e) {
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
-                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION")
+                                    .build())
                             .build();
-                    if (e.getMessage() != null && e.getMessage().contains("not found")) {
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-                    } else {
-                        // System.out.println(claimRequest2.getContent());
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                    }
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
-            // } else {
-            //     apiResponseDto = ApiResponseDto
-            //             .builder()
-            //             .status(false)
-            //             .content(lc)
-            //             .build();
-
-            //     return ResponseEntity.ok(apiResponseDto);
-            // }
-
-        } else {
-
-            return ResponseEntity.ok(apiResponseDto);
-        }
-    }
-
-    @GetMapping("/denunciation/{code}")
-    public ResponseEntity<ApiResponseDto> getDenunciation(@PathVariable(name = "code") String code,
-            HttpServletRequest request) {
-
-        try {
-
-            Boolean isAuth = service.checkApiKeyBoolean(request);
-            if (isAuth == false) {
-                throw new Exception("Un probleme est subvenu");
-            }
-            return denunciationController.getClaim(code);
-        } catch (Exception e) {
-            ApiResponseDto apiResponseDto = ApiResponseDto
-                    .builder()
-                    .status(false)
-                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION")
-                            .build())
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-        }
     }
 
     // @GetMapping("/denunciation/user/{userCode}")
