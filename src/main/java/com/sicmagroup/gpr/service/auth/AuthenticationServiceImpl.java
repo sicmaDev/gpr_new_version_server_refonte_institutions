@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -12,14 +13,18 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -34,10 +39,12 @@ import com.sicmagroup.gpr.api.config.setting.InstitutionRequest;
 import com.sicmagroup.gpr.api.config.setting.MailRequest;
 import com.sicmagroup.gpr.api.config.setting.SmsRequest;
 import com.sicmagroup.gpr.api.config.user.AddEmailReceiver;
+import com.sicmagroup.gpr.api.config.user.ForgetPasswordRequest;
 import com.sicmagroup.gpr.api.config.user.RegisterRequest;
 import com.sicmagroup.gpr.domain.dto.AlertDto;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
+import com.sicmagroup.gpr.domain.dto.ClaimDto;
 import com.sicmagroup.gpr.domain.dto.CollectionChannelDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.ExistingSolutionDto;
@@ -48,12 +55,15 @@ import com.sicmagroup.gpr.domain.dto.ObjetDto;
 import com.sicmagroup.gpr.domain.dto.PosteDto;
 import com.sicmagroup.gpr.domain.dto.ProductDto;
 import com.sicmagroup.gpr.domain.dto.ServicePointDto;
+import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.dto.UserDto;
 import com.sicmagroup.gpr.domain.dto.claimResponse.ObjetResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.PosteResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.ServicePointResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
+import com.sicmagroup.gpr.domain.enumeration.Habilitation;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.CategorieObjet;
 import com.sicmagroup.gpr.domain.model.Claim;
@@ -168,6 +178,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .additionalrole(Role.valueOf(request.getAdditionalRole()))
                         .tel(request.getTel())
                         .poste(poste)
+                        .isRa(request.isRa())
                         .servicePoint(servicePoint)
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())
@@ -198,6 +209,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .email(user.getEmail())
                         .code(user.getCode())
                         .additionalRole(user.getAdditionalrole())
+                        .isRa(user.isRa())
                         .posteDto(convertToResponse(poste))
                         .servicePointDto(convertToResponse(servicePoint))
                         .build();
@@ -243,10 +255,30 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        User user;
+        try {
+             user = userRepository.findByEmailAndIsDeleted(request.getEmail(),false).orElseThrow();
+        } catch (Exception e) {
+           return AuthenticationResponse.builder()
+                .response(ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(null)
+                        .build())
+                .build();
+            // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            //         ApiResponseDto
+            //                 .builder()
+            //                 .status(false)
+            //                 .content(ErrorResponse.builder().message("No token")
+            //                         .title("Votre compte ou token n'est plus valable").build())
+            //                 .build());
 
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        }
+        
+
+        authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
         // HashMap<String, Object> extras = new HashMap<>();
         // extras.put("additionalRole", user.getAdditionalrole());
@@ -384,6 +416,357 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .content(content)
                         .build())
                 .build();
+    }
+
+    @Override
+    public ResponseEntity<ApiResponseDto> getAuthData() {
+        User user;
+      
+        try {
+            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                    .getPrincipal();
+            user = getByEmail(userDetails.getUsername());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message("No token")
+                                    .title("Votre compte ou token n'est plus valable").build())
+                            .build());
+
+        }
+
+        UserDto userDto = convertToDto(user);
+        // get setting info
+        List<ServicePoint> allServicePoints = servicePointRepository.findByIsDeleted(false);
+        List<ServicePointDto> allServicePointDtos = allServicePoints.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // poste
+        List<Poste> allPostes = posteRepository.findByIsDeleted(false);
+        List<PosteDto> allPosteDtos = allPostes.stream().map(this::convertToDto).collect(Collectors.toList());
+        // Product
+        List<Product> allProducts = productRepository.findByIsDeleted(false);
+        List<ProductDto> allProductDtos = allProducts.stream().map(this::convertToDto).collect(Collectors.toList());
+        // objet
+        List<Objet> allObjets = objetRepository.findByIsDeleted(false);
+        List<ObjetResponse> allObjetDtos = allObjets.stream().map(this::convertToResponse).collect(Collectors.toList());
+        // language
+        List<Language> allLanguages = languageRepository.findByIsDeleted(false);
+        List<LanguageDto> allLanguageDtos = allLanguages.stream().map(this::convertToDto).collect(Collectors.toList());
+        // collectionChannel
+        List<CollectionChannel> allCollectionChannels = collectionChannelRespository.findByIsDeleted(false);
+        List<CollectionChannelDto> allCollectionChannelDtos = allCollectionChannels.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // ExternalRecourse
+        List<ExternalRecourse> allExternalRecourses = externalRecourseRepository.findByIsDeleted(false);
+        List<ExternalRecourseDto> allExternalRecourseDtos = allExternalRecourses.stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+        // User
+        List<User> allUsers = userRepository.findByIsDeleted(false);
+        List<UserDto> allUserDtos = allUsers.stream().map(this::convertToDto).collect(Collectors.toList());
+        // existing solutions
+        List<ExistingSolutionResponse> allExistingSolutions = existingSolutionRepository.findAll().stream()
+                .map(this::convertToResponse).collect(Collectors.toList());
+        // categorie objet
+        List<CategorieObjetDto> allCategorieObjetDtos = categorieObjetRepository.findAll().stream()
+                .map(this::convertToDto).collect(Collectors.toList());
+        // institution
+        // Settings
+        HashMap<String, Object> settings = new HashMap<String, Object>();
+        try {
+            Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(),
+                    InstitutionRequest.class);
+            settings.put("institution", institutionRequest);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+           
+            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+            settings.put("mail", mailRequest);
+
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+        
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+            settings.put("sms", smsRequest);
+
+
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        try {
+        
+            Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
+            settings.put("bot", botRequest);
+
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        settings.put("servicePoints", allServicePointDtos);
+        settings.put("postes", allPosteDtos);
+        settings.put("products", allProductDtos);
+        settings.put("objets", allObjetDtos);
+        settings.put("languages", allLanguageDtos);
+        settings.put("collectionChannels", allCollectionChannelDtos);
+        settings.put("externalRecourses", allExternalRecourseDtos);
+        settings.put("users", allUserDtos);
+        settings.put("help", faqServiceImpl.getHelp());
+        settings.put("presolution", allExistingSolutions);
+        settings.put("categorie_objet", allCategorieObjetDtos);
+        settings.put("others", settingServiceImpl.getAll());
+
+        // recuperer le contenu du fichier data
+        settingServiceImpl.updateLicence();
+        try {
+            // Le fichier d'entrée
+            File file = new File("data.txt");
+            // Créer l'objet File Reader
+            FileReader fr = new FileReader(file);
+            // Créer l'objet BufferedReader
+            BufferedReader br = new BufferedReader(fr);
+            StringBuffer sb = new StringBuffer();
+            String line;
+            while ((line = br.readLine()) != null) {
+                // ajoute la ligne au buffer
+                sb.append(line);
+                sb.append("\n");
+            }
+            fr.close();
+            settings.put("data", sb.toString());
+
+        } catch (IOException e) {
+            settings.put("data", "");
+            e.printStackTrace();
+        }
+
+        HashMap<String, Object> content = new HashMap<String, Object>();
+        
+
+        content.put("user", userDto);
+        content.put("settings", settings);
+        return ResponseEntity.ok(ApiResponseDto
+                .builder()
+                .status(true)
+                .content(content)
+                .build());
+
+    }
+
+    @Override
+    public ResponseEntity<ApiResponseDto> forgetPassword(ForgetPasswordRequest request) {
+
+        try {
+
+            User user = userRepository.findByEmailAndIsDeleted(request.getEmail(),false).orElseThrow();
+            char[] password = generatePassword(8);
+
+            List<User> userMailTo = new ArrayList<>();
+            userMailTo.add(user);
+            String message = "" +
+                    "Hello \n" +
+                    "Bravo,votre mot de passe a été reinstallé sur GPR"
+                    + "\n\n" +
+                    "Voici vos informations de connexion:" + "\n\n" +
+                    "* Email: " + user.getEmail() + "\n" +
+                    "* Mot de passe : " + new String(password) + "\n" +
+                    "Ce mail ne doit pas etre divulger.";
+
+            Utils.sendmail(userMailTo, "Modification plateforme de GPR", message, null, " ", settingServiceImpl);
+            user.setPassword(passwordEncoder.encode(new String(password)));
+            userRepository.save(user);
+
+            return ResponseEntity.ok(ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage())
+                                    .title("Erreur").build())
+                            .build());
+        }
+    }
+    
+
+    @Override
+    public HashMap<String, Object> exportConfig(ConfigExportEnum type) {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("type", type.name());
+
+        if (type.equals(ConfigExportEnum.claims) || type.equals(ConfigExportEnum.denunciations)) {
+            ClaimType claimType = type.equals(ConfigExportEnum.claims) ? ClaimType.CLAIM : ClaimType.DENUNCIACION;
+            try {
+                List<Claim> claims = claimRepository.findByType(claimType);
+                List<ClaimDto> claimDtos = claims.stream().map((Claim claim) -> {
+                    return modelMapper.map(claim, ClaimDto.class);
+                })
+                        .collect(Collectors.toList());
+
+                result.put("data", claimDtos);
+                result.put("totals", claimDtos.size());
+            } catch (Exception e) {
+                result.put("data", "NULL");
+                result.put("totals", 0);
+            }
+        } else if (type.equals(ConfigExportEnum.suggestions)) {
+            try {
+                List<Suggestion> suggestions = suggestionRepository.findAll();
+                List<SuggestionDto> suggestionDtos = suggestions.stream().map((Suggestion suggest) -> {
+                    return modelMapper.map(suggest, SuggestionDto.class);
+                })
+                        .collect(Collectors.toList());
+
+                result.put("data", suggestionDtos);
+                result.put("totals", suggestionDtos.size());
+            } catch (Exception e) {
+                result.put("data", "NULL");
+                result.put("totals", 0);
+
+            }
+        }
+
+        else if (type.equals(ConfigExportEnum.configs)) {
+            List<ServicePoint> allServicePoints = servicePointRepository.findAll();
+            List<ServicePointDto> allServicePointDtos = allServicePoints.stream().map(this::convertToDto)
+                    .collect(Collectors.toList());
+            
+            List<Poste> allPostes = posteRepository.findByIsDeleted(false);
+            List<PosteDto> allPosteDtos = allPostes.stream().map(this::convertToDto).collect(Collectors.toList());
+            // Product
+            List<Product> allProducts = productRepository.findByIsDeleted(false);
+            List<ProductDto> allProductDtos = allProducts.stream().map(this::convertToDto).collect(Collectors.toList());
+            // objet
+            List<Objet> allObjets = objetRepository.findByIsDeleted(false);
+            List<ObjetResponse> allObjetDtos = allObjets.stream().map(this::convertToResponse)
+                    .collect(Collectors.toList());
+            // language
+            List<Language> allLanguages = languageRepository.findByIsDeleted(false);
+            List<LanguageDto> allLanguageDtos = allLanguages.stream().map(this::convertToDto)
+                    .collect(Collectors.toList());
+            // collectionChannel
+            List<CollectionChannel> allCollectionChannels = collectionChannelRespository.findByIsDeleted(false);
+            List<CollectionChannelDto> allCollectionChannelDtos = allCollectionChannels.stream().map(this::convertToDto)
+                    .collect(Collectors.toList());
+            // ExternalRecourse
+            List<ExternalRecourse> allExternalRecourses = externalRecourseRepository.findByIsDeleted(false);
+            List<ExternalRecourseDto> allExternalRecourseDtos = allExternalRecourses.stream().map(this::convertToDto)
+                    .collect(Collectors.toList());
+            // User
+            List<User> allUsers = userRepository.findByIsDeleted(false);
+            List<UserDto> allUserDtos = allUsers.stream().map(this::convertToDto).collect(Collectors.toList());
+            // existing solutions
+            List<ExistingSolutionResponse> allExistingSolutions = existingSolutionRepository.findAll().stream()
+                    .map(this::convertToResponse).collect(Collectors.toList());
+            // categorie objet
+            List<CategorieObjetDto> allCategorieObjetDtos = categorieObjetRepository.findAll().stream()
+                    .map(this::convertToDto).collect(Collectors.toList());
+            // institution
+            // Settings
+            HashMap<String, Object> settings = new HashMap<String, Object>();
+            try {
+                Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
+                ObjectMapper objectMapper = new ObjectMapper();
+                InstitutionRequest institutionRequest = objectMapper.readValue(setting.getValue(),
+                        InstitutionRequest.class);
+                settings.put("institution", institutionRequest);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            try {
+
+                Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+                ObjectMapper objectMapper = new ObjectMapper();
+                MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+                settings.put("mail", mailRequest);
+
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            try {
+
+                Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+                ObjectMapper objectMapper = new ObjectMapper();
+                SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                settings.put("sms", smsRequest);
+
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            try {
+
+                Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
+                ObjectMapper objectMapper = new ObjectMapper();
+                BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
+                settings.put("bot", botRequest);
+
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+            settings.put("servicePoints", allServicePointDtos);
+            settings.put("postes", allPosteDtos);
+            settings.put("products", allProductDtos);
+            settings.put("objets", allObjetDtos);
+            settings.put("languages", allLanguageDtos);
+            settings.put("collectionChannels", allCollectionChannelDtos);
+            settings.put("externalRecourses", allExternalRecourseDtos);
+            settings.put("users", allUserDtos);
+            settings.put("help", faqServiceImpl.getHelp());
+            settings.put("presolution", allExistingSolutions);
+            settings.put("categorie_objet", allCategorieObjetDtos);
+            settings.put("others", settingServiceImpl.getAll());
+
+            
+            result.put("data", settings);
+        }
+
+        // }
+
+        return result;
+    }
+    
+    private static char[] generatePassword(int length) {
+        String capitalCaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lowerCaseLetters = "abcdefghijklmnopqrstuvwxyz";
+        String specialCharacters = "!@#$";
+        String numbers = "1234567890";
+        String combinedChars = capitalCaseLetters + lowerCaseLetters + specialCharacters + numbers;
+        Random random = new Random();
+        char[] password = new char[length];
+
+        password[0] = lowerCaseLetters.charAt(random.nextInt(lowerCaseLetters.length()));
+        password[1] = capitalCaseLetters.charAt(random.nextInt(capitalCaseLetters.length()));
+        password[2] = specialCharacters.charAt(random.nextInt(specialCharacters.length()));
+        password[3] = numbers.charAt(random.nextInt(numbers.length()));
+
+        for (int i = 4; i < length; i++) {
+            password[i] = combinedChars.charAt(random.nextInt(combinedChars.length()));
+        }
+        return password;
     }
 
     private ExistingSolutionResponse convertToResponse(ExistingSolution exSolution) {
@@ -541,6 +924,24 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
+    public List<User> all() {
+        return userRepository.findAll();
+    }
+
+    @Override
+    public boolean isActif(Long id) {
+        try {
+            User user = userRepository.findByIdAndIsDeleted(id, false).orElseThrow();
+
+            return true;
+
+        } catch (Exception e) {
+            return false;
+        }
+        
+    }
+
+    @Override
     public User getById(Long id) throws NotFoundException {
         return userRepository.findById(id).orElseThrow(() -> new NotFoundException());
     }
@@ -562,6 +963,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .additionalrole(Role.valueOf(userDto.getAdditionalRole()))
                 .tel(userDto.getTel())
                 .poste(poste)
+                .isRa(userDto.isRa())
                 .servicePoint(servicePoint)
                 .build();
         if (userDto.getPassword() != null && !userDto.getPassword().isEmpty()) {
@@ -590,10 +992,63 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public User deleteTempUser(Long id) throws NotFoundException {
         User userOld = userRepository.getReferenceById(id);
+        if(isTheLastH12(userOld)){
+            throw new NotFoundException();
+        };
+        
         userOld.setDeleted(true);
         userOld.setDeletedAt(LocalDateTime.now());
         userOld = userRepository.save(userOld);
         return userOld;
+    }
+
+    @Override
+    public User enabledUser(Long id) throws NotFoundException {
+        User userOld = userRepository.getReferenceById(id);
+        userOld.setDeleted(false);
+        userOld.setDeletedAt(LocalDateTime.now());
+        userOld = userRepository.save(userOld);
+        return userOld;
+    }
+
+    public boolean isTheLastH12(User user){
+        // List<User> users = userRepository.fin
+        // List<
+        if(user.getPoste().getHabilitations().contains(Habilitation.H12.name())){
+            List<Poste> postes = posteRepository.findByHabilitationsContaining(Habilitation.H12.name());
+            int numbreUser = 0;
+            for (Poste poste : postes) {
+                
+                numbreUser = numbreUser+ userRepository.findByPosteAndIsDeleted(poste, false).size();
+            }
+            if(numbreUser <=1){
+                return true;
+            }
+        }
+            return false;
+    }
+    public boolean isTheLastH12(Long id){
+        try {
+            
+       
+        User user = userRepository.findById(id).orElseThrow();
+        if(user.getPoste().getHabilitations().contains(Habilitation.H12.name())){
+            List<Poste> postes = posteRepository.findByHabilitationsContaining(Habilitation.H12.name());
+            int numbreUser = 0;
+            for (Poste poste : postes) {
+                numbreUser = numbreUser+ poste.getUsers().size();
+            }
+
+            if(numbreUser <=1){
+                return true;
+            }
+
+        }
+            return false;
+
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
@@ -637,7 +1092,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public User getByEmail(String email) throws Exception {
-        return userRepository.findByEmail(email).orElseThrow(() -> new Exception("Utilisateur introuvable"));
+        return userRepository.findByEmailAndIsDeleted(email,false).orElseThrow(() -> new Exception("Utilisateur introuvable"));
     }
 
     @Override
@@ -755,9 +1210,28 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             }
         }
         // taux satisfaction
-        dashboard.put("tauxSatisfaction",
-                Utils.parseDouble(Utils.percentCalculator(Long.valueOf(totalSatisfied), Long.valueOf(claims.size()))));
-        List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
+        List<ClaimStatus> status = Arrays.asList(ClaimStatus.SATISFIED);
+       
+        List<Claim> claimsTreat = new ArrayList<>();
+        claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
+    
+
+        List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
+        List<Claim> allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+
+        // dashboard.put("tauxSatisfaction",
+        //        Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
+        
+         // Formater le résultat avec deux chiffres après la virgule
+        DecimalFormat df = new DecimalFormat("#.00");
+        String tauxSatisfactionFormate = df.format(Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
+
+        // Ajout au dashboard
+        dashboard.put("tauxSatisfaction", tauxSatisfactionFormate);
+
+        
+                List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
         retardClaims.addAll(alertClaimAndDenun(ClaimType.DENUNCIACION));
         dashboard.put("claimDenunRetard", retardClaims);
         dashboard.put("TotalclaimDenunRetard", retardClaims.size());
@@ -836,5 +1310,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
         System.err.println(receivers);
         return receivers;
+    }
+
+    public List<User> getUsersByServicePoint(ServicePoint servicePoint) {
+        return userRepository.findByServicePoint(servicePoint);
+    }
+
+    public User findRaByServicePoint(Long servicePoint) {
+        return userRepository.findRaByServicePointId(servicePoint)
+                .orElse(null);  // Retourne null si aucun RA n'est trouvé
     }
 }

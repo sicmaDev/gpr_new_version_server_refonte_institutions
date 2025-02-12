@@ -5,13 +5,17 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.http.ResponseEntity;
 
 import com.sicmagroup.gpr.api.auth.AuthenticationRequest;
 import com.sicmagroup.gpr.api.auth.AuthenticationResponse;
 import com.sicmagroup.gpr.api.auth.UpdatePwdRequest;
 import com.sicmagroup.gpr.api.auth.UpdateRequest;
 import com.sicmagroup.gpr.api.config.user.AddEmailReceiver;
+import com.sicmagroup.gpr.api.config.user.ForgetPasswordRequest;
 import com.sicmagroup.gpr.api.config.user.RegisterRequest;
+import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
+import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.User;
@@ -21,6 +25,12 @@ public interface AuthenticationService {
     public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException ;
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) ;
+
+    public ResponseEntity<ApiResponseDto> getAuthData();
+    
+    public HashMap<String, Object> exportConfig(ConfigExportEnum type);
+    
+    public ResponseEntity<ApiResponseDto> forgetPassword(ForgetPasswordRequest request);
 
     public List<User> getAll();
 
@@ -33,6 +43,7 @@ public interface AuthenticationService {
     public User updateUser(Long id, RegisterRequest userDto) throws NotFoundException;
 
     public User deleteTempUser(Long id) throws NotFoundException;
+    public User enabledUser(Long id) throws NotFoundException;
 
     public void deleteUser(User user) throws Exception;
 
@@ -53,4 +64,10 @@ public interface AuthenticationService {
     public void removeEmailReceiver(Long id) throws Exception;
 
     public List<User> getEmailReceiversForNotif(ServicePoint servicePointIndexe);
+   
+    public List<User> all();
+
+
+    public boolean isActif(Long id);
+
 }

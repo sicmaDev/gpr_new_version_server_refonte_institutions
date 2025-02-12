@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -73,6 +74,12 @@ public class ReportController {
 						.nbreClaimPerObjLevelAndAgence(service.numberClaimByGravityByAngence(null))
 						.repartitionClaimBySatisfaction(service.repartitionClaimBySatisfaction(null))
 						.nbreClaimTreatInDelaiOrNot(service.numberClaimTreatInDelaiOrNot(null))
+						.tauxClaimSatisfactionByMonth(service.tauxClaimSatisfactionByMonth(null))
+						.tauxClaimSatisfactionByMonthByAgence(service.tauxClaimSatisfactionByMonthByAgence(null))
+						.nbreClaimTreatInDelaiOrNotByMonth(service.numberClaimTreatInDelaiOrNotByMonth(null))
+						.nbreClaimTreatInDelaiOrNotByMonthByAgence(service.numberClaimTreatInDelaiOrNotByMonthByAgence(null))
+						.nbreDenunTreatInDelaiOrNotByMonth(service.numberDenunTreatInDelaiOrNotByMonth(null))
+						.nbreDenunTreatInDelaiOrNotByMonthByAgence(service.numberDenunTreatInDelaiOrNotByMonthByAgence(null))
 						.evolutionSatisfactionByThisYear(service.evolutionSatisfactionByYear(null))
 						.tauxResolution(service.tauxResolutionClaim(null))
 						.evolutionByAgenceAndYear(service.evolutionClaimBySpAndYear(null))
@@ -112,7 +119,7 @@ public class ReportController {
 						.claimReport(claimReport)
 						.denunReport(denunReport)
 						.suggestionReport(suggestionReport)
-
+						.newVersionStat(generateNewVersionReport(null))
 						.build();
 				
 				StatisticReport statisticReport = StatisticReport
@@ -120,12 +127,16 @@ public class ReportController {
 						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(null),
 								serviceStatsClaim.totalByGravity(null), serviceStatsClaim.tauxSatisfaction(null),
 								serviceStatsClaim.totalReclamantSatisfait(null),
-								serviceStatsClaim.totalSavedClaim(null),
 								serviceStatsClaim.totalTreat(null), serviceStatsClaim.totalTreatByGravity(null),
 								serviceStatsClaim.totalTreatByRespectTiming(null), serviceStatsClaim.totalUnTreat(null),
-								serviceStatsClaim.totalUnTreatByGravity(null)))
-						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(null),
-								serviceStatsDenun.totalSavedClaim(null), serviceStatsDenun.totalTreat(null),
+								serviceStatsClaim.totalUnTreatByGravity(null),
+								serviceStatsClaim.pourcentageReclamationsTraitees(null),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(null),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(null) 
+								))
+						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(null),
+								serviceStatsDenun.totalByGravity(null),
+								serviceStatsDenun.totalTreat(null),
 								serviceStatsDenun.totalTreatByGravity(null),
 								serviceStatsDenun.totalTreatByRespectTiming(null),
 								serviceStatsDenun.totalUnTreat(null), serviceStatsDenun.totalUnTreatByGravity(null)))
@@ -157,7 +168,7 @@ public class ReportController {
 		// System.out.println("Status choosed");
 		// System.out.println(request);
 		ApiResponseDto apiResponseDto = Utils.verifyLicence();
-		;
+		
 		if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
 			LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
 			if (lc.isActif()) {
@@ -188,6 +199,12 @@ public class ReportController {
 						.nbreClaimPerObjLevelAndAgence(service.numberClaimByGravityByAngence(request))
 						.repartitionClaimBySatisfaction(service.repartitionClaimBySatisfaction(request))
 						.nbreClaimTreatInDelaiOrNot(service.numberClaimTreatInDelaiOrNot(request))
+						.tauxClaimSatisfactionByMonth(service.tauxClaimSatisfactionByMonth(request))
+						.tauxClaimSatisfactionByMonthByAgence(service.tauxClaimSatisfactionByMonthByAgence(request))
+						.nbreClaimTreatInDelaiOrNotByMonth(service.numberClaimTreatInDelaiOrNotByMonth(request))
+						.nbreClaimTreatInDelaiOrNotByMonthByAgence(service.numberClaimTreatInDelaiOrNotByMonthByAgence(request))
+						.nbreDenunTreatInDelaiOrNotByMonth(service.numberDenunTreatInDelaiOrNotByMonth(request))
+						.nbreDenunTreatInDelaiOrNotByMonthByAgence(service.numberDenunTreatInDelaiOrNotByMonthByAgence(request))
 						.evolutionSatisfactionByThisYear(service.evolutionSatisfactionByYear(request))
 						.tauxResolution(service.tauxResolutionClaim(request))
 						.evolutionByAgenceAndYear(service.evolutionClaimBySpAndYear(request))
@@ -213,6 +230,7 @@ public class ReportController {
 						.global(globalReport)
 						.claimReport(claimReport)
 						.denunReport(denunReport)
+						.newVersionStat(generateNewVersionReport(request))
 						.build();
 
 				if (request.getObjets() != null && request.getObjets().isEmpty()) {
@@ -274,7 +292,11 @@ public class ReportController {
 								serviceStatsClaim.totalTreat(request), serviceStatsClaim.totalTreatByGravity(request),
 								serviceStatsClaim.totalTreatByRespectTiming(request),
 								serviceStatsClaim.totalUnTreat(request),
-								serviceStatsClaim.totalUnTreatByGravity(request)))
+								serviceStatsClaim.totalUnTreatByGravity(request),
+								serviceStatsClaim.pourcentageReclamationsTraitees(request),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(request),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(request) 
+								))
 						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(request),
 								serviceStatsDenun.totalSavedClaim(request), serviceStatsDenun.totalTreat(request),
 								serviceStatsDenun.totalTreatByGravity(request),
@@ -327,4 +349,36 @@ public class ReportController {
 		}
 	}
 
+
+	@PostMapping(value = "/global/new")
+	public HashMap<String,Object> generateNewVersionReport(@RequestBody FilterRequest request) {
+		HashMap<String,Object> result = new HashMap<>();
+		HashMap<String,Object> general = new HashMap<>();
+
+
+
+		general.put("RSDObjet", service.listRDSPerAgencePerObjet(request));
+		general.put("RSDModalite", service.listRDSPerAgencePerModalite(request));
+
+		result.put("GeneralPerAgence", general);
+		result.put("AgencePerObjet", service.listPerAgencePerObjet(request));
+		result.put("AgencePerModalite", service.listPerAgencePerModalite(request));
+		result.put("AgencePerMesure", service.listPerAgencePerMesure(request));
+		result.put("AgencePerGenre", service.listPerAgencePerGenre(request));
+		result.put("AgencePerGravity", service.listPerAgencePerGravity(request));
+
+		return result;
+		
+	}
+	
+
+
+	
+	@GetMapping(value = "/dashboard")
+	public HashMap<String,Object> getDashboardResume() {
+		HashMap<String,Object> result =  service.getDashboardResume();
+
+		return result;
+		
+	}
 }

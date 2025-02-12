@@ -8,30 +8,43 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.Transient;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-
+@JsonIgnoreProperties(ignoreUnknown = true)  // Ajouter cette annotation ici
 public class LicenseResponse {
-    
-    // public License() {
-    // }
-    
-    // public License(int id, String serial, String type, Long durationInDays, Long numberOfComputers, Long numberOfUsed,
-    //         Set<Client> clients, LocalDateTime createdAt, LocalDateTime updatedAt) {
-    //     this.id = id;
-    //     this.serial = serial;
-    //     this.type = type;
-    //     this.durationInDays = durationInDays;
-    //     this.numberOfComputers = numberOfComputers;
-    //     this.numberOfUsed = numberOfUsed;
-    //     this.clients = clients;
-    //     this.createdAt = createdAt;
-    //     this.updatedAt = updatedAt;
-    // }
 
+    private int id;
+    private String serial;
+    private String type;
+    @JsonProperty("duration_in_days")
+    private Long durationInDays;
+    @JsonProperty("number_of_computers")
+    private Long numberOfComputers;
+    @JsonProperty("number_of_used")
+    private Long numberOfUsed;
+    // // private Set<Client> clients;
+    // @JsonProperty("created_at")
+    // private LocalDateTime created_at= LocalDateTime.now();
+    // @JsonProperty("updated_at")
+    // private LocalDateTime updated_at= LocalDateTime.now();
+
+    @JsonProperty("createdAt")
+    private LocalDateTime createdAt= LocalDateTime.now();
+    @JsonProperty("updatedAt")
+    private LocalDateTime updatedAt= LocalDateTime.now();
+
+    @Transient
+    private transient boolean etat;
+    @Transient
+    private transient String message;
+
+    
     public int getId() {
         return id;
     }
@@ -68,12 +81,13 @@ public class LicenseResponse {
     public void setNumberOfUsed(Long numberOfUsed) {
         this.numberOfUsed = numberOfUsed;
     }
-    public Set<Client> getClients() {
-        return clients;
-    }
-    public void setClients(Set<Client> clients) {
-        this.clients = clients;
-    }
+    // public Set<Client> getClients() {
+    //     return clients;
+    // }
+    // public void setClients(Set<Client> clients) {
+    //     this.clients = clients;
+    // }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -86,21 +100,6 @@ public class LicenseResponse {
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
-
-    private int id;
-    private String serial;
-    private String type;
-    private Long durationInDays;
-    private Long numberOfComputers;
-    private Long numberOfUsed;
-    private Set<Client> clients;
-    private LocalDateTime createdAt= LocalDateTime.now();
-    private LocalDateTime updatedAt= LocalDateTime.now();
-
-    @Transient
-    private transient boolean etat;
-    @Transient
-    private transient String message;
 
     public String getMessage(){
         return message;

@@ -1,8 +1,11 @@
 package com.sicmagroup.gpr.api.denunciation;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
+import com.sicmagroup.gpr.domain.model.Inbox;
+import com.sicmagroup.gpr.domain.model.InboxMessage;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,7 +19,15 @@ import lombok.NoArgsConstructor;
 public class DenunRequest {
     private Long id;
     private String code;
+    private String codeClient;
     private Long collectionChannelId;
+    private String servicePointUuid;
+    private String productUuid;
+    private String objetUuid;
+    private String languageUuid;
+     private Boolean fromWhatsapp;
+    private List<InboxMessage> filesWhatsapp;
+    private Inbox inboxWhatsapp;
     private Long servicePointId;
     private Long productId;
     private Long objetId;
@@ -26,6 +37,6 @@ public class DenunRequest {
     private ClaimStatus status;
     private String receiptDateTime;
     private String createdAt;
-        private LocalDateTime onlineUploadDateTime;
+    private LocalDateTime onlineUploadDateTime;
 
 }

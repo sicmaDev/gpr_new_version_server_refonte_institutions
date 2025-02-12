@@ -20,6 +20,8 @@ public interface SuggestionService {
 
     public Suggestion saveSuggestion(SuggestionAddRequest request, ClaimStatus status) throws Exception;
 
+    public Suggestion botSaveSuggestion(SuggestionAddRequest request,String botName) throws Exception;
+
     public Suggestion tempSaveSuggestion(SuggestionAddRequest request);
 
     public Suggestion treatSuggestion(Suggestion suggestion, User treator,TreatSuggestionRequest request) throws Exception;

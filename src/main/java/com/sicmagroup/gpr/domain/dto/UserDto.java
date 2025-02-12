@@ -25,7 +25,9 @@ public class UserDto {
     private Role additionalRole;
     private String habilitationUp;
     private boolean isEmailReceiver;
+    private boolean isRa;
     private String titre;
+    private boolean isDeleted;
     private ServicePointResponse servicePointDto;
     private PosteResponse posteDto;
     private LocalDateTime createdAt;

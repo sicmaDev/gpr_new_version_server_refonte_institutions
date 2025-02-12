@@ -10,6 +10,7 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,13 +26,19 @@ import java.util.List;
 @NoArgsConstructor 
 @AllArgsConstructor
 @Entity
-@Table(name = "gps_poste")
+@Table(name = "gps_poste",uniqueConstraints = {
+	@UniqueConstraint(
+		name="libelle_unique",
+		columnNames = "libelle"
+	)
+})
 public class Poste {
 
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+	@Column(unique = true,name = "libelle")
 	private String libelle;
 	@Lob
     @Column(columnDefinition = "TEXT")

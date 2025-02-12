@@ -322,19 +322,19 @@ public class MessageServiceImp implements MessageService {
             List<User> pilote = userRepository.findByAdditionalroleIn(Arrays.asList(Role.PILOTE));
             if (pilote != null && !pilote.isEmpty()) {
                 String messageStr = "" +
-                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote d'Assilassimé Solidarité.\n\n" +
-                        "Le Comité de Gestion des Réclamations a examiné la réclamation portant le code : "
+                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote de la plateforme GPR,\n\n" +
+                        "la réclamation portant le code : "
                         + claim.getCode()
-                        + " et l'a traitée." + "\n\n" +
+                        + " a été traitée." + "\n\n" +
                         "Détails de la réclamation :" + "\n\n" +
                         "* Code de réclamation : " + claim.getCode() + "\n" +
                         "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
                         + "\n" +
                         "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n"
                         +
-                        "La solution proposée par le CGR est la suivante : " + "\n" +
+                        "La solution proposée est la suivante : " + "\n" +
                         solution2.getContent() + "\n\n" +
-                        "Nous vous invitons à communiquer la solution au pilote pour mesurer sa satisfaction ";
+                        "Nous vous invitons à communiquer la solution au plaignant pour mesurer sa satisfaction.";
 
                 Utils.sendmail(pilote.get(0).getEmail(), "Réclamation traitée",
                         messageStr, null, " ", settingServiceImpl);

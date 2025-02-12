@@ -2,12 +2,14 @@ package com.sicmagroup.gpr.service.product;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.Product;
+import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product saveProduct(Product product) {
+        product.setUuid(generateUuid());
         return repository.save(product);
     }
 
@@ -70,5 +73,25 @@ public class ProductServiceImpl implements ProductService {
         return repository.findByIdAndIsDeleted(id, deleted).orElseThrow(() -> new NotFoundException());
 
     }
+
+     private String generateUuid() {
+        String code = "pr-" + UUID.randomUUID().toString().substring(0, 5);
+
+        while (repository.findByUuid(code).isPresent()) {
+            code = "pr-" + UUID.randomUUID().toString().substring(0, 5);
+        }
+
+        return code;
+    }
+
+     @Override
+    public Product findProductByUuid(String uuid){
+        try {
+            return repository.findByUuid(uuid).orElseThrow(() -> new Exception("Ce point de service n'existe pas."));
+        } catch (Exception e) {
+            throw new RuntimeException("Ce point de service n'existe pas.", e);
+        }
+    }
+
 
 }

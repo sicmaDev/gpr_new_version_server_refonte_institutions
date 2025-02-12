@@ -32,6 +32,7 @@ import lombok.NoArgsConstructor;
 public class ClaimDto {
     private Long id;
     private String code;
+    private String codeClient;
     private String clientFirstAndLastName;
     private Gender gender;
     private ClaimType type;
@@ -64,8 +65,13 @@ public class ClaimDto {
     private String receiptDateTime;
     private Boolean affectedAnonymous;
     private String onlineUploadDateTime;
+
     private boolean isTransmitted;
+    private UserResponse transmittedTo;
+
     private ChatDto session;
+    private String declenchedDate;
+    private Long retardDay;
 
     public String convertDate(LocalDateTime dateTime){
         

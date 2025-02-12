@@ -21,4 +21,5 @@ public class ObjetResponse {
     private int processingTime;
     private List<ExistingSolutionResponse> existingSolutions;
     private CategorieObjetDto categorie;
+    private String uuid;
 }

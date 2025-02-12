@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
@@ -17,6 +20,7 @@ import com.sicmagroup.gpr.domain.enumeration.Role;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
+    Optional<User> findByEmailAndIsDeleted(String email,boolean isDeleted);
 
     Optional<User> findByCode(String code);
 
@@ -29,7 +33,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByIsEmailReceiver(boolean isEmailReceiver);
     Optional<User> findByIsEmailReceiverAndIsRaAndServicePoint(boolean isEmailReceiver, boolean isRa, ServicePoint servicePoint);
 
+    List<User> findByPosteAndIsDeleted(Poste poste,boolean isDeleted);
+    
     List<User> findByChatsMemberIn(List<Chat> chats);
     List<User> findByChatsGuestIn(List<Chat> chats);
 
+    List<User> findByServicePoint(ServicePoint servicePoint);
+    @Query("SELECT u FROM User u WHERE u.servicePoint.id = :servicePointId AND u.isRa = true")
+    Optional<User> findRaByServicePointId(@Param("servicePointId") Long servicePointId);
 }

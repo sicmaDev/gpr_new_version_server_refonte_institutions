@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
+import com.sicmagroup.gpr.api.config.user.RegisterRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
@@ -104,5 +105,35 @@ public class BotClaimController {
 
         return ResponseEntity.ok(apiResponseDto);
     }
+
+    // @PostMapping("/saved/")
+    // public  ResponseEntity<ApiResponseDto>  saveClaim(@RequestBody RegisterRequest request) {
+    //     ApiResponseDto apiResponseDto;
+        
+    //     SaveRequest saveRequest = SaveRequest.builder().claimRequest(claimRequest)
+    //             .remoteAddress(request.getRemoteAddr()).build();
+
+    //     try {
+    //         Claim claim = service.saveClaim(saveRequest,
+    //                 ClaimType.CLAIM);
+    //         apiResponseDto = ApiResponseDto
+    //                 .builder()
+    //                 .status(true)
+    //                 .content(claim)
+    //                 .build();
+    //     } catch (Exception e) {
+    //         apiResponseDto = ApiResponseDto
+    //                 .builder()
+    //                 .status(false)
+    //                 .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+    //                 .build();
+    //         if (e.getMessage().contains("not found")) {
+    //             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    //         } else {
+    //             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+    //         }
+    //     }
+    // }
+
 
 }

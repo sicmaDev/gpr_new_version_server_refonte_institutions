@@ -21,6 +21,25 @@ public class ServicePointServiceImpl implements ServicePointService {
     private final ServicePointRepository repository;
 
     @Override
+    public List<ServicePoint> all() {
+        return repository.findAll();
+    }
+
+    
+
+    @Override
+    public boolean isActif(Long id) {
+        try {
+            ServicePoint servicePoint = repository.findByIdAndIsDeleted(id, false).orElseThrow();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+        
+    }
+
+
+    @Override
     public List<ServicePoint> getAll() {
         return repository.findByIsDeleted(false);
     }
@@ -33,6 +52,7 @@ public class ServicePointServiceImpl implements ServicePointService {
     @Override
     public ServicePoint saveServicePoint(ServicePoint servicePoint) {
         servicePoint.setUuid(generateUuid());
+        // servicePoint sp = repository.findOne (servicePoint.getDirection_id());
         return repository.save(servicePoint);
     }
 
@@ -45,6 +65,13 @@ public class ServicePointServiceImpl implements ServicePointService {
     public ServicePoint deleteTempServicePoint(Long id) throws NotFoundException {
         ServicePoint servicePoint = repository.findById(id).orElseThrow(() -> new NotFoundException());
         servicePoint.setDeleted(true);
+        servicePoint.setDeletedAt(LocalDateTime.now());
+        return repository.save(servicePoint);
+    }
+    @Override
+    public ServicePoint enableServicePoint(Long id) throws NotFoundException {
+        ServicePoint servicePoint = repository.findById(id).orElseThrow(() -> new NotFoundException());
+        servicePoint.setDeleted(false);
         servicePoint.setDeletedAt(LocalDateTime.now());
         return repository.save(servicePoint);
     }
@@ -77,6 +104,21 @@ public class ServicePointServiceImpl implements ServicePointService {
         }
 
         return code;
+    }
+
+    public List<ServicePoint> getByDirectionId(Long servicePointId) {
+        // Récupérer les points de service dont le direction_id correspond à servicePointId
+        return repository.findByDirectionId(servicePointId);
+    }
+    
+    
+    @Override
+    public ServicePoint findServicePointByUuid(String uuid){
+        try {
+            return repository.findByUuid(uuid).orElseThrow(() -> new Exception("Ce point de service n'existe pas."));
+        } catch (Exception e) {
+            throw new RuntimeException("Ce point de service n'existe pas.", e);
+        }
     }
 
 }

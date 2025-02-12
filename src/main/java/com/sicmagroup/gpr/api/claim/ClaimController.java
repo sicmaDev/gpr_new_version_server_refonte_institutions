@@ -1,5 +1,7 @@
 package com.sicmagroup.gpr.api.claim;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,6 +67,7 @@ import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.domain.model.SatisfactionMeasure;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Solution;
+import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.domain.model.chat.Message;
@@ -76,6 +79,7 @@ import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.existingSolution.ExistingSolutionServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
+import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
@@ -96,7 +100,10 @@ public class ClaimController {
     private final SolutionServiceImpl solutionServiceImpl;
     private final MediaServiceImpl mediaService;
     private final ClaimAudioServiceImpl claimAudioServiceImpl;
+    private final ServicePointServiceImpl spServiceImpl;
     private final ExistingSolutionServiceImpl existingSolutionServiceImpl;
+
+    private final ServicePointRepository spRepository;
 
     @GetMapping("/list/all")
     public ResponseEntity<ApiResponseDto> getAllClaim() {
@@ -189,7 +196,29 @@ public class ClaimController {
         }
         allClaims = service.getAllNotTempSave(ClaimType.CLAIM);
         List<Claim> tmpClaims = new ArrayList<>();
-        if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        List<ServicePoint> allServicePoints = spServiceImpl.all();
+        if (connectedUser.isRa()) {
+            // Récupérer le point de service de l'utilisateur
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            
+            // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
+            List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            
+            if (!relatedServicePoints.isEmpty()) {
+                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
+                relatedServicePoints.add(servicePoint);
+        
+                // Filtrer les réclamations pour tous ces points de service
+                allClaims = allClaims.stream()
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .collect(Collectors.toList());
+            } else {
+                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
+                allClaims = allClaims.stream()
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .collect(Collectors.toList());
+            }
+        }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 && !connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.DE)) {
@@ -240,6 +269,32 @@ public class ClaimController {
 
     }
 
+    // @GetMapping("/{code}/details/client")
+    public ClaimDto getClaimClient(@PathVariable String code) {
+        ApiResponseDto apiResponseDto;
+        Claim claim;
+        try {
+            claim = service.getByCodeClient(code);
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(convertToDto(claim))
+                    .build();
+            // return ResponseEntity.ok(apiResponseDto);
+            return convertToDto(claim);
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Claim not found").title("NOT FOUND EXCEPTION").build())
+                    .build();
+            return null;
+            // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+
+    }
+
+
     @GetMapping(value = "/listTreat")
     public ResponseEntity<ApiResponseDto> getTreatList() {
 
@@ -264,7 +319,38 @@ public class ClaimController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
 
-        if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        if (connectedUser.isRa()) {
+
+            // Filtrer les réclamations appartenant au même point de service que l'utilisateur
+            allClaims = service.getAllByTypeAndStatusIn(ClaimType.CLAIM, Arrays.asList(ClaimStatus.SAVED,
+            ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
+
+            
+            List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+                            ClaimStatus.CLASSED));
+            allClaims.addAll(moreClaim);
+            // Récupérer le point de service de l'utilisateur
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            
+            // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
+            List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            
+            if (!relatedServicePoints.isEmpty()) {
+                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
+                relatedServicePoints.add(servicePoint);
+        
+                // Filtrer les réclamations pour tous ces points de service
+                allClaims = allClaims.stream()
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .collect(Collectors.toList());
+            } else {
+                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
+                allClaims = allClaims.stream()
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .collect(Collectors.toList());
+            }
+        }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 || connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.DE))) {
@@ -311,14 +397,43 @@ public class ClaimController {
         // System.out.println(claimStatus.toString());
         List<Claim> allClaims = new ArrayList<>();
         ApiResponseDto apiResponseDto;
+        User collector;
+        // 
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+        .getPrincipal();
+
+        User connectedUser = User.builder().build();
+        try {
+            connectedUser = authService.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                            .title("NOT FOUND EXCEPTION")
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
         if (status == ClaimStatus.TEMP_SAVED) {
-            // get only what user save
-            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                    .getPrincipal();
-            User collector;
+           
             try {
                 collector = authService.getByEmail(collectorDetails.getUsername());
                 allClaims = service.getAllByTypeStatusCollector(ClaimType.CLAIM, status, collector);
+
+
+                 List<Claim> filteredClaims = new ArrayList<>();
+                //recuperer pour le pilote les suggestions du bot 
+                // System.out.println("tolotolo : "+connectedUser.getAdditionalrole() );               
+                if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                    List<Claim> allClaimsTmp = service.getClaimByStatus(ClaimType.CLAIM, status);
+                   
+                    for (Claim claim : allClaimsTmp) {
+                       if (claim.getCode().startsWith("bot")) {
+                           allClaims.add(claim);
+                       }
+                    }
+                }
             } catch (Exception e) {
                 apiResponseDto = ApiResponseDto
                         .builder()
@@ -392,7 +507,7 @@ public class ClaimController {
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto;
         apiResponseDto = Utils.verifyLicence();
-
+        System.out.println("VDR : ");
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {
@@ -400,6 +515,11 @@ public class ClaimController {
                 ClaimRequest claimRequest2 = mapper.readValue(claimRequest, ClaimRequest.class);
 
                 try {
+                    boolean servicePointIsActif = spServiceImpl.isActif(claimRequest2.getServicePointId());
+                    boolean userIsActif = authService.isActif(claimRequest2.getCollectorId());
+                    if(!userIsActif || !servicePointIsActif){
+                        throw new Exception("Point de Service ou Utilisateur désactivé");
+                    }
                     SaveRequest saveRequest = SaveRequest.builder().claimRequest(claimRequest2).files(files)
                             .audios(audios)
                             .remoteAddress(request.getRemoteAddr()).build();
@@ -658,7 +778,7 @@ public class ClaimController {
                             .status(false)
                             .content(
                                     ErrorResponse.builder()
-                                            .message("Vous n'êtes pas hailité à traiter cette réclamation GRAVE")
+                                            .message("Vous n'êtes pas habilité à traiter cette réclamation GRAVE")
                                             .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
@@ -671,7 +791,7 @@ public class ClaimController {
                             .builder()
                             .status(false)
                             .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas hailité à traiter cette réclamation à risque MOYEN")
+                                    .message("Vous n'êtes pas habilité à traiter cette réclamation à risque MOYEN")
                                     .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
@@ -683,7 +803,7 @@ public class ClaimController {
                             .builder()
                             .status(false)
                             .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas hailité à traiter cette réclamation à risque  MINEUR")
+                                    .message("Vous n'êtes pas habilité à traiter cette réclamation à risque  MINEUR")
                                     .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
@@ -1337,17 +1457,17 @@ public class ClaimController {
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
-                if (claim.getCollector() != connectedUser) {
-                    apiResponseDto = ApiResponseDto
-                            .builder()
-                            .status(false)
-                            .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas le collecteur de cette réclamation.")
-                                    .title("Opération invalide")
-                                    .build())
-                            .build();
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                }
+                // if (claim.getCollector() != connectedUser) {
+                //     apiResponseDto = ApiResponseDto
+                //             .builder()
+                //             .status(false)
+                //             .content(ErrorResponse.builder()
+                //                     .message("Vous n'êtes pas le collecteur de cette réclamation.")
+                //                     .title("Opération invalide")
+                //                     .build())
+                //             .build();
+                //     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                // }
                 try {
                     claim = service.transmitClaim(claim);
                     apiResponseDto = ApiResponseDto
@@ -1465,7 +1585,7 @@ public class ClaimController {
         return userResponse;
     };
 
-    private ClaimDto convertToDto(Claim claim) {
+    public ClaimDto convertToDto(Claim claim) {
         ClaimDto claimDto = modelMapper.map(claim, ClaimDto.class);
         if (claim.getProduct() != null) {
             claimDto.setProduct(convertToResponse(claim.getProduct()));
@@ -1495,10 +1615,10 @@ public class ClaimController {
         // }
 
         if (claim.getSolutions() != null) {
-            System.out.println("Here 10 ");
+            // System.out.println("Here 10 ");
             claimDto.setSolutionDtos(
                     claim.getSolutions().stream().map(this::convertToDto).collect(Collectors.toList()));
-            System.out.println("Here 11 ");
+            // System.out.println("Here 11 ");
             Collections.reverse(claimDto.getSolutionDtos());
 
         }
@@ -1526,6 +1646,41 @@ public class ClaimController {
 
         if (claim.getSession() != null) {
             claimDto.setSession(convertToDto(claim.getSession()));
+        }
+        //Date déclenchement de retard de traitement
+        if (claim.getObjet() != null) {
+            LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+            // calculateDate = calculateDate.minusDays(7);
+            if (LocalDateTime.now().isAfter(calculateDate)) {
+
+                Long hoursRetard = LocalDateTime.now().until(calculateDate, ChronoUnit.HOURS);
+                Long days = hoursRetard / 24;
+                Long hours = hoursRetard % 24;
+                if (days == 0) {
+                    claimDto.setRetardDay(hours);
+                } else {
+                    claimDto.setRetardDay(days);
+                }
+                claimDto.setDeclenchedDate(days + " jr(s) " + hours + " heure(s)");
+                
+            } else {
+                if(claim.getObjet().getProcessingTime() <= 7){
+                        Long day = LocalDateTime.now().until((claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime())), ChronoUnit.DAYS);
+                        if (day == 0) {
+                            day = LocalDateTime.now().until((claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime())), ChronoUnit.HOURS);
+                            claimDto.setDeclenchedDate(day + " heure(s) ");
+                            claimDto.setRetardDay(Long.parseLong(""+day));
+                        } else {
+                            claimDto.setDeclenchedDate(day + " jr(s) ");
+                            claimDto.setRetardDay(Long.parseLong(""+day));
+                        }
+                        
+                    }else{
+                        claimDto.setDeclenchedDate("-");
+                        claimDto.setRetardDay(Long.parseLong(""+(claim.getObjet().getProcessingTime() - 7)));
+                    }
+                
+            }
         }
 
         // if (claim.getAffectedAt() != null) {
@@ -1558,7 +1713,12 @@ public class ClaimController {
     private SatisfactionMeasureDto convertToDto(SatisfactionMeasure satisfactionMeasure) {
         SatisfactionMeasureDto satisfactionMeasureDto = modelMapper.map(satisfactionMeasure,
                 SatisfactionMeasureDto.class);
-        satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+        // satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+        if (satisfactionMeasure.getMeasurer() != null) {
+            satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+        } else {
+            satisfactionMeasureDto.setMeasurer(null); // Optionnel, par défaut en Java c'est null
+        }
         return satisfactionMeasureDto;
     }
 

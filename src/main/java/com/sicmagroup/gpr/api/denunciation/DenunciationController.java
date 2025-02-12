@@ -1,5 +1,7 @@
 package com.sicmagroup.gpr.api.denunciation;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,6 +39,7 @@ import com.sicmagroup.gpr.api.claim.ProposedSolutionRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
 import com.sicmagroup.gpr.api.claim.TransmissionRequest;
 import com.sicmagroup.gpr.api.claim.UnApprouvedRequest;
+import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
 import com.sicmagroup.gpr.domain.dto.ClaimDto;
@@ -79,9 +82,11 @@ import com.sicmagroup.gpr.domain.model.chat.UserVote;
 import com.sicmagroup.gpr.domain.model.chat.Vote;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
+import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
+import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -93,8 +98,9 @@ import lombok.RequiredArgsConstructor;
 public class DenunciationController {
     private final ClaimServiceImpl service;
     private final ModelMapper modelMapper;
+    private final ServicePointServiceImpl spServiceImpl;
     private final ExternalRecourseServiceImpl externalRecourseServiceImpl;
-
+    private final ClaimAudioServiceImpl claimAudioServiceImpl;
     private final AuthenticationServiceImpl authService;
     private final SolutionServiceImpl solutionServiceImpl;
     private final MediaServiceImpl mediaService;
@@ -162,7 +168,28 @@ public class DenunciationController {
         allClaims = service.getAllNotTempSave(ClaimType.DENUNCIACION);
 
         List<Claim> tmpClaims = new ArrayList<>();
-        if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        if (connectedUser.isRa()) {
+            // Récupérer le point de service de l'utilisateur
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            
+            // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
+            List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            
+            if (!relatedServicePoints.isEmpty()) {
+                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
+                relatedServicePoints.add(servicePoint);
+        
+                // Filtrer les réclamations pour tous ces points de service
+                allClaims = allClaims.stream()
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .collect(Collectors.toList());
+            } else {
+                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
+                allClaims = allClaims.stream()
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .collect(Collectors.toList());
+            }
+        }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 && !connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.DE)) {
@@ -207,6 +234,8 @@ public class DenunciationController {
         }
 
     }
+ 
+   
 
     @GetMapping(value = "/listTreat")
     public ResponseEntity<ApiResponseDto> getTreatList() {
@@ -227,7 +256,38 @@ public class DenunciationController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
 
-        if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        if (connectedUser.isRa()) {
+
+            // Filtrer les réclamations appartenant au même point de service que l'utilisateur
+            allClaims = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.SAVED,
+            ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
+
+            
+            List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION,
+                    Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+                            ClaimStatus.CLASSED));
+            allClaims.addAll(moreClaim);
+            // Récupérer le point de service de l'utilisateur
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            
+            // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
+            List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            
+            if (!relatedServicePoints.isEmpty()) {
+                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
+                relatedServicePoints.add(servicePoint);
+        
+                // Filtrer les réclamations pour tous ces points de service
+                allClaims = allClaims.stream()
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .collect(Collectors.toList());
+            } else {
+                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
+                allClaims = allClaims.stream()
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .collect(Collectors.toList());
+            }
+        }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 || connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.DE))) {
@@ -235,11 +295,19 @@ public class DenunciationController {
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.SAVED,
                     ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
+            if (connectedUser.getAdditionalrole().equals(Role.DE)
+                    || connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION,
+                        Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+                                ClaimStatus.CLASSED));
+                allClaims.addAll(moreClaim);
+            }
+
             if (connectedUser.getAdditionalrole().equals(Role.MEMBRE_CA)
                     || connectedUser.getAdditionalrole().equals(Role.DE)) {
                 allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims);
             }
-        } else {
+        }else {
             // voir les réclamations qu'on à affecter à l'utilisateur et
             allClaims = service.getAllByTypeAndCollectorAndStatusOrTreatmentAffectedToAndStatusIn(
                     ClaimType.DENUNCIACION, ClaimStatus.SAVED, connectedUser,
@@ -258,53 +326,132 @@ public class DenunciationController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
-    @GetMapping(value = "/list/{status}")
-    public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable ClaimStatus status) {
-        // ClaimStatus claimStatus = ClaimStatus.valueOf(status);
-        // System.out.println(claimStatus.toString());
-        List<Claim> allClaims = new ArrayList<>();
-        ApiResponseDto apiResponseDto;
-        if (status == ClaimStatus.TEMP_SAVED) {
-            // get only what user save
-            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                    .getPrincipal();
-            User collector;
-            try {
-                collector = authService.getByEmail(collectorDetails.getUsername());
-                allClaims = service.getAllByTypeStatusCollector(ClaimType.DENUNCIACION, status, collector);
-            } catch (Exception e) {
-                apiResponseDto = ApiResponseDto
-                        .builder()
-                        .status(false)
-                        .content(ErrorResponse.builder().message("Utilisateur introuvable").title("NOT FOUND EXCEPTION")
-                                .build())
-                        .build();
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-            }
+    @GetMapping("/getAudiosBy/{claimId}")
+    public ResponseEntity<List<ClaimAudioResponse>> getAllClaimAudioForAClaim(
+            @PathVariable(name = "claimId") Long claimId) {
+        ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
+        Claim claim = Claim.builder().build();
+        try {
+            claim = service.getById(claimId);
 
-        } else if (status == ClaimStatus.TREAT) {
-            allClaims = service.getAllWithLatestApprouvedSolutionByTypeAndStatusIn(ClaimType.DENUNCIACION,
-                    Arrays.asList(ClaimStatus.TREAT));
-        } else {
-            allClaims = service.getClaimByStatus(ClaimType.DENUNCIACION, status);
+        } catch (NotFoundException e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Claim not found").title("NOT FOUND EXCEPTION").build())
+                    .build();
+            return ResponseEntity.notFound().build();
         }
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimAudioResponse> medias = claimAudioServiceImpl.getAudioByClaim(claim);
+        // List<MediaResponse> mediaResponses =
+        // medias.stream().map(this::convertToResponse).collect(Collectors.toList());
+        // System.out.println("medias.size");
+        // System.out.println(medias.size());
 
         apiResponseDto = ApiResponseDto
                 .builder()
                 .status(true)
-                .content(allClaimDtos)
+                .content(medias)
                 .build();
-        return ResponseEntity.ok(apiResponseDto);
+        return ResponseEntity.ok(medias);
     }
+
+    @GetMapping(value = "/list/{status}")
+public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable ClaimStatus status) {
+    List<Claim> allClaims = new ArrayList<>();
+    ApiResponseDto apiResponseDto;
+
+    // Récupérer l'utilisateur connecté
+    UserDetails connectedUserDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    User connectedUser;
+    
+    try {
+        connectedUser = authService.getByEmail(connectedUserDetails.getUsername());
+    } catch (Exception e) {
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder().message("Utilisateur introuvable").title("NOT FOUND EXCEPTION").build())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    }
+
+    // Si l'utilisateur est un PILOTE
+    if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+        List<Claim> allFilteredClaims = service.getAllByStatusIn(Arrays.asList(status));
+
+        // Ajouter toutes les dénonciations "bot"
+        for (Claim claim : allFilteredClaims) {
+            if (claim.getCode().startsWith("bot")) {
+                allClaims.add(claim);
+            }
+        }
+
+        // Si le statut est TEMP_SAVED, ajouter les dénonciations sauvegardées par le pilote
+        if (status == ClaimStatus.TEMP_SAVED) {
+            List<Claim> savedByPilot = service.getAllByTypeStatusCollector(ClaimType.DENUNCIACION, status, connectedUser);
+            allClaims.addAll(savedByPilot);
+        }
+    } else {
+        // Si l'utilisateur n'est pas un PILOTE, appliquer la logique normale
+        if (status == ClaimStatus.TEMP_SAVED) {
+            allClaims = service.getAllByTypeStatusCollector(ClaimType.DENUNCIACION, status, connectedUser);
+        } else if (status == ClaimStatus.TREAT) {
+            allClaims = service.getAllWithLatestApprouvedSolutionByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.TREAT));
+        } else {
+            allClaims = service.getClaimByStatus(ClaimType.DENUNCIACION, status);
+        }
+    }
+
+    // Conversion en DTO
+    List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+
+    // Création de la réponse API
+    apiResponseDto = ApiResponseDto
+            .builder()
+            .status(true)
+            .content(allClaimDtos)
+            .build();
+
+    return ResponseEntity.ok(apiResponseDto);
+}
+
+// @GetMapping("/{code}/details/client")
+    public ClaimDto getClaimClient(@PathVariable String code) {
+    ApiResponseDto apiResponseDto;
+    Claim claim;
+    try {
+        claim = service.getByCodeClient(code);
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(true)
+                .content(convertToDto(claim))
+                .build();
+        // return ResponseEntity.ok(apiResponseDto);
+        return convertToDto(claim);
+    } catch (Exception e) {
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder().message("Claim not found").title("NOT FOUND EXCEPTION").build())
+                .build();
+        return null;
+        // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+    }
+
+}
+
+
+
 
     @PostMapping(value = "/add", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
             MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<ApiResponseDto> saveClaim(@RequestPart("denun") String denunRequest,
-            @RequestPart(name = "files", required = false) MultipartFile[] files, HttpServletRequest request2)
+            @RequestPart(name = "files", required = false) MultipartFile[] files,
+            @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request2)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto = Utils.verifyLicence();
-        ;
+        
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {
@@ -313,7 +460,9 @@ public class DenunciationController {
 
                 try {
                     SaveDenunRequest saveRequest = SaveDenunRequest.builder().claimRequest(denunRequest2).files(files)
+                            .audios(audios)
                             .remoteAddress(request2.getRemoteAddr()).build();
+
                     Claim claim = service.saveClaim(saveRequest, ClaimType.DENUNCIACION);
                     apiResponseDto = ApiResponseDto
                             .builder()
@@ -352,10 +501,11 @@ public class DenunciationController {
     @PostMapping(value = "/save_temp", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
             MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<ApiResponseDto> saveTempClaim(@RequestPart("denun") String denunRequest,
-            @RequestPart(name = "files", required = false) MultipartFile[] files, HttpServletRequest request2)
+            @RequestPart(name = "files", required = false) MultipartFile[] files,
+            @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request2)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto = Utils.verifyLicence();
-        ;
+        
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {
@@ -363,6 +513,7 @@ public class DenunciationController {
                 ClaimRequest denunRequest2 = mapper.readValue(denunRequest, ClaimRequest.class);
                 try {
                     SaveRequest saveRequest = SaveRequest.builder().claimRequest(denunRequest2).files(files)
+                            .audios(audios)
                             .remoteAddress(request2.getRemoteAddr()).build();
 
                     Claim claim = service.saveTempClaim(saveRequest, ClaimType.DENUNCIACION);
@@ -897,17 +1048,17 @@ public class DenunciationController {
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
-                if (claim.getCollector() != connectedUser) {
-                    apiResponseDto = ApiResponseDto
-                            .builder()
-                            .status(false)
-                            .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas le collecteur de cette réclamation.")
-                                    .title("Opération invalide")
-                                    .build())
-                            .build();
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                }
+                // if (claim.getCollector() != connectedUser) {
+                //     apiResponseDto = ApiResponseDto
+                //             .builder()
+                //             .status(false)
+                //             .content(ErrorResponse.builder()
+                //                     .message("Vous n'êtes pas le collecteur de cette réclamation.")
+                //                     .title("Opération invalide")
+                //                     .build())
+                //             .build();
+                //     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                // }
                 try {
                     claim = service.transmitClaim(claim);
                     apiResponseDto = ApiResponseDto
@@ -1118,7 +1269,7 @@ public class DenunciationController {
         return userResponse;
     };
 
-    private ClaimDto convertToDto(Claim claim) {
+    public ClaimDto convertToDto(Claim claim) {
         ClaimDto claimDto = modelMapper.map(claim, ClaimDto.class);
         if (claim.getProduct() != null) {
             claimDto.setProduct(convertToResponse(claim.getProduct()));
@@ -1180,6 +1331,43 @@ public class DenunciationController {
             claimDto.setSession(convertToDto(claim.getSession()));
         }
 
+        //Date déclenchement de retard de traitement
+        if (claim.getObjet() != null) {
+            LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+            // calculateDate = calculateDate.minusDays(7);
+            if (LocalDateTime.now().isAfter(calculateDate)) {
+
+                Long hoursRetard = LocalDateTime.now().until(calculateDate, ChronoUnit.HOURS);
+                Long days = hoursRetard / 24;
+                Long hours = hoursRetard % 24;
+                if (days == 0) {
+                    claimDto.setRetardDay(hours);
+                } else {
+                    claimDto.setRetardDay(days);
+                }
+                claimDto.setDeclenchedDate(days + " jr(s) " + hours + " heure(s)");
+                
+            } else {
+                if(claim.getObjet().getProcessingTime() <= 7){
+                        Long day = LocalDateTime.now().until((claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime())), ChronoUnit.DAYS);
+                        if (day == 0) {
+                            day = LocalDateTime.now().until((claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime())), ChronoUnit.HOURS);
+                            claimDto.setDeclenchedDate(day + " heure(s) ");
+                            claimDto.setRetardDay(Long.parseLong(""+day));
+                        } else {
+                            claimDto.setDeclenchedDate(day + " jr(s) ");
+                            claimDto.setRetardDay(Long.parseLong(""+day));
+                        }
+                        
+                    }else{
+                        claimDto.setDeclenchedDate("-");
+                        claimDto.setRetardDay(Long.parseLong(""+(claim.getObjet().getProcessingTime() - 7)));
+                    }
+                
+            }
+        }
+
+        
         // if (claim.getAffectedAt() != null) {
         // claimDto.setAffectedAt(claimDto.convertDate(claim.getAffectedAt()));
         // }

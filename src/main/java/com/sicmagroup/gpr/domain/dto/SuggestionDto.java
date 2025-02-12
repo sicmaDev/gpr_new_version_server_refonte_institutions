@@ -23,6 +23,7 @@ public class SuggestionDto {
     private Long id;
 	private String clientFirstAndLastName;
     private String code;
+    private String codeClient;
     private Gender gender;
     private String address;
 	private String tel;

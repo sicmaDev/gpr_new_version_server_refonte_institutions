@@ -3,7 +3,14 @@ package com.sicmagroup.gpr.api.auth;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -13,12 +20,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.sicmagroup.gpr.api.claim.botClaim.MessageRequest;
+import com.sicmagroup.gpr.api.config.user.ForgetPasswordRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
+import com.sicmagroup.gpr.domain.dto.Client;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
+import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.LicenceDto;
 import com.sicmagroup.gpr.domain.dto.LicenseResponse;
 import com.sicmagroup.gpr.domain.model.User;
@@ -41,6 +53,239 @@ public class AuthenticationController {
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
         return ResponseEntity.ok(authenticationServiceImpl.authenticate(request));
+    }
+    @GetMapping("/testy")
+    public String testy() {
+         try {
+            // Le fichier d'entrée
+            File file = new File("data.txt");
+
+            // Créer l'objet File Reader
+            FileReader fr = new FileReader(file);
+         
+            // Créer l'objet BufferedReader
+            BufferedReader br = new BufferedReader(fr);
+         
+            StringBuffer sb = new StringBuffer();
+         
+            String line;
+            while ((line = br.readLine()) != null) {
+                // ajoute la ligne au buffer
+                sb.append(line);
+                sb.append("\n");
+            }
+         
+            fr.close();
+            String license = sb.toString();
+            
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode licenseObj = mapper.readTree("" + license + "");
+          
+            if (licenseObj != null && license != "") {
+                String url = "https://gpradmin.sicmagroup.com/api/v1/license/updateLicenceClientSide";
+                RestTemplate restTemplate = new RestTemplate();
+                LicenseResponse licenseResponse = new LicenseResponse();
+              
+                licenseResponse.setSerial(licenseObj.get("serial").asText());
+                try {
+                    ResponseEntity<String> response = restTemplate.postForEntity(url, licenseResponse, String.class);
+                    String responseBody = response.getBody();
+        
+                    // Affiche la réponse brute pour vérifier sa structure
+                    System.out.println("Réponse brute de l'API : " + responseBody);
+                      // Utiliser ObjectMapper pour analyser la réponse brute en un JsonNode
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    JsonNode rootNode = objectMapper.readTree(responseBody);
+
+                    // Accéder à une valeur spécifique (par exemple, "serial")
+                    JsonNode reponse = rootNode;  // Si c'est un tableau, accès au premier élément
+                    if (reponse != null) {
+                        System.out.println("Serial15 : " + reponse.get("serial").asText());
+                       
+                            try {
+                                ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+                                HashMap<String, Object> licenseMap = new HashMap<>();
+                                licenseMap.put("id", reponse.get("id").asText());
+                                licenseMap.put("fullname", reponse.get("denomination").asText());
+                                licenseMap.put("company", reponse.get("denomination").asText());
+                                licenseMap.put("serial", reponse.get("serial").asText());
+                                licenseMap.put("email", reponse.get("email").asText());
+                                licenseMap.put("activationRequest", reponse.get("activation_request").asText());
+                                licenseMap.put("createdAt", reponse.get("createdAt").asText());
+                                licenseMap.put("updatedAt", reponse.get("updatedAt").asText());
+                                System.out.println(licenseMap);
+                                String json = ow.writeValueAsString(licenseMap);
+        
+                                FileWriter fw = new FileWriter("data.txt");
+                                fw.write(json);
+                                fw.close();
+        
+                                System.out.println("Le texte a été écrit avec succès");
+                                return "Le texte a été écrit avec succès";
+                             
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                       
+                    } else {
+                        System.out.println("Le texte n'a été pas été écrit avec succès");
+                        return "Le texte n'a été pas été écrit avec succès";
+                    }
+                   
+                } catch (Exception e) {
+                    System.err.println("Erreur de désérialisation : " + e.getMessage());
+                    e.printStackTrace();
+                }
+                // System.out.println(result);
+              
+            } else {
+                System.out.println("Une erreur est survenue.");
+                return "Une erreur est survenue.";
+            }
+        } catch (NullPointerException eNullPointerException) {
+            eNullPointerException.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "lol";
+    }
+    @GetMapping("/testy2")
+    public ApiResponseDto verifyLicence() {
+        String license = "";
+        ApiResponseDto apiResponseDto = ApiResponseDto
+                .builder()
+
+                .build();
+      
+        try {
+            System.err.println("licensia2 : ");
+            // Le fichier d'entrée
+            File file = new File("data.txt");
+            // Créer l'objet File Reader
+            FileReader fr = new FileReader(file);
+            // Créer l'objet BufferedReader
+            BufferedReader br = new BufferedReader(fr);
+            StringBuffer sb = new StringBuffer();
+            String line;
+            while ((line = br.readLine()) != null) {
+                // ajoute la ligne au buffer
+                sb.append(line);
+                sb.append("\n");
+            }
+            fr.close();
+            System.err.println("licensia3 : ");
+            license = sb.toString();
+            System.err.println("licensia : "+ license);
+            if (license != "") {
+                LicenceControl licenceControl = LicenceControl
+                        .builder()
+
+                        .build();
+                ObjectMapper mapper = new ObjectMapper();
+                LicenceDto licenseResponse = mapper.readValue(license, LicenceDto.class);
+
+                String activationRequest = licenseResponse.getActivationRequest();
+                String[] splitARequest = activationRequest.split(",");
+                String[] splitInfo = splitARequest[1].split(":");
+                int totalJours = Integer.parseInt(splitInfo[0]);
+                LocalDateTime createdAt = Utils.convertStrWithTToLocalDateTime(licenseResponse.getCreatedAt());
+
+                LocalDateTime calculateDate = createdAt.plusDays(totalJours);
+                Long hoursRetard = LocalDateTime.now().until(calculateDate, ChronoUnit.HOURS);
+
+                if (hoursRetard > 0) {
+                    // La licence n'est pas encore expirée, hoursRetard contient le nombre d'heures.
+                    long daysRemaining = hoursRetard / 24; // Convertir les heures en jours
+
+                    licenceControl.setActif(true);
+                    licenceControl.setDayBefore(daysRemaining);
+                    licenceControl.setMaxPoste(Long.parseLong(splitInfo[1]));
+                    Double consommation = (totalJours * 0.3);
+                    if (daysRemaining <= (consommation.longValue())) {
+                        if (daysRemaining == 0) {
+                            licenceControl
+                                    .setMessage("Votre licence expire dans quelques heures !");
+                        } else {
+                            licenceControl
+                                    .setMessage("Votre licence expire dans  " + daysRemaining + " jr(s) !");
+                        }
+                    }
+
+                    else
+                        licenceControl.setMessage("");
+                    apiResponseDto.setStatus(true);
+                    apiResponseDto.setContent(licenceControl);
+
+                } else {
+                    // La licence est expirée, hoursRetard contient le nombre d'heures restantes.
+                    long daysElapsed = Math.abs(hoursRetard) / 24; // Convertir les heures en jours
+
+                    licenceControl.setActif(false);
+                    licenceControl.setDayBefore(-daysElapsed);
+                    licenceControl.setMaxPoste(Long.parseLong(splitInfo[1]));
+                    licenceControl.setMessage("Votre licence à expirer depuis " + daysElapsed + " jr(s) !");
+                    apiResponseDto.setStatus(true);
+                    apiResponseDto.setContent(licenceControl);
+
+                    apiResponseDto.setStatus(true);
+                    apiResponseDto.setContent(licenceControl);
+                }
+
+            } else {
+
+                apiResponseDto.setStatus(false);
+                apiResponseDto.setContent(ErrorResponse.builder().title("Erreur aucune licence active")
+                        .message("Erreur aucune licence active").build());
+
+            }
+
+        } catch (IOException e) {
+
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message(
+                            "Une erreur est survenue à la lecture du fichier")
+                            .title("Une erreur est survenue à la lecture du fichier")
+                            .build())
+                    .build();
+
+            e.printStackTrace();
+
+        }
+
+        return apiResponseDto;
+    }
+    
+    @PostMapping("/testy3")
+    public ApiResponseDto testy3() {
+        String license = "";
+
+        ApiResponseDto apiResponseDto;
+        apiResponseDto = Utils.verifyLicence();
+       
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            System.out.println("VDR1 : "+lc.isActif());
+            if (lc.isActif()) {
+                System.out.println("VDR2 : ");
+            }
+        }
+
+
+        return apiResponseDto;
+
+    }
+
+    @PostMapping("/forget/password")
+    public ResponseEntity<ApiResponseDto> forgetPassword(@RequestBody ForgetPasswordRequest request) {
+           return authenticationServiceImpl.forgetPassword(request);
+    }
+
+
+    @GetMapping("/check/token")
+    public ResponseEntity<ApiResponseDto> getAuthData() {
+           return authenticationServiceImpl.getAuthData();
     }
 
     @PutMapping("/update")

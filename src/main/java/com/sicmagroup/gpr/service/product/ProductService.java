@@ -22,4 +22,6 @@ public interface ProductService {
     public void deleteProduct(Product product) throws Exception;
 
     public Product getDeletedById (Long id, boolean deleted) throws NotFoundException ;
+    
+    public Product findProductByUuid(String uuid) throws NotFoundException ;
 }

@@ -78,7 +78,7 @@ public class ChatServiceImpl implements ChatService {
                 try {
 
                     Double apercuContent = claim.getContent().length() * 0.5;
-                    String message = "Bonjour cher membre du CGR, le collègue " +
+                    String message = "Bonjour cher utilisateur, le collaborateur " +
                             user.getFirstandlastname()
                             + " a démarré une session. \n\n" +
                             "\t * Code réclamation : " + claim.getCode() + " \n" +
@@ -185,7 +185,7 @@ public class ChatServiceImpl implements ChatService {
             String message = "Cher " + guest.getFirstandlastname() + ", \n\n" +
                     "Vous êtes invité à intervenir dans les discussions à propos de la réclamation : "
                     + chat.getClaim().getCode() + " \n\n" +
-                    "Connectez vous sur la plateforme GPRAssilassimé.";
+                    "Connectez vous sur la plateforme GPR.";
             Utils.sendmail(guest.getEmail(), "Invitation chat", message, null, "", settingServiceImpl);
             Utils.sendSms(Arrays.asList(guest), message, settingServiceImpl);
         } catch (Exception e) {
@@ -228,10 +228,10 @@ public class ChatServiceImpl implements ChatService {
         }
 
         try {
-            String message = "Cher " + guest.getFirstandlastname() + ", \n\n" +
+            String message = "Cher(e) " + guest.getFirstandlastname() + ", \n\n" +
                     "Vous avez exclus de la discussion sur le traitement de la réclamation : "
                     + chat.getClaim().getCode() + " \n\n" +
-                    "Contactez le Président du Comité de Gestion des Réclamations s'il s'agit d'une erreur.";
+                    "Contactez le collaborateur ayant initié la session s'il s'agit d'une erreur.";
             Utils.sendmail(guest.getEmail(), "Ejection du chat", message, null, "", settingServiceImpl);
             // Utils.sendSms(Arrays.asList(guest), message);
         } catch (Exception e) {

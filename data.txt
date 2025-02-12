@@ -1,10 +1,10 @@
 {
-  "createdAt" : "2024-04-04T12:53:11.198768",
-  "serial" : "3725f3f4-5f84-4177-84a4-ebe30bc0dd02",
-  "company" : "SICMA ET ASSOCIES",
-  "activationRequest" : "39735630-7b28-4e77-b800-a3bdf91ae3c1,365:20",
-  "id" : 350,
-  "fullname" : "Licence Web",
-  "email" : "info@sicmagroup.com",
-  "updatedAt" : "2024-07-08T16:35:03.064466"
+  "createdAt" : "2024-03-30T09:50:38.000000",
+  "serial" : "2a67dcc9-ae6f-45b7-8514-de7de4e23ec1",
+  "company" : "teretere",
+  "activationRequest" : "c0baa70f-c46d-4440-9b64-c53c04399705,365:6",
+  "id" : "390",
+  "fullname" : "teretere",
+  "email" : "tori@sicmagroup.com",
+  "updatedAt" : "2025-01-29T09:50:38.000000"
 }

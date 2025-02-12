@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.sicmagroup.gpr.domain.dto.botkey.BotKeyConfigResponse;
 import com.sicmagroup.gpr.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -49,5 +50,10 @@ public class ApplicationConfig {
     @Bean
     public ModelMapper modelMapper(){
         return new ModelMapper();
+    }
+    
+    @Bean
+    public BotKeyConfigResponse botKeyConfigResponse() {
+        return new BotKeyConfigResponse();
     }
 }

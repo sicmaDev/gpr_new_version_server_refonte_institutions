@@ -7,9 +7,12 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,7 +27,12 @@ import com.sicmagroup.gpr.domain.enumeration.ServicePointEnum;
 @NoArgsConstructor 
 @AllArgsConstructor
 @Entity
-@Table(name = "gps_service_point")
+@Table(name = "gps_service_point",uniqueConstraints = {
+	@UniqueConstraint(
+		name="libelle_unique",
+		columnNames = "libelle"
+	)
+})
 public class ServicePoint {
 
 
@@ -33,6 +41,7 @@ public class ServicePoint {
 	private Long id;
 	@Column(unique = true)
 	private String uuid;
+	@Column(unique = true)
 	private String libelle;
 	@Lob
     @Column(columnDefinition = "TEXT")
@@ -46,6 +55,12 @@ public class ServicePoint {
 	private boolean isPrincipalAgence;
 	@Column(columnDefinition = "boolean default false")
 	private boolean isDeleted;
+
+	// Nouvelle relation direction_id qui fait référence à un autre ServicePoint
+    // @ManyToOne
+    @JoinColumn(name = "direction_id")
+    private Long direction_id;
+
 
 	@OneToMany(mappedBy = "servicePoint")
 	private List<User> users;

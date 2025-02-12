@@ -2,6 +2,6 @@ package com.sicmagroup.gpr.domain.enumeration;
 
 public enum LogType {
     INFO,
-    WARN,
+    WARNING,
     ERROR
 }

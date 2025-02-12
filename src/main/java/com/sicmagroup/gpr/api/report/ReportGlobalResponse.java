@@ -1,5 +1,7 @@
 package com.sicmagroup.gpr.api.report;
 
+import java.util.HashMap;
+
 import com.sicmagroup.gpr.domain.dto.reports.BandChart.BandChart;
 import com.sicmagroup.gpr.domain.dto.reports.pieChart.PieChart;
 import com.sicmagroup.gpr.domain.dto.reports.pieChart.PieChartDto;
@@ -20,5 +22,6 @@ public class ReportGlobalResponse {
     private DenunReport denunReport;
     private SuggestionReport suggestionReport;
     private StatisticReport statistic;
+    private HashMap<String,Object> newVersionStat;
     
 }

@@ -16,5 +16,6 @@ public class Constante {
     public static final String SMS_SLUG = "app-sms";
     public static final String MAIL_SLUG = "app-mail";
     public static final String BOT_SLUG = "app-bot";
+    public static final String API_KEY_SLUG = "app-api-key";
   
 }

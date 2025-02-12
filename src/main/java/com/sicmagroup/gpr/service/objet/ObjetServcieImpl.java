@@ -2,10 +2,12 @@ package com.sicmagroup.gpr.service.objet;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 
+import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.repository.ObjetRepository;
 
@@ -34,6 +36,7 @@ public class ObjetServcieImpl implements ObjetService {
 
     @Override
     public Objet saveObjet(Objet objet) {
+        objet.setUuid(generateUuid());
         return repository.save(objet);
     }
 
@@ -64,6 +67,24 @@ public class ObjetServcieImpl implements ObjetService {
     public Objet getDeletedById(Long id, boolean deleted) throws NotFoundException {
         return repository.findByIdAndIsDeleted(id, deleted).orElseThrow(() -> new NotFoundException());
 
+    }
+
+     private String generateUuid() {
+        String code = "obj-" + UUID.randomUUID().toString().substring(0, 5);
+
+        while (repository.findFirstByUuid(code).isPresent()) {
+            code = "obj-" + UUID.randomUUID().toString().substring(0, 5);
+        }
+
+        return code;
+    }
+
+    public Objet findByUuid(String uuid){
+        try {
+            return repository.findFirstByUuid(uuid).orElseThrow(() -> new Exception("Cette langue  n'existe pas."));
+        } catch (Exception e) {
+            throw new RuntimeException("Cette langue  n'existe pas.", e);
+        }
     }
 
 }

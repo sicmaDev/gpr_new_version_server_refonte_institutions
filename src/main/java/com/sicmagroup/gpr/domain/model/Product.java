@@ -33,6 +33,8 @@ public class Product {
     private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
 	private LocalDateTime deletedAt;
+	@Column(unique = true)
+	private String uuid;
 	@Column(columnDefinition = "boolean default false")
 	private boolean isDeleted;
 

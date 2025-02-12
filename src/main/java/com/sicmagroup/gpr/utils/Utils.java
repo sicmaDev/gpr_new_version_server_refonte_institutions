@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.scheduling.annotation.Async;
@@ -106,6 +107,111 @@ public class Utils {
         return type;
     }
 
+    public static Boolean testSmsConfig(String number, String message, SettingServiceImpl settingServiceImpl)
+            throws Exception {
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            if (sms != null) {
+                SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                String baseUrl = smsRequest.getUrl();
+                String token = smsRequest.getValMdp();
+                String sender = smsRequest.getValEmetteur();
+                message = UriEncoder.encode(message);
+                HttpURLConnection con;
+
+                baseUrl += smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender + "&"
+                        + smsRequest.getLibDestinataire() + "=" + number + "&" + smsRequest.getLibMessage() + "="
+                        + message;
+                URL url = new URL(baseUrl);
+                con = (HttpURLConnection) url.openConnection();
+                con.setRequestMethod("GET");
+                int status = con.getResponseCode();
+                if (status >= 200 && status <= 299) {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(con.getInputStream()));
+                    String inputLine;
+                    StringBuffer content = new StringBuffer();
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+
+                    return true;
+
+                } else {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(con.getErrorStream()));
+                    String inputLine;
+                    StringBuffer content = new StringBuffer();
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+                    return false;
+
+                }
+            }
+            return false;
+
+        } catch (IOException e) {
+
+            return false;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    public static Boolean testMailConfig(String to, String subject, String body, String cc, String from,
+            SettingServiceImpl settingServiceImpl) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
+            Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+            if (mail != null) {
+                MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+                // System.out.println("try b");
+                mailSenderr.setHost(mailRequest.getHost());
+                mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
+                mailSenderr.setUsername(mailRequest.getUser());
+                mailSenderr.setPassword(mailRequest.getPwd());
+
+                Properties props = mailSenderr.getJavaMailProperties();
+                props.put("mail.transport.protocol", "smtp");
+                props.put("mail.smtp.auth", "true");
+                props.put("mail.smtp.ssl.enable", "true");
+                props.put("mail.smtp.starttls.enable", "true");
+                props.put("mail.debug", "true");
+
+                if (cc != "" && cc != null) {
+                    String[] listCc = cc.split(",");
+                    message.setCc(listCc);
+                }
+
+                message.setTo(to);
+                message.setSubject(subject);
+                message.setText(body);
+                message.setFrom(mailRequest.getUser());
+
+                mailSenderr.send(message);
+                return true;
+            } else {
+                return false;
+            }
+
+        } catch (MailException ex) {
+            return false;
+
+        } catch (Exception e) {
+
+            return false;
+        }
+
+    }
+
     @Async
     public static Future<String> sendmail(String to, String subject, String body, String cc, String from,
             SettingServiceImpl settingServiceImpl) {
@@ -152,13 +258,116 @@ public class Utils {
 
     }
 
+    // public static Boolean testMailConfig(String to, String subject, String body,
+    // String cc, String from,
+    // SettingServiceImpl settingServiceImpl) {
+    // SimpleMailMessage message = new SimpleMailMessage();
+    // JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
+    // ObjectMapper objectMapper = new ObjectMapper();
+
+    // try {
+    // Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+    // if (mail != null) {
+    // MailRequest mailRequest = objectMapper.readValue(mail.getValue(),
+    // MailRequest.class);
+    // // System.out.println("try b");
+    // mailSenderr.setHost(mailRequest.getHost());
+    // mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
+    // mailSenderr.setUsername(mailRequest.getUser());
+    // mailSenderr.setPassword(mailRequest.getPwd());
+
+    // Properties props = mailSenderr.getJavaMailProperties();
+    // props.put("mail.transport.protocol", "smtp");
+    // props.put("mail.smtp.auth", "true");
+    // props.put("mail.smtp.ssl.enable", "true");
+    // props.put("mail.smtp.starttls.enable", "true");
+    // props.put("mail.debug", "true");
+
+    // if (cc != "" && cc != null) {
+    // String[] listCc = cc.split(",");
+    // message.setCc(listCc);
+    // }
+
+    // message.setTo(to);
+    // message.setSubject(subject);
+    // message.setText(body);
+    // message.setFrom(mailRequest.getUser());
+
+    // mailSenderr.send(message);
+    // return true;
+    // }else{
+    // return false;
+    // }
+
+    // } catch(MailException ex){
+    // return false;
+
+    // }catch (Exception e) {
+
+    // return false;
+    // }
+
+    // }
+
+    // @Async
+    // public static Future<String> sendmail(List<User> usersTo, String subject,
+    // String body, String cc, String from,
+    // SettingServiceImpl settingServiceImpl) throws Exception {
+    // SimpleMailMessage message = new SimpleMailMessage();
+    // JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
+    // ObjectMapper objectMapper = new ObjectMapper();
+    // try {
+
+    // Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+    // if (mail != null) {
+
+    // MailRequest mailRequest = objectMapper.readValue(mail.getValue(),
+    // MailRequest.class);
+    // // System.out.println("try b");
+    // mailSenderr.setHost(mailRequest.getHost());
+    // mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
+    // mailSenderr.setUsername(mailRequest.getUser());
+    // mailSenderr.setPassword(mailRequest.getPwd());
+
+    // Properties props = mailSenderr.getJavaMailProperties();
+    // props.put("mail.transport.protocol", "smtp");
+    // props.put("mail.smtp.auth", "true");
+    // props.put("mail.smtp.ssl.enable", "true");
+    // props.put("mail.debug", "true");
+    // mailSenderr.setJavaMailProperties(props);
+
+    // if (cc != "" && cc != null) {
+    // String[] listCc = cc.split(",");
+    // message.setCc(listCc);
+    // }
+    // List<String> emails = usersTo.stream().map(user ->
+    // user.getEmail()).collect(Collectors.toList());
+    // System.out.println(emails);
+    // System.out.println(emails.iterator().next());
+    // String[] recipients = emails.toArray(new String[0]);
+    // System.out.println("recipients");
+
+    // message.setTo(recipients);
+    // message.setSubject(subject);
+    // message.setText(body);
+    // message.setFrom(mailRequest.getUser());
+    // mailSenderr.send(message);
+    // }
+    // } catch (Exception e) {
+    // throw e;
+    // // e.printStackTrace();
+
+    // }
+
+    // return null;
+    // }
+
     @Async
     public static Future<String> sendmail(List<User> usersTo, String subject, String body, String cc, String from,
             SettingServiceImpl settingServiceImpl) throws Exception {
         SimpleMailMessage message = new SimpleMailMessage();
         JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
         ObjectMapper objectMapper = new ObjectMapper();
-        // from = "darrell.kidjo@sicmagroup.com";
         try {
 
             Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
@@ -167,14 +376,17 @@ public class Utils {
                 MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
                 // System.out.println("try b");
                 mailSenderr.setHost(mailRequest.getHost());
-                mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
+                if (!mailRequest.getPort().isEmpty()) {
+                    mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
+
+                }
                 mailSenderr.setUsername(mailRequest.getUser());
                 mailSenderr.setPassword(mailRequest.getPwd());
 
                 Properties props = mailSenderr.getJavaMailProperties();
                 props.put("mail.transport.protocol", "smtp");
                 props.put("mail.smtp.auth", "true");
-                props.put("mail.smtp.ssl.enable", "true");
+                props.put("mail.smtp.ssl.enable", "false");
                 props.put("mail.debug", "true");
                 mailSenderr.setJavaMailProperties(props);
 
@@ -183,10 +395,8 @@ public class Utils {
                     message.setCc(listCc);
                 }
                 List<String> emails = usersTo.stream().map(user -> user.getEmail()).collect(Collectors.toList());
-                System.out.println(emails);
-                System.out.println(emails.iterator().next());
+
                 String[] recipients = emails.toArray(new String[0]);
-                System.out.println("recipients");
 
                 message.setTo(recipients);
                 message.setSubject(subject);
@@ -386,6 +596,68 @@ public class Utils {
         return null;
     }
 
+    // public static Boolean testSmsConfig(String number, String message,
+    // SettingServiceImpl settingServiceImpl)
+    // throws Exception {
+
+    // try {
+    // ObjectMapper objectMapper = new ObjectMapper();
+    // Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+    // if (sms != null) {
+    // SmsRequest smsRequest = objectMapper.readValue(sms.getValue(),
+    // SmsRequest.class);
+    // String baseUrl = smsRequest.getUrl();//
+    // "http://www.wassasms.com/wassasms/api/web/v3/sends?";
+    // String token = smsRequest.getValMdp();// "SZhs_fSrSqDn8eITgs77ym17ttv1G8ig";
+    // String sender = smsRequest.getValEmetteur();// "gps";
+    // String dlrUrl = "";
+    // message = UriEncoder.encode(message);
+    // HttpURLConnection con;
+
+    // baseUrl += smsRequest.getLibMdp() + "=" + token + "&" +
+    // smsRequest.getLibEmetteur() + "=" + sender + "&"
+    // + smsRequest.getLibDestinataire() + "=" + number + "&" +
+    // smsRequest.getLibMessage() + "="
+    // + message;
+    // URL url = new URL(baseUrl);
+    // con = (HttpURLConnection) url.openConnection();
+    // con.setRequestMethod("GET");
+    // int status = con.getResponseCode();
+    // if (status >= 200 && status <= 299) {
+    // BufferedReader in = new BufferedReader(
+    // new InputStreamReader(con.getInputStream()));
+    // String inputLine;
+    // StringBuffer content = new StringBuffer();
+    // while ((inputLine = in.readLine()) != null) {
+    // content.append(inputLine);
+    // }
+    // in.close();
+
+    // return true;
+
+    // } else {
+    // BufferedReader in = new BufferedReader(
+    // new InputStreamReader(con.getErrorStream()));
+    // String inputLine;
+    // StringBuffer content = new StringBuffer();
+    // while ((inputLine = in.readLine()) != null) {
+    // content.append(inputLine);
+    // }
+    // in.close();
+    // return false;
+
+    // }
+    // }
+    // return false;
+
+    // } catch (IOException e) {
+
+    // return false;
+    // } catch (Exception ex) {
+    // return false;
+    // }
+    // }
+
     public static Double percentCalculator(Long value, Long total) {
         if (total != 0) {
             return (((Double) value.doubleValue() / total) * 100);
@@ -410,6 +682,43 @@ public class Utils {
         }
         return listColor;
     }
+    // public static List<RgbColor> generateRandomColor(int total) {
+    //     List<RgbColor> listColor = new ArrayList<>();
+    //     Random random = new Random();
+        
+    //     for (int i = 0; i < total; i++) {
+    //         int red, green, blue;
+    //         int threshold = 100; // Seuil pour éviter les couleurs qui tendent vers le noir
+    
+    //         do {
+    //             red = random.nextInt(256);   // 0 à 255 inclus
+    //             green = random.nextInt(256); // 0 à 255 inclus
+    //             blue = random.nextInt(256);  // 0 à 255 inclus
+    //         } while ((red + green + blue) < threshold || (red == 255 && green == 255 && blue == 255)); // Re-générer si la couleur tend vers le noir ou est blanche
+    
+    //         listColor.add(new RgbColor(0, 0, 0));
+    //     }
+        
+    //     return listColor;
+    // }
+    
+    
+    
+
+   
+
+    public static String generateRandomString(int count) {
+        String SALTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+        StringBuilder salt = new StringBuilder();
+        Random rnd = new Random();
+        while (salt.length() < count) { // length of the random string.
+            int index = (int) (rnd.nextFloat() * SALTCHARS.length());
+            salt.append(SALTCHARS.charAt(index));
+        }
+        String saltStr = salt.toString();
+        return saltStr;
+
+    }
 
     public static List<RgbColor> generateColorsFromColors(List<RgbColor> bgColors) {
         List<RgbColor> listColor = new ArrayList<>();
@@ -428,7 +737,9 @@ public class Utils {
                 .builder()
 
                 .build();
+                System.err.println("licensia1 : ");
         try {
+            System.err.println("licensia2 : ");
             // Le fichier d'entrée
             File file = new File("data.txt");
             // Créer l'objet File Reader
@@ -443,9 +754,9 @@ public class Utils {
                 sb.append("\n");
             }
             fr.close();
-
+            System.err.println("licensia3 : ");
             license = sb.toString();
-
+            System.err.println("licensia : "+ license);
             if (license != "") {
                 LicenceControl licenceControl = LicenceControl
                         .builder()
@@ -471,16 +782,16 @@ public class Utils {
                     licenceControl.setDayBefore(daysRemaining);
                     licenceControl.setMaxPoste(Long.parseLong(splitInfo[1]));
                     Double consommation = (totalJours * 0.3);
-                    if (daysRemaining <= (consommation.longValue())){
-                        if(daysRemaining == 0){
+                    if (daysRemaining <= (consommation.longValue())) {
+                        if (daysRemaining == 0) {
                             licenceControl
-                            .setMessage("Votre licence expire dans quelques heures !");
+                                    .setMessage("Votre licence expire dans quelques heures !");
                         } else {
                             licenceControl
-                            .setMessage("Votre licence expire dans  " + daysRemaining + " jr(s) !");
+                                    .setMessage("Votre licence expire dans  " + daysRemaining + " jr(s) !");
                         }
                     }
-                       
+
                     else
                         licenceControl.setMessage("");
                     apiResponseDto.setStatus(true);

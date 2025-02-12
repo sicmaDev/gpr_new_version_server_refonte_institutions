@@ -8,17 +8,21 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.api.Media.MediaResponse;
+import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
+import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
+import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.service.suggestion.SuggestionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
@@ -52,6 +56,7 @@ public class SuggestionController {
 
     private final SuggestionServiceImpl service;
     private final ModelMapper modelMapper;
+    private final ClaimAudioServiceImpl claimAudioServiceImpl;
     private final AuthenticationServiceImpl authService;
     private final MediaServiceImpl mediaService;
 
@@ -86,14 +91,44 @@ public class SuggestionController {
     public ResponseEntity<ApiResponseDto> getTreaTableList(@PathVariable ClaimStatus status) {
         ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
         List<Suggestion> suggestions = new ArrayList<>();
+        User connectedUser = User.builder().build();
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                    .getPrincipal();
+           
+        try {
+            connectedUser = authService.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                            .title("NOT FOUND EXCEPTION")
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
 
         if (status == ClaimStatus.TEMP_SAVED) {
-            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-                    .getPrincipal();
+            
             User collector;
             try {
                 collector = authService.getByEmail(collectorDetails.getUsername());
                 suggestions = service.getAllByCollectorAndStatus(collector, status);
+
+                List<Suggestion> filteredSuggestions = new ArrayList<>();
+                //recuperer pour le pilote les suggestions du bot   *
+                // System.out.println("tolotolo : "+connectedUser.getAdditionalrole() );              
+                if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                    List<Suggestion> allSuggestions = service.getAllByStatusIn(Arrays.asList(status));
+                    //    suggestions = allSuggestions;
+                    for (Suggestion suggestion : allSuggestions) {
+                        if (suggestion.getCode().startsWith("bot")) {
+                            suggestions.add(suggestion);
+                        }
+                    }
+                }
+
+
             } catch (Exception e) {
                 apiResponseDto = ApiResponseDto
                         .builder()
@@ -120,7 +155,8 @@ public class SuggestionController {
     @PostMapping(value = "/add", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
             MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<ApiResponseDto> saveSuggestion(@RequestPart(name = "suggestion") String suggestionStr,
-            @RequestPart(name = "files", required = false) MultipartFile[] files)
+            @RequestPart(name = "files", required = false) MultipartFile[] files,
+            @RequestPart(name = "audios", required = false) MultipartFile[] audios)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto;
         apiResponseDto = Utils.verifyLicence();
@@ -134,6 +170,7 @@ public class SuggestionController {
                         .builder()
                         .suggestionRequest(suggestionRequest)
                         .files(files)
+                        .audios(audios)
                         .build();
                 try {
                     Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.SAVED);
@@ -175,11 +212,12 @@ public class SuggestionController {
     @PostMapping(value = "/save_temp", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
             MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<ApiResponseDto> saveTempSuggestion(@RequestPart(name = "suggestion") String suggestionStr,
-            @RequestPart(name = "files", required = false) MultipartFile[] files)
+            @RequestPart(name = "files", required = false) MultipartFile[] files,
+            @RequestPart(name = "audios", required = false) MultipartFile[] audios)
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto;
         apiResponseDto = Utils.verifyLicence();
-        ;
+        
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {
@@ -192,6 +230,7 @@ public class SuggestionController {
                         .builder()
                         .suggestionRequest(suggestionRequest)
                         .files(files)
+                        .audios(audios)
                         .build();
                 try {
                     Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.TEMP_SAVED);
@@ -228,6 +267,45 @@ public class SuggestionController {
             return ResponseEntity.ok(apiResponseDto);
         }
     }
+
+        @GetMapping("/getAudiosBy/{suggestionId}")
+    public ResponseEntity<List<ClaimAudioResponse>> getAllSuggestionAudioForASuggestion(
+            @PathVariable(name = "suggestionId") Long suggestionId) {
+        ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
+        Suggestion suggestion = Suggestion.builder().build();
+        try {
+            suggestion = service.getById(suggestionId);
+
+        } catch (NotFoundException e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Claim not found").title("NOT FOUND EXCEPTION").build())
+                    .build();
+            return ResponseEntity.notFound().build();
+        }
+         catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Claim not found").title("NOT FOUND EXCEPTION").build())
+                    .build();
+            return ResponseEntity.notFound().build();
+        }
+        List<ClaimAudioResponse> medias = claimAudioServiceImpl.getAudiosBySuggestion(suggestion);
+        // List<MediaResponse> mediaResponses =
+        // medias.stream().map(this::convertToResponse).collect(Collectors.toList());
+        // System.out.println("medias.size");
+        // System.out.println(medias.size());
+
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(true)
+                .content(medias)
+                .build();
+        return ResponseEntity.ok(medias);
+    }
+
 
     @PutMapping(value = "/treatSuggestion")
     public ResponseEntity<ApiResponseDto> treatSuggestion(@RequestBody TreatSuggestionRequest request) {

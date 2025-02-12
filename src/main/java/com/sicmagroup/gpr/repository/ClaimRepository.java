@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.projection.ObjectPerCanalProjection;
 import com.sicmagroup.gpr.repository.projection.ObjectPerObjProjction;
@@ -30,6 +31,9 @@ import com.sicmagroup.gpr.domain.enumeration.SolutionStatus;
 public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimRepositoryCustom {
 
         Optional<Claim> findByCode(String code);
+        Optional<Claim> findByCodeClient(String codeClient);
+
+        List<Claim> findByTypeAndCodeStartsWith(ClaimType type,String code);
 
         List<Claim> findByTelAndTypeAndStatus(String tel, ClaimType type, ClaimStatus status);
 
@@ -39,10 +43,15 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
 
         List<Claim> findByType(ClaimType type);
 
+        List<Claim> findByTypeAndServicePointInAndStatusNot(ClaimType type,List<ServicePoint> servicePoints, ClaimStatus status);
+        
+        List<Claim> findByServicePointInAndStatusNot(List<ServicePoint> servicePoints, ClaimStatus status);
+
         List<Claim> findByTypeAndStatus(ClaimType type, ClaimStatus status);
 
         List<Claim> findByTypeAndStatusNot(ClaimType type, ClaimStatus status);
         List<Claim> findByTypeAndStatusNotAndReceiptDateTimeBetween(ClaimType type, ClaimStatus status, LocalDateTime start, LocalDateTime end);
+        List<Claim> findByTypeAndStatusInAndReceiptDateTimeBetween(ClaimType type, List<ClaimStatus> status, LocalDateTime start, LocalDateTime end);
 
         List<Claim> findByTypeAndStatusAndCollector(ClaimType type, ClaimStatus status, User collector);
 
@@ -142,8 +151,22 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
         @Query("SELECT sp.id as spId, sp.libelle as spLib, o.id as objtId, o.libelle as objLib, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id LEFT JOIN ServicePoint sp ON c.servicePoint.id = sp.id WHERE c.type = :type AND c.status != 'TEMP_SAVED' GROUP BY sp.id, spLib, objtId, sp.libelle, o.id, o.libelle, objNiveau")
         List<ClaimPerObjLevelAndAgenceProjection> countClaimPerObjLevelAndAgence(@Param("type") ClaimType type);
 
-        @Query("SELECT c.status as status, COUNT(c.code) as total FROM Claim c WHERE c.type = 'CLAIM' AND c.status IN ('SATISFIED', 'UNSATISFIED', 'PARTIAL_SATISFIED') GROUP BY status")
-        List<ClaimPerStatusSatisfactionProjection> countClaimPerSatisfaction(); 
+        // @Query("SELECT c.status as status, COUNT(c.code) as total FROM Claim c WHERE c.type = 'CLAIM' AND c.status IN ('SATISFIED', 'UNSATISFIED', 'PARTIAL_SATISFIED','CLASSED','LITIGATION') GROUP BY status")
+        // List<ClaimPerStatusSatisfactionProjection> countClaimPerSatisfaction(); 
+
+        @Query("SELECT " +
+        "CASE " +
+        "WHEN c.status IN ('CLASSED', 'LITIGATION') THEN 'UNSATISFIED' " +
+        "ELSE c.status END as status, " +
+        "COUNT(c.code) as total " +
+        "FROM Claim c " +
+        "WHERE c.type = 'CLAIM' " +
+        "AND c.status IN ('SATISFIED', 'UNSATISFIED', 'PARTIAL_SATISFIED', 'CLASSED', 'LITIGATION') " +
+        "GROUP BY CASE " +
+        "WHEN c.status IN ('CLASSED', 'LITIGATION') THEN 'UNSATISFIED' " +
+        "ELSE c.status END")
+        List<ClaimPerStatusSatisfactionProjection> countClaimPerSatisfaction();
+
 
         Long countByTypeAndStatusNotAndReceiptDateTimeBetween(ClaimType type, ClaimStatus status, LocalDateTime start, LocalDateTime end);
 
@@ -151,6 +174,8 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
 
          @Query("SELECT o.id as objtId, o.libelle as objLibelle, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.type = :type AND c.status = 'SAVED' GROUP BY objtId, objLibelle, objNiveau ")
         List<ClaimPerObjLevelProjection> countClaimSavedPerObjLevel(@Param("type") ClaimType type);
+
+        List<Claim> findByStatusIn(List<ClaimStatus> status);
 
 
 

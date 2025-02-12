@@ -6,10 +6,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -33,6 +36,8 @@ import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.ExistingSolution;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
+import com.sicmagroup.gpr.domain.model.Inbox;
+import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Log;
 import com.sicmagroup.gpr.domain.model.Media;
@@ -45,6 +50,9 @@ import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ExistingSolutionRepository;
+import com.sicmagroup.gpr.repository.InboxMessageRepository;
+import com.sicmagroup.gpr.repository.InboxRepository;
+import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
@@ -61,6 +69,10 @@ import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
+import com.sicmagroup.gpr.repository.ServicePointRepository;
+
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import lombok.RequiredArgsConstructor;
 
@@ -83,6 +95,9 @@ public class ClaimServiceImpl implements ClaimService {
     private final ExistingSolutionRepository existingSolutionRepository;
     private final ChatRepository chatRepository;
     private final SettingServiceImpl settingServiceImpl;
+    private final ServicePointRepository spRepository;
+    private final InboxRepository inboxRepository;
+    private final InboxMessageRepository messageRepository;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -93,6 +108,10 @@ public class ClaimServiceImpl implements ClaimService {
     public Claim getById(Long id) throws NotFoundException {
         return repository.findById(id).orElseThrow(() -> new NotFoundException());
     }
+
+    // public List<Claim> getUserClaim(String userCode) {
+    //     return repository.findByCodeStartsWith(userCode);
+    // }
 
     @Override
     public Claim saveClaim(SaveRequest claimPart, ClaimType type) throws Exception {
@@ -109,6 +128,8 @@ public class ClaimServiceImpl implements ClaimService {
         // } else {
 
         // }
+
+        
 
         Claim claim = Claim
                 .builder()
@@ -129,15 +150,20 @@ public class ClaimServiceImpl implements ClaimService {
             claim.setStatus(claimToSave.getStatus());
         } else {
             claim.setStatus(ClaimStatus.SAVED);
+            claim.setCodeClient(claimToSave.getCodeClient());
         }
 
         if (claimToSave.getId() != null) {
             claim.setId(claimToSave.getId());
             claim.setCode(claimToSave.getCode());
+
+           
+           
             // Only TEMP_SAVED can be saved
             Claim oldClaim = repository.findById(claimToSave.getId())
                     .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
 
+            claim.setCodeClient(oldClaim.getCodeClient());
             // if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
             // throw new ClaimException(
             // "Invalid operation! this claim is not temporarly saved, you can't change it
@@ -148,8 +174,11 @@ public class ClaimServiceImpl implements ClaimService {
             if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
                 claim.setCode(code);
+                String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
             } else {
                 claim.setCode(claimToSave.getCode());
+                claim.setCodeClient(claimToSave.getCodeClient());
             }
         }
         // if(claimToSave.getCode() == null || claimToSave.getCode()== "") {
@@ -206,6 +235,7 @@ public class ClaimServiceImpl implements ClaimService {
             }
         }
 
+
         claim = repository.save(claim);
         Log log = Log
                 .builder()
@@ -239,6 +269,19 @@ public class ClaimServiceImpl implements ClaimService {
             // claim.setAudios(audios);
         }
 
+        //Whatsapp
+        if(claimToSave.getFromWhatsapp()){
+            System.out.println("From Whatsapp");
+            Boolean isOk = mediaServiceImpl.attachFileToClaim(claim, claimToSave.getFilesWhatsapp());
+            if(isOk && claimToSave.getInboxWhatsapp() != null){
+                List<InboxMessage> messages = messageRepository.findByInbox(claimToSave.getInboxWhatsapp());
+                for (InboxMessage message : messages) {
+                    messageRepository.delete(message);
+                }
+                inboxRepository.delete(claimToSave.getInboxWhatsapp());
+            }
+        }
+
         claim = repository.save(claim);
         List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));
 
@@ -246,52 +289,61 @@ public class ClaimServiceImpl implements ClaimService {
 
         Double apercuContent = claim.getContent().length() * 0.5;
         String message = "" +
-                "Cher(e) utilisteur" +
-                "Une nouvelle réclamation a été enregistrée avec succès dans votre système. Cette réclamation nécessite votre attention en tant qu'utilisateur habilité pour traiter les réclamations."
+                "Cher(e) utilisateur, "+
+                "une nouvelle réclamation a été enregistrée avec succès dans votre système. Vous recevez ce mail en tant qu'utilisateur habilité à recevoir une notification lors d'enregistrement de nouvelles réclamations."
                 + "\n\n" +
                 "Détails de la réclamation :" + "\n\n" +
                 "* Code de réclamation : " + claim.getCode() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour nos clients.";
-        try {
-            Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
-                    " ", settingServiceImpl);
-        } catch (Exception e) {
-            if (e != null) {
-                Log log2 = Log
-                        .builder()
-                        .libelle("Echec mail notification")
-                        .content(e.getMessage())
-                        .createdAt(LocalDateTime.now())
-                        .type(LogType.ERROR)
-                        .userId(0L)
-                        .userIpAddress(claimPart.getRemoteAddress())
-                        .target(LogTarget.APP)
-                        .build();
+                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
+         
+            // Lancer le Job de notification
+            // JobParameters jobParameters = new JobParametersBuilder()
+            //         .addParameter("usersToContact", usersToContact)
+            //         .addParameter("message", message)
+            //         .toJobParameters();
 
-                logServiceImpl.saveLog(log2);
-            }
+            // jobLauncher.run(notificationJob, jobParameters); // Lancer le Job
 
-        }
-        try {
-            Utils.sendSms(usersToContact,
-                    "Nouvelle réclamation enregistrée de niveau de gravité "
-                            + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
-        } catch (Exception e) {
-            Log log2 = Log
-                    .builder()
-                    .libelle("Echec sms notification")
-                    .content(e.getMessage())
-                    .createdAt(LocalDateTime.now())
-                    .type(LogType.ERROR)
-                    .userId(0L)
-                    .userIpAddress(claimPart.getRemoteAddress())
-                    .target(LogTarget.APP)
-                    .build();
+                // try {
+        //     Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
+        //             " ", settingServiceImpl);
+        // } catch (Exception e) {
+        //     if (e != null) {
+        //         Log log2 = Log
+        //                 .builder()
+        //                 .libelle("Echec mail notification")
+        //                 .content(e.getMessage())
+        //                 .createdAt(LocalDateTime.now())
+        //                 .type(LogType.ERROR)
+        //                 .userId(0L)
+        //                 .userIpAddress(claimPart.getRemoteAddress())
+        //                 .target(LogTarget.APP)
+        //                 .build();
 
-            logServiceImpl.saveLog(log2);
-        }
+        //         logServiceImpl.saveLog(log2);
+        //     }
+
+        // }
+        // try {
+        //     Utils.sendSms(usersToContact,
+        //             "Nouvelle réclamation enregistrée de niveau de gravité "
+        //                     + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
+        // } catch (Exception e) {
+        //     Log log2 = Log
+        //             .builder()
+        //             .libelle("Echec sms notification")
+        //             .content(e.getMessage())
+        //             .createdAt(LocalDateTime.now())
+        //             .type(LogType.ERROR)
+        //             .userId(0L)
+        //             .userIpAddress(claimPart.getRemoteAddress())
+        //             .target(LogTarget.APP)
+        //             .build();
+
+        //     logServiceImpl.saveLog(log2);
+        // }
 
         return claim;
 
@@ -371,47 +423,47 @@ public class ClaimServiceImpl implements ClaimService {
                 throw new Exception("Collection channelle choosed not found");
             }
         }
-        ServicePoint servicePoint;
-        if (claimToSave.getServicePointId() != null) {
-            try {
-                servicePoint = servicePointServiceImpl.getById(claimToSave.getServicePointId());
-                claim.setServicePoint(servicePoint);
-            } catch (Exception e) {
-                throw new Exception("Service Point choosed not found");
-            }
-        }
+        // ServicePoint servicePoint;
+        // if (claimToSave.getServicePointUuid() != null) {
+        //     try {
+        //         servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(claimToSave.getServicePointUuid());
+        //         claim.setServicePoint(servicePoint);
+        //     } catch (Exception e) {
+        //         throw new Exception("Service Point choosed not found");
+        //     }
+        // }
 
-        Product product;
-        if (claimToSave.getProductId() != null) {
-            try {
-                product = productServiceImpl.getById(claimToSave.getProductId());
-                claim.setProduct(product);
-            } catch (Exception e) {
-                throw new Exception("Product choosed not found");
-            }
-        }
+        // Product product;
+        // if (claimToSave.getProductUuid() != null) {
+        //     try {
+        //         product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
+        //         claim.setProduct(product);
+        //     } catch (Exception e) {
+        //         throw new Exception("Product choosed not found");
+        //     }
+        // }
 
-        Objet objet;
-        // System.out.println("objet id");
-        // System.out.println(claimToSave.getObjetId());
-        if (claimToSave.getObjetId() != null) {
-            try {
-                objet = objetServcieImpl.getById(claimToSave.getObjetId());
-                claim.setObjet(objet);
-            } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
-            }
-        }
+        // Objet objet;
+        // // System.out.println("objet id");
+        // // System.out.println(claimToSave.getObjetId());
+        // if (claimToSave.getObjetUuid() != null) {
+        //     try {
+        //         objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
+        //         claim.setObjet(objet);
+        //     } catch (Exception e) {
+        //         throw new Exception("Objet choosed not found");
+        //     }
+        // }
 
-        Language language;
-        if (claimToSave.getLanguageId() != null) {
-            try {
-                language = languageServiceImpl.getById(claimToSave.getLanguageId());
-                claim.setLanguage(language);
-            } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
-            }
-        }
+        // Language language;
+        // if (claimToSave.getLanguageUuid() != null) {
+        //     try {
+        //         language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
+        //         claim.setLanguage(language);
+        //     } catch (Exception e) {
+        //         throw new Exception("Objet choosed not found");
+        //     }
+        // }
 
         if (claimToSave.getClientFirstAndLastName() != null) {
             claim.setClientFirstAndLastName(claimToSave.getClientFirstAndLastName());
@@ -495,6 +547,7 @@ public class ClaimServiceImpl implements ClaimService {
         }
         String code = start + UUID.randomUUID().toString().substring(0, 5) + "-" + servicePointIndexeCode + "-"
                 + collectorCode;
+        
 
         while (repository.findByCode(code).isPresent()) {
             code = start + UUID.randomUUID().toString().substring(0, 5) + "-" + servicePointIndexeCode + "-"
@@ -513,7 +566,7 @@ public class ClaimServiceImpl implements ClaimService {
         // User affectedTo = authServiceImpl.getById(userId);
         // User affectedBy = authServiceImpl.getById(affectorId);
 
-        if (!Arrays.asList(ClaimStatus.SAVED,ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.UNSATISFIED,ClaimStatus.CLASSED).contains(claim.getStatus())) {
+        if (!Arrays.asList(ClaimStatus.SAVED,ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.UNSATISFIED,ClaimStatus.CLASSED,ClaimStatus.AFFECTED).contains(claim.getStatus())) {
             throw new ClaimException("Invalid request! You can't affect treatment to not saved claim");
         }
 
@@ -549,7 +602,7 @@ public class ClaimServiceImpl implements ClaimService {
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "Veuillez prendre les mesures nécessaires pour examiner et traiter cette réclamation dans les plus brefs délais";
         try {
-            Utils.sendmail(affectedTo.getEmail(), "Affectation de la réclamation", message, null,
+            Utils.sendmail(affectedTo.getEmail(), "Affectation de réclamation", message, null,
                     " ", settingServiceImpl);
         } catch (Exception e) {
             if (e != null) {
@@ -591,6 +644,7 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public Claim treatClaim(Claim claim, User treator, ProposedSolutionRequest request) throws Exception {
         Solution solution2;
+        System.out.println("Request received: " + request);
         if (!Arrays.asList(ClaimStatus.SAVED, ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED,
                 ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED)
                 .contains(claim.getStatus())) {
@@ -623,7 +677,9 @@ public class ClaimServiceImpl implements ClaimService {
             // TODO cas d'une solution existante
             ExistingSolution existingSolution = existingSolutionRepository.findById(request.getExistingId())
                     .orElseThrow(() -> new Exception("Solution choisie introuvable"));
+                   
             solution2.setExistingSolution(existingSolution);
+            
             solution2.setContent(existingSolution.getContent());
             solution2.setCommentaire("(cf le contenu de la solution existante choisie)");
             if (existingSolution.getCompteur() == null || existingSolution.getCompteur() == 0) {
@@ -660,9 +716,9 @@ public class ClaimServiceImpl implements ClaimService {
                     "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                     "La solution proposée par " + treator.getFirstandlastname() + " est la suivante : " + "\n" +
                     request.getSolution() + "\n\n" +
-                    "Nous vous invitons à examiner attentivement cette solution et à l'approuver ou la désaprouver ";
+                    "Nous vous invitons à examiner attentivement cette solution.";
 
-            Utils.sendmail(claim.getTreatmentAffectedBy().getEmail(), "Proposition de solution à la " + type + "",
+            Utils.sendmail(claim.getTreatmentAffectedBy().getEmail(), "Proposition de solution à une " + type + "",
                     message, null, " ", settingServiceImpl);
         } else {
             claim.setStatus(ClaimStatus.TREAT);
@@ -672,8 +728,8 @@ public class ClaimServiceImpl implements ClaimService {
             List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
             if (pilote != null && !pilote.isEmpty()) {
                 String message = "" +
-                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote d'Assilassimé Solidarité.\n\n" +
-                        "L'utilisateur " + treator.getFirstandlastname()
+                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote de la plateforme GPR, \n\n" +
+                        "l'utilisateur " + treator.getFirstandlastname()
                         + " a examiné la " + type + " portant le code : "
                         + claim.getCode()
                         + " et l'a traitée." + "\n\n" +
@@ -685,7 +741,7 @@ public class ClaimServiceImpl implements ClaimService {
                         +
                         "La solution proposée par " + treator.getFirstandlastname() + " est la suivante : " + "\n" +
                         request.getSolution() + "\n\n" +
-                        "Nous vous invitons à communiquer la solution au pilote pour mesurer sa satisfaction ";
+                        "Nous vous invitons à communiquer la solution au plaignant pour mesurer sa satisfaction. ";
 
                 Utils.sendmail(pilote.get(0).getEmail(), "" + type + " traitée",
                         message, null, " ", settingServiceImpl);
@@ -733,11 +789,11 @@ public class ClaimServiceImpl implements ClaimService {
             // send mail to
 
             if (claim.getSession() == null) { // To CGR if it is direct treat
-                String message = "Cher(s) membre du CGR, le client ayant fait la réclamation : " + claim.getCode()
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCode()
                         + " n'est pas satisfait de la solution proposée par "
                         + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
-                        "Veuillez vous connectez à la plateforme GPRAssilassimé dans la section Réclamation > Assurance Satisfaction pour ouvrir une session et proposé une solution adéquate.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
+                        "Veuillez vous connectez à la plateforme GPR afin de prendre des mesures adéquates par rapport à cette réclamation.";
+                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
 
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null, " ", settingServiceImpl);
@@ -745,11 +801,11 @@ public class ClaimServiceImpl implements ClaimService {
                     e.printStackTrace();
                 }
             } else {// TODE and CA if it's come from CGR
-                String message = "Cher(s) membre du Conseil d'administration, le client ayant fait la réclamation : "
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
                         + claim.getCode()
-                        + " est non-satisfait de la solution proposée par le Comité de Gestion des réclamations. \n\n" +
-                        "Veuillez vous connectez à la plateforme GPRAssilassimé dans la section Réclamation > Assurance Satisfaction pour consulter les détails de cette réclamation.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CA, Role.DE));
+                        + " est non-satisfait de la solution qui lui a été proposée. \n\n" +
+                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
+                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null,
                             " ", settingServiceImpl);
@@ -762,11 +818,11 @@ public class ClaimServiceImpl implements ClaimService {
             claim.setStatus(ClaimStatus.PARTIAL_SATISFIED);
 
             if (claim.getSession() == null) { // To CGR if it is direct treat
-                String message = "Cher(s) membre du CGR, le client ayant fait la réclamation : " + claim.getCode()
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCode()
                         + " est partiellement satisfait de la solution proposée par "
                         + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
-                        "Veuillez vous connectez à la plateforme GPRAssilassimé dans la section Réclamation > Assurance Satisfaction pour ouvrir une session et proposé une solution adéquate.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
+                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
+                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
 
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
@@ -775,12 +831,13 @@ public class ClaimServiceImpl implements ClaimService {
                     e.printStackTrace();
                 }
             } else {// TODE and CA if it's come from CGR
-                String message = "Cher(s) membre du Conseil d'administration, le client ayant fait la réclamation : "
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
                         + claim.getCode()
-                        + " est partiellement satisfait de la solution proposée par le Comité de Gestion des réclamations. \n\n"
-                        +
-                        "Veuillez vous connectez à la plateforme GPRAssilassimé dans la section Réclamation > Assurance Satisfaction pour consulter les détails de cette réclamation.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CA, Role.DE));
+                        + " est partiellement satisfait de la solution proposée par " 
+                        + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
+                        
+                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
+                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
                 try {
                     Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
                             " ", settingServiceImpl);
@@ -811,6 +868,11 @@ public class ClaimServiceImpl implements ClaimService {
 
         claim.setStatus(ClaimStatus.DESAPPROUVED);
         claim.setUpdatedAt(LocalDateTime.now());
+
+        if(claim.getTreatmentAffectedTo() == null){
+            claim.setTreatmentAffectedTo(solution.getAuthor());
+            claim.setTreatmentAffectedBy(unApprouver);
+        }
         claim = repository.save(claim);
         // TODO send mail to CGR User
         Double apercuContent = claim.getContent().length() * 0.5;
@@ -821,15 +883,15 @@ public class ClaimServiceImpl implements ClaimService {
             type = "dénonciation";
         }
         String message = "" +
-                "Cher(e) membre du CGR,\n\n" +
-                "L'utilisateur " + unApprouver.getFirstandlastname() + " (Le DE) "
+                "Cher(e) membre utilisateur ,\n\n" +
+                "le DE " + unApprouver.getFirstandlastname()
                 + " a examiné et désapprouvé la solution que vous avez proposé pour la " + type + " portant le code : "
                 + claim.getCode() + "\n\n" +
                 "Détails de la " + type + " :" + "\n\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "* Motif de désapprobation : " + commentaire + "\n\n" +
-                "Nous vous invitons à examiner attentivement le commentaire laissé puis de proposer une nouvelle solution.";
+                "Nous vous invitons à examiner attentivement le commentaire laissé puis à proposer une nouvelle solution.";
         try {
             Utils.sendmail(cgrMembers, "Solution désapprouvée",
                     message, null, " ", settingServiceImpl);
@@ -1013,11 +1075,11 @@ public class ClaimServiceImpl implements ClaimService {
 
         // }
 
+       
+
         Claim claim = Claim
                 .builder()
-
                 .type(type)
-
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -1029,6 +1091,7 @@ public class ClaimServiceImpl implements ClaimService {
             // Only TEMP_SAVED can be saved
             Claim oldClaim = repository.findByCode(claimToSave.getCode())
                     .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
+                    claim.setCodeClient(oldClaim.getCodeClient());
             if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
                 throw new ClaimException(
                         "Invalid operation! this claim is not temporarly saved, you can't change it again");
@@ -1037,6 +1100,8 @@ public class ClaimServiceImpl implements ClaimService {
         } else {
             String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
             claim.setCode(code);
+            String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+            claim.setCodeClient(codeClient);
         }
         CollectionChannel collectionChannel;
         if (claimToSave.getCollectionChannelId() != null) {
@@ -1089,11 +1154,33 @@ public class ClaimServiceImpl implements ClaimService {
 
         claim = repository.save(claim);
 
+
+        
         if (claimPart.getFiles() != null && claimPart.getFiles().length != 0) {
             List<Media> medias = mediaServiceImpl.store(claimPart.getFiles(), claim);
             claim.setUpdatedAt(LocalDateTime.now());
             claim.setMedias(medias);
-            claim = repository.save(claim);
+        }
+        if (claimPart.getAudios() != null && claimPart.getAudios().length != 0) {
+            List<ClaimAudio> audios = claimAudioServiceImpl.store(claimPart.getAudios(), claim);
+            claim.setUpdatedAt(LocalDateTime.now());
+            // for (ClaimAudio audio : audios) {
+            // audio.setClaim(null);
+            // }
+            // claim.setAudios(audios);
+        }
+
+        //Whatsapp
+        if(claimToSave.getFromWhatsapp()){
+            System.out.println("From Whatsapp");
+            Boolean isOk = mediaServiceImpl.attachFileToClaim(claim, claimToSave.getFilesWhatsapp());
+            if(isOk && claimToSave.getInboxWhatsapp() != null){
+                List<InboxMessage> messages = messageRepository.findByInbox(claimToSave.getInboxWhatsapp());
+                for (InboxMessage message : messages) {
+                    messageRepository.delete(message);
+                }
+                inboxRepository.delete(claimToSave.getInboxWhatsapp());
+            }
         }
 
         List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));
@@ -1103,13 +1190,13 @@ public class ClaimServiceImpl implements ClaimService {
         Double apercuContent = claim.getContent().length() * 0.3;
         String message = "" +
                 "Cher(e) utilisteur" +
-                "Une nouvelle réclamation a été enregistrée avec succès dans notre système. Cette réclamation nécessite votre attention en tant qu'utilisateur habilité pour traiter les réclamations."
+                "Une nouvelle réclamation a été enregistrée avec succès dans notre système. Vous recevez cette notification en tant qu'utilisateur habilité à recevoir des notification lorsqu'une nouvelle réclamation est enregistrée."
                 + "\n\n" +
                 "Détails de la réclamation :" + "\n\n" +
                 "* Code de réclamation : " + claim.getCode() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour nos clients.";
+                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour son traitement. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
         try {
             Utils.sendmail(authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint()),
                     " Notification d'enregistrement de réclamation", message, null,
@@ -1193,6 +1280,11 @@ public class ClaimServiceImpl implements ClaimService {
         return repository.findByCode(code).orElseThrow(() -> new Exception("Réclamation introuvable"));
     }
 
+    // @Override
+    public Claim getByCodeClient(String code) throws Exception {
+        return repository.findByCodeClient(code).orElseThrow(() -> new Exception("Réclamation introuvable"));
+    }
+
     @Override
     public void saveClaimOffline(SaveRequest claimPart, ClaimType type) throws Exception {
         ClaimRequest claimToSave = claimPart.getClaimRequest();
@@ -1209,6 +1301,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         // }
 
+        String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
         Claim claim = Claim
                 .builder()
                 .clientFirstAndLastName(claimToSave.getClientFirstAndLastName())
@@ -1219,6 +1312,7 @@ public class ClaimServiceImpl implements ClaimService {
                 .crew(claimToSave.getCrew())
                 .folderCode(claimToSave.getFolderCode())
                 .content(claimToSave.getContent())
+                .codeClient(codeClient)
                 .collector(collector)
                 .status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -1241,6 +1335,7 @@ public class ClaimServiceImpl implements ClaimService {
         if (claimToSave.getId() != null) {
             claim.setId(claimToSave.getId());
             claim.setCode(claimToSave.getCode());
+            claim.setCodeClient(claimToSave.getCodeClient());
             // Only TEMP_SAVED can be saved
             Claim oldClaim = repository.findById(claimToSave.getId())
                     .orElseThrow(() -> new ClaimException("Claim with this id doesn't exist"));
@@ -1313,12 +1408,13 @@ public class ClaimServiceImpl implements ClaimService {
             }
         }
 
+
         claim = repository.save(claim);
 
         try {
 
             Utils.sendSms(claim.getTel(),
-                    "Cher(e) bénéficiaire, Votre réclamation a été prise en compte. Nous vous recontacterons dès que possible avec une solution.", settingServiceImpl);
+                    "Cher(e) client, Votre réclamation a été prise en compte. Nous vous recontacterons dès que possible avec une solution.", settingServiceImpl);
 
         } catch (Exception ex) {
             // TODO Auto-generated catch block
@@ -1388,7 +1484,7 @@ public class ClaimServiceImpl implements ClaimService {
                 collectionChannel = collectionChannelService.getById(claimToSave.getCollectionChannelId());
                 claim.setCollectionChannel(collectionChannel);
             } catch (Exception e) {
-                throw new Exception("Collection channelle choosed not found");
+                throw new Exception("Canal de collecte introuvable");
             }
         }
         ServicePoint servicePoint;
@@ -1397,7 +1493,7 @@ public class ClaimServiceImpl implements ClaimService {
                 servicePoint = servicePointServiceImpl.getById(claimToSave.getServicePointId());
                 claim.setServicePoint(servicePoint);
             } catch (Exception e) {
-                throw new Exception("Service Point choosed not found");
+                throw new Exception("Point Service introuvable");
             }
         }
 
@@ -1407,19 +1503,17 @@ public class ClaimServiceImpl implements ClaimService {
                 product = productServiceImpl.getById(claimToSave.getProductId());
                 claim.setProduct(product);
             } catch (Exception e) {
-                throw new Exception("Product choosed not found");
+                throw new Exception("Product introuvable");
             }
         }
 
         Objet objet;
-        // System.out.println("objet id");
-        // System.out.println(claimToSave.getObjetId());
         if (claimToSave.getObjetId() != null) {
             try {
                 objet = objetServcieImpl.getById(claimToSave.getObjetId());
                 claim.setObjet(objet);
             } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
+                throw new Exception("Objet introuvable");
             }
         }
 
@@ -1429,9 +1523,10 @@ public class ClaimServiceImpl implements ClaimService {
                 language = languageServiceImpl.getById(claimToSave.getLanguageId());
                 claim.setLanguage(language);
             } catch (Exception e) {
-                throw new Exception("Objet choosed not found");
+                throw new Exception("Langage introuvable");
             }
         }
+
 
         if (claimToSave.getClientFirstAndLastName() != null) {
             claim.setClientFirstAndLastName(claimToSave.getClientFirstAndLastName());
@@ -1499,11 +1594,12 @@ public class ClaimServiceImpl implements ClaimService {
             throw new Exception("Collector " + claimToSave.getCollectorId() + " of the denun not found");
         }
 
+        String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
         Claim claim = Claim
                 .builder()
 
                 .type(type)
-
+                .codeClient(codeClient)
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -1545,9 +1641,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Product product;
-        if (claimToSave.getProductId() != null) {
+        if (claimToSave.getProductUuid() != null) {
             try {
-                product = productServiceImpl.getById(claimToSave.getProductId());
+                product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
                 claim.setProduct(product);
             } catch (Exception e) {
                 throw new Exception("Product introuvable");
@@ -1555,9 +1651,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Objet objet;
-        if (claimToSave.getObjetId() != null) {
+        if (claimToSave.getObjetUuid() != null) {
             try {
-                objet = objetServcieImpl.getById(claimToSave.getObjetId());
+                objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
                 claim.setObjet(objet);
             } catch (Exception e) {
                 throw new Exception("Objet introuvable");
@@ -1565,9 +1661,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Language language;
-        if (claimToSave.getLanguageId() != null) {
+        if (claimToSave.getLanguageUuid() != null) {
             try {
-                language = languageServiceImpl.getById(claimToSave.getLanguageId());
+                language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
                 claim.setLanguage(language);
             } catch (Exception e) {
                 throw new Exception("Langage introuvable");
@@ -1648,9 +1744,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Product product;
-        if (claimToSave.getProductId() != null) {
+        if (claimToSave.getProductUuid() != null) {
             try {
-                product = productServiceImpl.getById(claimToSave.getProductId());
+                product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
                 claim.setProduct(product);
             } catch (Exception e) {
                 throw new Exception("Product choosed not found");
@@ -1660,9 +1756,9 @@ public class ClaimServiceImpl implements ClaimService {
         Objet objet;
         // System.out.println("objet id");
         // System.out.println(claimToSave.getObjetId());
-        if (claimToSave.getObjetId() != null) {
+        if (claimToSave.getObjetUuid() != null) {
             try {
-                objet = objetServcieImpl.getById(claimToSave.getObjetId());
+                objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
                 claim.setObjet(objet);
             } catch (Exception e) {
                 throw new Exception("Objet choosed not found");
@@ -1670,9 +1766,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Language language;
-        if (claimToSave.getLanguageId() != null) {
+        if (claimToSave.getLanguageUuid() != null) {
             try {
-                language = languageServiceImpl.getById(claimToSave.getLanguageId());
+                language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
                 claim.setLanguage(language);
             } catch (Exception e) {
                 throw new Exception("Objet choosed not found");
@@ -1709,18 +1805,94 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public Claim transmitClaim(Claim claim) throws Exception {
-
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User connectedUser = User.builder().build();
+        connectedUser = authServiceImpl.getByEmail(collectorDetails.getUsername());  // Assure-toi que ce service retourne l'utilisateur complet
+         // Récupérer le point de service de l'utilisateur connecté
+          
+         ServicePoint servicePoint = connectedUser.getServicePoint();
         if (claim.getStatus().equals(ClaimStatus.SAVED)) {
             claim.setTransmitted(true);
             claim.setUpdatedAt(LocalDateTime.now());
-            claim = repository.save(claim);
-            // TODO send mail
+            //a qui transmettre
+        
+            User transmittedTo = null;
             List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-            if (!pilote.isEmpty()) {
+
+            // Étape 1 : Vérifier si l'utilisateur est un RA
+            if (connectedUser.isRa()) {
+
+                // Étape 2 : Vérifier si direction_id du point de service est null
+                if (servicePoint.getDirection_id() == null) {
+                    // Si direction_id est null, trouver le premier PILOTE dans le point de service actuel
+                    
+                    if (transmittedTo == null) {
+                        transmittedTo = pilote.get(0);
+                    
+                        // Si aucun PILOTE n'a été trouvé, lever une exception
+                        if (transmittedTo == null) {
+                            throw new Exception("Aucun RA ni PILOTE trouvé pour le point de service parent.");
+                        }
+                    }
+                } else {
+                    // Étape 3 : Si direction_id n'est pas null, trouver le point de service correspondant à direction_id
+                    ServicePoint parentServicePoint = spRepository.findById(servicePoint.getDirection_id())
+                            .orElseThrow(() -> new Exception("Point de service parent non trouvé."));
+
+                    // Étape 4 : Trouver les utilisateurs du point de service parent
+                    transmittedTo = authServiceImpl.findRaByServicePoint(parentServicePoint.getId());
+          
+
+                    // Étape 6 : Si aucun RA n'a été trouvé, chercher le PILOTE dans ce point de service
+                    if (transmittedTo == null) {
+                        transmittedTo = pilote.get(0);
+                    
+                        // Si aucun PILOTE n'a été trouvé, lever une exception
+                        if (transmittedTo == null) {
+                            throw new Exception("Aucun RA ni PILOTE trouvé pour le point de service parent.");
+                        }
+                    }
+                }
+            } else {
+               
+              // Étape 1 : Vérifier s'il existe un RA dans le point de service
+          
+                transmittedTo = authServiceImpl.findRaByServicePoint(servicePoint.getId());
+          
+              
+                // Étape 3 : Si aucun RA n'a été trouvé, chercher le PILOTE 
+                if (transmittedTo == null) {
+                    transmittedTo = pilote.get(0);
+                
+                    // Si aucun PILOTE n'a été trouvé, lever une exception
+                    if (transmittedTo == null) {
+                        throw new Exception("Aucun RA ni PILOTE trouvé pour le point de service parent.");
+                    }
+                }
+            }
+
+            // Transmettre la réclamation à l'utilisateur trouvé
+            claim.setTransmittedTo(transmittedTo);
+
+            // Sauvegarder la réclamation mise à jour
+            claim = repository.save(claim);
+
+            // TODO send mail
+            // Initialisation de la liste
+            List<User> destis = new ArrayList<>();
+
+            // Ajouter transmittedTo à la liste destis
+            if (transmittedTo != null) {
+                destis.add(transmittedTo);
+            } else {
+                throw new Exception("Le destinataire (transmittedTo) est null, impossible de l'ajouter à la liste.");
+            }
+
+            // if (!pilote.isEmpty()) {
                 try {
                     Double apercuContent = claim.getContent().length() * 0.5;
                     String message = "" +
-                            "Bonjour " + pilote.get(0).getFirstandlastname() + ",\n\n" +
+                            "Bonjour " + transmittedTo.getFirstandlastname() + ",\n\n" +
                             "Nous vous informons qu'un utilisateur a transmis la gestion d'une réclamation/dénonciation à votre attention, car il est dans l'incapacité de la traiter.\n"
                             +
                             "* Code de la Réclamation : " + claim.getCode() + "\n" +
@@ -1730,10 +1902,10 @@ public class ClaimServiceImpl implements ClaimService {
                             + "\n" +
                             "Veuillez prendre les mesures nécessaires pour permettre le traitement de cette réclamation dans les meilleurs délais.\n\n"
                             +
-                            "Cordialement,\n" +
-                            "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
-                            "Poste : " + claim.getCollector().getPoste().getLibelle();
-                    Utils.sendmail(pilote, "TRANSMISSION DE TRAITEMENT", message, null, "", settingServiceImpl);
+                            "Cordialement,\n" ;
+                            // "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
+                            // "Poste : " + claim.getCollector().getPoste().getLibelle();
+                    Utils.sendmail(destis, "TRANSMISSION DE TRAITEMENT", message, null, "", settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -1741,17 +1913,17 @@ public class ClaimServiceImpl implements ClaimService {
                 try {
                     String message = "La réclamation " + claim.getCode()
                             + " vous a été transmis pour prise en charge. Merci de la prendre en charge.";
-                    Utils.sendSms(pilote, message, settingServiceImpl);
+                    Utils.sendSms(destis, message, settingServiceImpl);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 return claim;
-            } else {
-                throw new Exception("Plateforme male configurée. Pilote introuvable");
-            }
+            // } else {
+            //     throw new Exception("Plateforme mal configurée. Pilote introuvable");
+            // }
 
         } else {
-            throw new Exception("Le status de la réclamation est invalide");
+            throw new Exception("Le statut de la réclamation est invalide");
         }
     }
 
@@ -1805,8 +1977,8 @@ public class ClaimServiceImpl implements ClaimService {
         // }
 
         String message = "" +
-        "Cher(e) utilisteur" +
-        "Une nouvelle réclamation collectée avec GPR BOT. Cette réclamation  nécessite votre attention en tant qu'utilisateur habilité pour traiter les réclamations."
+        "Cher(e) utilisteur, " +
+        "une nouvelle réclamation collectée avec GPR BOT. Cette réclamation  nécessite votre attention."
         + "\n\n";
        
         Claim claim = Claim
@@ -1989,5 +2161,9 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
    
+    @Override
+    public List<Claim> getAllByStatusIn(List<ClaimStatus> status) {
+        return repository.findByStatusIn(status);
+    }
 
 }

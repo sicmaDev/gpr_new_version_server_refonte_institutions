@@ -28,7 +28,7 @@ public class SyncSuggestionRequest {
     private Long collectionChannelId;
     private Long servicePointId;
     private Long productId;
-    private Long objetId;
+    private Long ObjetId;
     private Long languageId;
     private Long collectorId;
     private String content;
