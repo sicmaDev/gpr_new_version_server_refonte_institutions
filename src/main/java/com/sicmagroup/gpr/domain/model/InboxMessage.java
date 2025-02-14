@@ -28,7 +28,7 @@ public class InboxMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-
+	
 	private String chatId;
 	private String senderId;
 	private String senderName;

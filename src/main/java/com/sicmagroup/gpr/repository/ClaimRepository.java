@@ -175,6 +175,8 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
          @Query("SELECT o.id as objtId, o.libelle as objLibelle, o.risqueLevel as objNiveau, COUNT(c.code) as total FROM Claim c LEFT JOIN Objet o ON c.objet.id = o.id WHERE c.type = :type AND c.status = 'SAVED' GROUP BY objtId, objLibelle, objNiveau ")
         List<ClaimPerObjLevelProjection> countClaimSavedPerObjLevel(@Param("type") ClaimType type);
 
+        List<Claim> findByStatusIn(List<ClaimStatus> status);
+
 
 
 }

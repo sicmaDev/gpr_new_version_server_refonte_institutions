@@ -32,7 +32,6 @@ import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.botkey.BotKeyServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
-
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,7 +46,7 @@ public class WhatsappController {
    
     private final InboxMessageRepository inboxMessageRepository;
     private final InboxRepository inboxRepository;
-     private final ModelMapper modelMapper;
+    private final ModelMapper modelMapper;
 
     @GetMapping(value = "/list")
     public ResponseEntity<ApiResponseDto> getAll() {

@@ -686,6 +686,7 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public Claim treatClaim(Claim claim, User treator, ProposedSolutionRequest request) throws Exception {
         Solution solution2;
+        System.out.println("Request received: " + request);
         if (!Arrays.asList(ClaimStatus.SAVED, ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED,
                 ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED)
                 .contains(claim.getStatus())) {
@@ -718,7 +719,9 @@ public class ClaimServiceImpl implements ClaimService {
             // TODO cas d'une solution existante
             ExistingSolution existingSolution = existingSolutionRepository.findById(request.getExistingId())
                     .orElseThrow(() -> new Exception("Solution choisie introuvable"));
+                   
             solution2.setExistingSolution(existingSolution);
+            
             solution2.setContent(existingSolution.getContent());
             solution2.setCommentaire("(cf le contenu de la solution existante choisie)");
             if (existingSolution.getCompteur() == null || existingSolution.getCompteur() == 0) {
@@ -2200,5 +2203,9 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
    
+    @Override
+    public List<Claim> getAllByStatusIn(List<ClaimStatus> status) {
+        return repository.findByStatusIn(status);
+    }
 
 }
