@@ -423,6 +423,48 @@ public class ClaimServiceImpl implements ClaimService {
                 throw new Exception("Collection channelle choosed not found");
             }
         }
+
+        ServicePoint servicePoint;
+        if (claimToSave.getServicePointId() != null) {
+            try {
+                servicePoint = servicePointServiceImpl.getById(claimToSave.getServicePointId());
+                claim.setServicePoint(servicePoint);
+            } catch (Exception e) {
+                throw new Exception("Point Service introuvable");
+            }
+        }
+
+        Product product;
+        if (claimToSave.getProductId() != null) {
+            try {
+                product = productServiceImpl.getById(claimToSave.getProductId());
+                claim.setProduct(product);
+            } catch (Exception e) {
+                throw new Exception("Product introuvable");
+            }
+        }
+
+        Objet objet;
+        if (claimToSave.getObjetId() != null) {
+            try {
+                objet = objetServcieImpl.getById(claimToSave.getObjetId());
+                claim.setObjet(objet);
+            } catch (Exception e) {
+                throw new Exception("Objet introuvable");
+            }
+        }
+
+        Language language;
+        if (claimToSave.getLanguageId() != null) {
+            try {
+                language = languageServiceImpl.getById(claimToSave.getLanguageId());
+                claim.setLanguage(language);
+            } catch (Exception e) {
+                throw new Exception("Langage introuvable");
+            }
+        }
+
+
         // ServicePoint servicePoint;
         // if (claimToSave.getServicePointUuid() != null) {
         //     try {
