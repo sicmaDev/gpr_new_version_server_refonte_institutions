@@ -1125,7 +1125,7 @@ public class ClaimController {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
 
-                if (!classer.canMeasureClaim()) {
+                if (!classer.canMeasureClaim() && !classer.getAdditionalrole().equals(Role.PILOTE)) {
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
@@ -1234,7 +1234,7 @@ public class ClaimController {
                     }
                 }
 
-                if (!litigatUser.canMeasureClaim()) {
+                if (!litigatUser.canMeasureClaim() && !litigatUser.getAdditionalrole().equals(Role.PILOTE)) {
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
