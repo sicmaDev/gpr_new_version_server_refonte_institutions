@@ -1332,7 +1332,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
         }
 
         //Date déclenchement de retard de traitement
-        if (claim.getObjet() != null) {
+        if (claim.getObjet() != null && claim.getReceiptDateTime() != null) {
             LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
             // calculateDate = calculateDate.minusDays(7);
             if (LocalDateTime.now().isAfter(calculateDate)) {
