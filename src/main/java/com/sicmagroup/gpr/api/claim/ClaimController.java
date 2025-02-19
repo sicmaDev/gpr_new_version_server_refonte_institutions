@@ -1125,7 +1125,7 @@ public class ClaimController {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
 
-                if (!classer.canMeasureClaim()) {
+                if (!classer.canMeasureClaim() && !classer.getAdditionalrole().equals(Role.PILOTE)) {
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
@@ -1234,7 +1234,7 @@ public class ClaimController {
                     }
                 }
 
-                if (!litigatUser.canMeasureClaim()) {
+                if (!litigatUser.canMeasureClaim() && !litigatUser.getAdditionalrole().equals(Role.PILOTE)) {
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
@@ -1530,7 +1530,7 @@ public class ClaimController {
             claimDto.setSession(convertToDto(claim.getSession()));
         }
         //Date déclenchement de retard de traitement
-        if (claim.getObjet() != null) {
+        if (claim.getObjet() != null && claim.getReceiptDateTime() != null) {
             LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
             // calculateDate = calculateDate.minusDays(7);
             if (LocalDateTime.now().isAfter(calculateDate)) {

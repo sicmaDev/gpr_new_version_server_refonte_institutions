@@ -1284,16 +1284,16 @@ public class ClaimServiceImpl implements ClaimService {
         for (Claim claim : allClaims) {
             // vérifier s'il y a au moins une solution ne pas prendre en compte
 
-            if (!claim.getSolutions().isEmpty() && type == ClaimType.CLAIM) {
-                for (Solution solution : claim.getSolutions()) {
-                    if (solution.getSatisfactionMeasure() != null) {
-                        // allClaims.remove(claim);
-                        isOneSolutionMeasured = true;
-                        break;
-                    }
-                }
-            }
-            if (!isOneSolutionMeasured) {
+            // if (!claim.getSolutions().isEmpty() && type == ClaimType.CLAIM) {
+            //     for (Solution solution : claim.getSolutions()) {
+            //         if (solution.getSatisfactionMeasure() != null) {
+            //             // allClaims.remove(claim);
+            //             isOneSolutionMeasured = true;
+            //             break;
+            //         }
+            //     }
+            // }
+            // if (!isOneSolutionMeasured) {
                 LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
                 if (LocalDateTime.now().isAfter(calculateDate)) {
                     Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
@@ -1311,7 +1311,7 @@ public class ClaimServiceImpl implements ClaimService {
                             .build();
                     claimAlertDtos.add(alertDto);
                 }
-            }
+            // }
         }
 
         return claimAlertDtos;
