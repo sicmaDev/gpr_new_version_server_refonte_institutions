@@ -277,6 +277,9 @@ public class BotKeyServiceImpl implements BotKeyService {
         if (suggestionRequest.getContent() != null) {
             suggestion.setContent(suggestionRequest.getContent());
         }
+        if (suggestionRequest.getClientFirstAndLastName() != null) {
+            suggestion.setClientFirstAndLastName(suggestionRequest.getClientFirstAndLastName());
+        }
 
         // suggestion.setCollecteur(collector);
 
@@ -609,6 +612,7 @@ public class BotKeyServiceImpl implements BotKeyService {
             claim.setContent(claimToSave.getContent());
         }
 
+        claim.setType(type);
        
         claim.setStatus(ClaimStatus.TEMP_SAVED);
         claim.setCreatedAt(LocalDateTime.now());
