@@ -1,7 +1,9 @@
 package com.sicmagroup.gpr.api.botkey;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Comparator;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -268,7 +270,7 @@ public class BotKeyController {
     ApiResponseDto apiResponseDto;
     ObjectMapper mapper = new ObjectMapper();
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    DenunRequest denunRequest2 = mapper.readValue(denunRequest, DenunRequest.class);
+   DenunRequest denunRequest2 = mapper.readValue(denunRequest, DenunRequest.class);
     apiResponseDto = Utils.verifyLicence();
     if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
         LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
@@ -508,6 +510,10 @@ public class BotKeyController {
             //     return null;
             // }
             ClaimDto claim = claimController.getClaimClient(code);
+            List<SolutionDto> solutions = new ArrayList<>(claim.getSolutionDtos());
+
+            solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
+            SolutionDto derniereSolution = solutions.get(solutions.size() - 1);
             // ClaimDto claimDto = convert
             String contenu="";
             String statut="";
@@ -535,18 +541,20 @@ public class BotKeyController {
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+" est en cours de traitement !!!";
                         break;
                     case "TREAT":
+                        
                         statut = "Traitée";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée." +
-                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent();
-                    
+                        " Solution : " + derniereSolution.getContent();
+                        
+
                         // contenu = solution;
                         break;
                     case "SATISFIED":
                         statut = "Mesurer et non satisfait";
                         contenu = "La réclamation portant le code :  "+ claim.getCodeClient() +
                         "  a été traitée et mesurer." +
-                        "  Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() + "  Vous êtes satisfait de la solution proposée, et nous nous réjouissons d’avoir répondu à vos attentes. N’hésitez pas à nous contacter pour toute autre demande.";
+                        "  Solution : " + derniereSolution.getContent() + "  Vous êtes satisfait de la solution proposée, et nous nous réjouissons d’avoir répondu à vos attentes. N’hésitez pas à nous contacter pour toute autre demande.";
                     
                         // contenu = solution;
                         break;
@@ -554,7 +562,7 @@ public class BotKeyController {
                         statut = "Mesurer et partiellement satisfait";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée et mesurer." +
-                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() + "  Vous êtes partiellement satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous offrir une nouvelle solution.";
+                        " Solution : " + derniereSolution.getContent() + "  Vous êtes partiellement satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous offrir une nouvelle solution.";
                     
                         // contenu = solution;
                         break;
@@ -562,7 +570,7 @@ public class BotKeyController {
                         statut = "Mesurer et non";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée et mesurer." +
-                        " Solution : " + claim.getSolutionDtos().get(((claim.getSolutionDtos()).size()) - 1).getContent() +"  Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
+                        " Solution : " + derniereSolution.getContent() +"  Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
                     
                         // contenu = solution;
                         break;
