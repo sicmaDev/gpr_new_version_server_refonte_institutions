@@ -12,6 +12,7 @@ import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.repository.ObjetRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -86,5 +87,4 @@ public class ObjetServcieImpl implements ObjetService {
             throw new RuntimeException("Cette langue  n'existe pas.", e);
         }
     }
-
 }

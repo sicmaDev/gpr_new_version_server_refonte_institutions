@@ -2,6 +2,7 @@ package com.sicmagroup.gpr.domain.model;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sicmagroup.gpr.domain.enumeration.GravityLevel;
@@ -16,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
@@ -53,8 +55,6 @@ public class Objet {
     private LocalDateTime deletedAt;
     @Column(columnDefinition = "boolean default false")
     private boolean isDeleted;
-    @Column(unique = true)
-	private String uuid;
     @OneToMany(mappedBy = "objet")
     private List<Claim> claims;
 
@@ -63,5 +63,14 @@ public class Objet {
 
     @ManyToOne
     private CategorieObjet categorie;
+     
+    @Column(nullable = false, unique = true,updatable = false)
+	private String uuid;
+    @PrePersist
+    public void generateUuidIfNull() {
+        if (this.uuid == null) {
+            this.uuid = "obj-" + UUID.randomUUID().toString().substring(0, 5);
+        }
+    }
     
 }

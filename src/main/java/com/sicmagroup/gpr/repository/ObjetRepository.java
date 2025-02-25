@@ -9,8 +9,8 @@ import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 
 public interface ObjetRepository extends JpaRepository<Objet, Long> {
-      List<Objet> findByIsDeleted(boolean deleted);
-
+    List<Objet> findByIsDeleted(boolean deleted);
     Optional<Objet> findByIdAndIsDeleted(Long id, boolean deleted);
     Optional<Objet> findFirstByUuid(String uuid);
+    List<Objet> findByUuidIsNull();
 }

@@ -3,6 +3,7 @@ package com.sicmagroup.gpr.service.objet;
 import java.util.List;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.sicmagroup.gpr.domain.model.Objet;
 
@@ -23,4 +24,6 @@ public interface ObjetService {
     public void deleteObjet(Objet objet) throws Exception ; 
 
     public Objet getDeletedById(Long id, boolean deleted) throws NotFoundException;
+
 }
+

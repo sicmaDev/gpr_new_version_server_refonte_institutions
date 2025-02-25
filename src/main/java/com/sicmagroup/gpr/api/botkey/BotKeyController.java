@@ -269,7 +269,6 @@ public class BotKeyController {
 
     ApiResponseDto apiResponseDto;
     ObjectMapper mapper = new ObjectMapper();
-    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
    DenunRequest denunRequest2 = mapper.readValue(denunRequest, DenunRequest.class);
     apiResponseDto = Utils.verifyLicence();
     if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
