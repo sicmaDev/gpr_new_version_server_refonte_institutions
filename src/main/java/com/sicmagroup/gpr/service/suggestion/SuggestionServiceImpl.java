@@ -89,6 +89,7 @@ public class SuggestionServiceImpl implements SuggestionService {
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
                     .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
             suggestion = oldSuggestion;
+            suggestion.setCodeClient(oldSuggestion.getCodeClient());
         } else {
             if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
                 suggestion.setCode(suggestionRequest.getCode());
@@ -427,6 +428,7 @@ public class SuggestionServiceImpl implements SuggestionService {
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
                     .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
             suggestion = oldSuggestion;
+            suggestion.setCodeClient(oldSuggestion.getCodeClient());
         } else {
             if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
                 suggestion.setCode(suggestionRequest.getCode());

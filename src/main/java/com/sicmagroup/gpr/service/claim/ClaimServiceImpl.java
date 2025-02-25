@@ -423,6 +423,48 @@ public class ClaimServiceImpl implements ClaimService {
                 throw new Exception("Collection channelle choosed not found");
             }
         }
+
+        ServicePoint servicePoint;
+        if (claimToSave.getServicePointId() != null) {
+            try {
+                servicePoint = servicePointServiceImpl.getById(claimToSave.getServicePointId());
+                claim.setServicePoint(servicePoint);
+            } catch (Exception e) {
+                throw new Exception("Point Service introuvable");
+            }
+        }
+
+        Product product;
+        if (claimToSave.getProductId() != null) {
+            try {
+                product = productServiceImpl.getById(claimToSave.getProductId());
+                claim.setProduct(product);
+            } catch (Exception e) {
+                throw new Exception("Product introuvable");
+            }
+        }
+
+        Objet objet;
+        if (claimToSave.getObjetId() != null) {
+            try {
+                objet = objetServcieImpl.getById(claimToSave.getObjetId());
+                claim.setObjet(objet);
+            } catch (Exception e) {
+                throw new Exception("Objet introuvable");
+            }
+        }
+
+        Language language;
+        if (claimToSave.getLanguageId() != null) {
+            try {
+                language = languageServiceImpl.getById(claimToSave.getLanguageId());
+                claim.setLanguage(language);
+            } catch (Exception e) {
+                throw new Exception("Langage introuvable");
+            }
+        }
+
+
         // ServicePoint servicePoint;
         // if (claimToSave.getServicePointUuid() != null) {
         //     try {
@@ -1242,16 +1284,16 @@ public class ClaimServiceImpl implements ClaimService {
         for (Claim claim : allClaims) {
             // vérifier s'il y a au moins une solution ne pas prendre en compte
 
-            if (!claim.getSolutions().isEmpty() && type == ClaimType.CLAIM) {
-                for (Solution solution : claim.getSolutions()) {
-                    if (solution.getSatisfactionMeasure() != null) {
-                        // allClaims.remove(claim);
-                        isOneSolutionMeasured = true;
-                        break;
-                    }
-                }
-            }
-            if (!isOneSolutionMeasured) {
+            // if (!claim.getSolutions().isEmpty() && type == ClaimType.CLAIM) {
+            //     for (Solution solution : claim.getSolutions()) {
+            //         if (solution.getSatisfactionMeasure() != null) {
+            //             // allClaims.remove(claim);
+            //             isOneSolutionMeasured = true;
+            //             break;
+            //         }
+            //     }
+            // }
+            // if (!isOneSolutionMeasured) {
                 LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
                 if (LocalDateTime.now().isAfter(calculateDate)) {
                     Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
@@ -1269,7 +1311,7 @@ public class ClaimServiceImpl implements ClaimService {
                             .build();
                     claimAlertDtos.add(alertDto);
                 }
-            }
+            // }
         }
 
         return claimAlertDtos;
@@ -1301,7 +1343,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         // }
 
-        String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+        //String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
         Claim claim = Claim
                 .builder()
                 .clientFirstAndLastName(claimToSave.getClientFirstAndLastName())
@@ -1312,7 +1354,6 @@ public class ClaimServiceImpl implements ClaimService {
                 .crew(claimToSave.getCrew())
                 .folderCode(claimToSave.getFolderCode())
                 .content(claimToSave.getContent())
-                .codeClient(codeClient)
                 .collector(collector)
                 .status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -1335,10 +1376,12 @@ public class ClaimServiceImpl implements ClaimService {
         if (claimToSave.getId() != null) {
             claim.setId(claimToSave.getId());
             claim.setCode(claimToSave.getCode());
-            claim.setCodeClient(claimToSave.getCodeClient());
+            
             // Only TEMP_SAVED can be saved
             Claim oldClaim = repository.findById(claimToSave.getId())
-                    .orElseThrow(() -> new ClaimException("Claim with this id doesn't exist"));
+            .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
+
+            claim.setCodeClient(oldClaim.getCodeClient());
 
             // if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
             // throw new ClaimException(
@@ -1350,6 +1393,8 @@ public class ClaimServiceImpl implements ClaimService {
             if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
                 claim.setCode(code);
+                String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
             } else {
                 claim.setCode(claimToSave.getCode());
             }
@@ -1594,12 +1639,12 @@ public class ClaimServiceImpl implements ClaimService {
             throw new Exception("Collector " + claimToSave.getCollectorId() + " of the denun not found");
         }
 
-        String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+        
         Claim claim = Claim
                 .builder()
 
                 .type(type)
-                .codeClient(codeClient)
+                // .codeClient(codeClient)
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -1611,11 +1656,15 @@ public class ClaimServiceImpl implements ClaimService {
             // Only TEMP_SAVED can be saved
             Claim oldClaim = repository.findById(claimToSave.getId())
                     .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
+                    claim.setCodeClient(oldClaim.getCodeClient());
+            
 
         } else {
             if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
                 claim.setCode(code);
+                String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
             } else {
                 claim.setCode(claimToSave.getCode());
             }
@@ -1641,9 +1690,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Product product;
-        if (claimToSave.getProductUuid() != null) {
+        if (claimToSave.getProductId() != null) {
             try {
-                product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
+                product = productServiceImpl.getById(claimToSave.getProductId());
                 claim.setProduct(product);
             } catch (Exception e) {
                 throw new Exception("Product introuvable");
@@ -1651,9 +1700,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Objet objet;
-        if (claimToSave.getObjetUuid() != null) {
+        if (claimToSave.getObjetId() != null) {
             try {
-                objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
+                objet = objetServcieImpl.getById(claimToSave.getObjetId());
                 claim.setObjet(objet);
             } catch (Exception e) {
                 throw new Exception("Objet introuvable");
@@ -1661,9 +1710,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Language language;
-        if (claimToSave.getLanguageUuid() != null) {
+        if (claimToSave.getLanguageId() != null) {
             try {
-                language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
+                language = languageServiceImpl.getById(claimToSave.getLanguageId());
                 claim.setLanguage(language);
             } catch (Exception e) {
                 throw new Exception("Langage introuvable");
@@ -1744,9 +1793,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Product product;
-        if (claimToSave.getProductUuid() != null) {
+        if (claimToSave.getProductId() != null) {
             try {
-                product = productServiceImpl.findProductByUuid(claimToSave.getProductUuid());
+                product = productServiceImpl.getById(claimToSave.getProductId());
                 claim.setProduct(product);
             } catch (Exception e) {
                 throw new Exception("Product choosed not found");
@@ -1756,9 +1805,9 @@ public class ClaimServiceImpl implements ClaimService {
         Objet objet;
         // System.out.println("objet id");
         // System.out.println(claimToSave.getObjetId());
-        if (claimToSave.getObjetUuid() != null) {
+        if (claimToSave.getObjetId() != null) {
             try {
-                objet = objetServcieImpl.findByUuid(claimToSave.getObjetUuid());
+                objet = objetServcieImpl.getById(claimToSave.getObjetId());
                 claim.setObjet(objet);
             } catch (Exception e) {
                 throw new Exception("Objet choosed not found");
@@ -1766,9 +1815,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         Language language;
-        if (claimToSave.getLanguageUuid() != null) {
+        if (claimToSave.getLanguageId() != null) {
             try {
-                language = languageServiceImpl.findByUuid(claimToSave.getLanguageUuid());
+                language = languageServiceImpl.getById(claimToSave.getLanguageId());
                 claim.setLanguage(language);
             } catch (Exception e) {
                 throw new Exception("Objet choosed not found");
