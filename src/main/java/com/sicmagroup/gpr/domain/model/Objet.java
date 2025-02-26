@@ -64,13 +64,8 @@ public class Objet {
     @ManyToOne
     private CategorieObjet categorie;
      
-    @Column(nullable = false, unique = true,updatable = false)
+    @Column(nullable = false, unique = true)
 	private String uuid;
-    @PrePersist
-    public void generateUuidIfNull() {
-        if (this.uuid == null) {
-            this.uuid = "obj-" + UUID.randomUUID().toString().substring(0, 5);
-        }
-    }
+    
     
 }
