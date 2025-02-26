@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 
+import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
@@ -43,6 +44,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product updateProduct(Product product) {
+        Product existingProduct = repository.findById(product.getId()).orElse(null);
+            if (existingProduct  != null && existingProduct.getUuid() != null) {
+                product.setUuid(existingProduct.getUuid());
+            }
+            else{
+                product.setUuid(generateUuid());
+            }
         return repository.save(product);
     }
 

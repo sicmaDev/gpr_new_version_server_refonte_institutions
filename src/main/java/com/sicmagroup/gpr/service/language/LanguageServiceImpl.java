@@ -8,6 +8,7 @@ import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.sicmagroup.gpr.domain.model.Language;
+import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.repository.LanguageRepository;
@@ -43,6 +44,15 @@ public class LanguageServiceImpl implements LanguageService {
 
     @Override
     public Language updateLanguage(Language language) {
+
+        Language existingLanguage = repository.findById(language.getId()).orElse(null);
+        if (existingLanguage  != null && existingLanguage .getUuid() != null) {
+            language.setUuid(existingLanguage.getUuid());
+        }
+        else{
+            language.setUuid(generateUuid());
+        }
+    
         return repository.save(language);
     }
 
