@@ -1272,10 +1272,10 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public List<AlertDto> getAllAlertDtosByType(ClaimType type) {
         List<ClaimStatus> lStatus = Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-                ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED);
+                ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.LITIGATION);
         if (type == ClaimType.DENUNCIACION) {
             lStatus = Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-                    ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT);
+                    ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT, ClaimStatus.LITIGATION);
         }
         List<Claim> allClaims = this.getAllByTypeAndStatusNotIn(type, lStatus);
         boolean isOneSolutionMeasured = false;
