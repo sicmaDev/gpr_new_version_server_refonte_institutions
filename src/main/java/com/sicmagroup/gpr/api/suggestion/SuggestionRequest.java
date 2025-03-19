@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 public class SuggestionRequest {
     private Long id;
     private String code;
+    private String codeClient;
     private ClaimStatus status;
     private String clientFirstAndLastName;
     private String gender;

@@ -169,6 +169,13 @@ public class ClaimServiceImpl implements ClaimService {
             // "Invalid operation! this claim is not temporarly saved, you can't change it
             // again");
             // }
+            if (claim.getCodeClient() == null || claim.getCodeClient() == " ") {
+                String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
+            }
+            else {
+                claim.setCodeClient(claimToSave.getCodeClient());
+            }
 
         } else {
             if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
@@ -1134,9 +1141,18 @@ public class ClaimServiceImpl implements ClaimService {
             Claim oldClaim = repository.findByCode(claimToSave.getCode())
                     .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
                     claim.setCodeClient(oldClaim.getCodeClient());
+            
+                  
             if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
                 throw new ClaimException(
                         "Invalid operation! this claim is not temporarly saved, you can't change it again");
+            }
+            if (claim.getCodeClient() == null || claim.getCodeClient() == " ") {
+                String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
+            }
+            else {
+                claim.setCodeClient(claimToSave.getCodeClient());
             }
 
         } else {
@@ -1381,7 +1397,7 @@ public class ClaimServiceImpl implements ClaimService {
             Claim oldClaim = repository.findById(claimToSave.getId())
             .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
 
-            claim.setCodeClient(oldClaim.getCodeClient());
+            //claim.setCodeClient(oldClaim.getCodeClient());
 
             // if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
             // throw new ClaimException(
@@ -1393,8 +1409,6 @@ public class ClaimServiceImpl implements ClaimService {
             if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
                 claim.setCode(code);
-                String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
-                claim.setCodeClient(codeClient);
             } else {
                 claim.setCode(claimToSave.getCode());
             }

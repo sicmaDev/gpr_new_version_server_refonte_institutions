@@ -511,8 +511,13 @@ public class BotKeyController {
             ClaimDto claim = claimController.getClaimClient(code);
             List<SolutionDto> solutions = new ArrayList<>(claim.getSolutionDtos());
 
-            solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
-            SolutionDto derniereSolution = solutions.get(solutions.size() - 1);
+            SolutionDto derniereSolution = null;
+            if (!solutions.isEmpty()) {
+                solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
+                derniereSolution = solutions.get(solutions.size() - 1);
+            }
+            // solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
+            // SolutionDto derniereSolution = solutions.get(solutions.size() - 1);
             // ClaimDto claimDto = convert
             String contenu="";
             String statut="";
