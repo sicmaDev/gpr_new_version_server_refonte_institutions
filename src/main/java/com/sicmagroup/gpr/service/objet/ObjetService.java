@@ -24,6 +24,5 @@ public interface ObjetService {
     public void deleteObjet(Objet objet) throws Exception ; 
 
     public Objet getDeletedById(Long id, boolean deleted) throws NotFoundException;
-
 }
 

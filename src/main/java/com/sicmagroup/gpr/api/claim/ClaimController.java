@@ -478,6 +478,27 @@ public class ClaimController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
+    @GetMapping(value = "/PARTIAL_SATISFIED")
+    public ResponseEntity<ApiResponseDto> getAllClaimPartial() {
+        // ClaimStatus claimStatus = ClaimStatus.valueOf(status);
+        // System.out.println(claimStatus.toString());
+        List<Claim> allClaims = new ArrayList<>();
+        ApiResponseDto apiResponseDto;
+        allClaims = service.getAllWithApprovedSolutionByTypeAndStatus(ClaimType.CLAIM,
+                Arrays.asList(ClaimStatus.PARTIAL_SATISFIED));
+        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(true)
+                .content(allClaimDtos)
+                .build();
+        return ResponseEntity.ok(apiResponseDto);
+    }
+
+
+
+
     @PostMapping(value = "/add", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
             MediaType.MULTIPART_FORM_DATA_VALUE })
     public ResponseEntity<ApiResponseDto> saveClaim(@RequestPart("claim") String claimRequest,
@@ -1151,6 +1172,8 @@ public class ClaimController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
                 }
 
+                
+
                 apiResponseDto = ApiResponseDto
                         .builder()
                         .status(true)
@@ -1173,6 +1196,101 @@ public class ClaimController {
             return ResponseEntity.ok(apiResponseDto);
         }
     }
+
+
+
+    
+    @PutMapping(value = "/PartialSatisfait")
+    public ResponseEntity<ApiResponseDto> partialSatisfactionClaim(
+            @RequestBody ClassedClaimRequest request) {
+        ApiResponseDto apiResponseDto = new ApiResponseDto();
+        apiResponseDto = Utils.verifyLicence();
+
+        if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
+            LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
+            if (lc.isActif()) {
+
+                Claim claim = new Claim();
+                try {
+                    claim = service.getById(request.getClaimId());
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+
+                User classer = new User();
+
+                try {
+                    classer = authService.getById(request.getUserId());
+
+                } catch (Exception e) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+                }
+
+                if (!classer.canMeasureClaim()) {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().message("Opération non authorisée")
+                                    .title("Habilitation insufissante").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
+                }
+
+                List<ClaimStatus> authorizedClaimStatus = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                        ClaimStatus.PARTIAL_SATISFIED);
+
+                if (authorizedClaimStatus.contains(claim.getStatus())) {
+                    claim = service.classedClaim(claim, classer);
+                } else {
+                    apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .message("Une réclamation non mesurée ne peut pas être classée")
+                                    .title("Opération impossible").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+
+                
+
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(true)
+                        .content(convertToDto(claim))
+                        .build();
+
+                return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
+            } else {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(lc)
+                        .build();
+
+                return ResponseEntity.ok(apiResponseDto);
+            }
+
+        } else {
+
+            return ResponseEntity.ok(apiResponseDto);
+        }
+    }
+
+
+
+
+
 
     @PutMapping(value = "/litigate")
     public ResponseEntity<ApiResponseDto> litigateClaim(

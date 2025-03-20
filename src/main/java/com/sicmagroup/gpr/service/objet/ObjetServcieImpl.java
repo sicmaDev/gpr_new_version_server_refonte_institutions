@@ -43,6 +43,13 @@ public class ObjetServcieImpl implements ObjetService {
 
     @Override
     public Objet updateObjet(Objet objet) {
+        Objet existingObjet = repository.findById(objet.getId()).orElse(null);
+        if (existingObjet != null && existingObjet.getUuid() != null) {
+            objet.setUuid(existingObjet.getUuid());
+        }
+        else{
+                objet.setUuid(generateUuid());
+        }
         return repository.save(objet);
     }
 
@@ -87,4 +94,8 @@ public class ObjetServcieImpl implements ObjetService {
             throw new RuntimeException("Cette langue  n'existe pas.", e);
         }
     }
+
+    
+
+
 }
