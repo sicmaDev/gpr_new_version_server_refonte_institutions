@@ -337,6 +337,7 @@ public class BotKeyController {
                     //     return null;
                     // }
                     ClaimDto claim = denunciationController.getClaimClient(code);
+                    
                     // ClaimDto claimDto = convert
                     String contenu="";
                     String statut="";
@@ -476,7 +477,7 @@ public class BotKeyController {
                         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                     } else {
                         // System.out.println(claimRequest2.getContent());
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                          return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
                     }
                 }
             // } else {

@@ -1670,15 +1670,13 @@ public class ClaimServiceImpl implements ClaimService {
             // Only TEMP_SAVED can be saved
             Claim oldClaim = repository.findById(claimToSave.getId())
                     .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
-                    claim.setCodeClient(oldClaim.getCodeClient());
+                    // claim.setCodeClient(oldClaim.getCodeClient());
             
 
         } else {
             if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
                 claim.setCode(code);
-                String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
-                claim.setCodeClient(codeClient);
             } else {
                 claim.setCode(claimToSave.getCode());
             }
