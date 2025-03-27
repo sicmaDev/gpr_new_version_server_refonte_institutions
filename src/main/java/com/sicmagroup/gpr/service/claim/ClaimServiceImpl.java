@@ -163,18 +163,19 @@ public class ClaimServiceImpl implements ClaimService {
             Claim oldClaim = repository.findById(claimToSave.getId())
                     .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
 
-            claim.setCodeClient(oldClaim.getCodeClient());
+            // claim.setCodeClient(oldClaim.getCodeClient());
             // if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
             // throw new ClaimException(
             // "Invalid operation! this claim is not temporarly saved, you can't change it
             // again");
             // }
-            if (claim.getCodeClient() == null || claim.getCodeClient() == " ") {
+            if (oldClaim.getCodeClient() == null || oldClaim.getCodeClient() == "") {
                 String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
                 claim.setCodeClient(codeClient);
             }
             else {
-                claim.setCodeClient(claimToSave.getCodeClient());
+                claim.setCodeClient(oldClaim.getCodeClient());
+                // claim.setCodeClient(claimToSave.getCodeClient());
             }
 
         } else {
@@ -1147,12 +1148,13 @@ public class ClaimServiceImpl implements ClaimService {
                 throw new ClaimException(
                         "Invalid operation! this claim is not temporarly saved, you can't change it again");
             }
-            if (claim.getCodeClient() == null || claim.getCodeClient() == " ") {
+            if (oldClaim.getCodeClient() == null || oldClaim.getCodeClient() == "") {
                 String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
                 claim.setCodeClient(codeClient);
             }
             else {
-                claim.setCodeClient(claimToSave.getCodeClient());
+                claim.setCodeClient(oldClaim.getCodeClient());
+                // claim.setCodeClient(claimToSave.getCodeClient());
             }
 
         } else {
