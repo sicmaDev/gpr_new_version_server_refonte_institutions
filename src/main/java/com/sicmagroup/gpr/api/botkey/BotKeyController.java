@@ -1,5 +1,6 @@
 package com.sicmagroup.gpr.api.botkey;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,11 +38,19 @@ import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SolutionDto;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.dto.botkey.BotKeyConfigResponse;
+import com.sicmagroup.gpr.domain.dto.claimResponse.CollectionChannelResponse;
+import com.sicmagroup.gpr.domain.dto.claimResponse.LanguageResponse;
+import com.sicmagroup.gpr.domain.dto.claimResponse.ObjetResponse;
+import com.sicmagroup.gpr.domain.dto.claimResponse.ProductResponse;
+import com.sicmagroup.gpr.domain.dto.claimResponse.ServicePointResponse;
+import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
+import com.sicmagroup.gpr.domain.enumeration.Gender;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
@@ -52,7 +61,7 @@ import com.sicmagroup.gpr.service.product.ProductServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
-
+import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
@@ -521,11 +530,35 @@ public class BotKeyController {
             // SolutionDto derniereSolution = solutions.get(solutions.size() - 1);
             // ClaimDto claimDto = convert
             String contenu="";
-            String statut="";
+            String statut ="";
+            String  clientFirstAndLastName = claim.getClientFirstAndLastName();;
+            String adresse = claim.getAddress();
+            Gender  gender = claim.getGender();
+            String tel = claim.getTel();
+            ObjetResponse Objet = claim.getObjet();
+            String libelleObjet = Objet.getLibelle();
+            ProductResponse Produit = claim.getProduct();
+            String libelleProduit = Produit.getLibelle();
+            ServicePointResponse ServicePoint = claim.getServicePoint();
+            String libellePoinservice = ServicePoint.getLibelle();
+            UserResponse TreatBy = claim.getTreatBy();
+            String treatBy = TreatBy.getFirstAndLastName();
+            LanguageResponse Language = claim.getLanguage();
+            String libelleLanguage = Language.getLibelle();
+            CollectionChannelResponse CollectionChannel = claim.getCollectionChannel();
+            String libelleCollectionChannel = CollectionChannel.getLibelle();
+            // String folderCode = claim.getFolderCode();
+            Long retardDay= claim.getRetardDay();
+            // String  declenchedDate = claim.getDeclenchedDate();
+            String receiptDateTime = claim.getReceiptDateTime();
+            String createdAt= claim.getCreatedAt();
+            String content = claim.getContent();
+            
+            
             if (claim != null) {
-                
                 switch ((claim.getStatus()).toString()) {
                     case "TEMP_SAVED":
+                        
                         statut = "En attente";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en attente !!!";
                         break;
@@ -546,17 +579,15 @@ public class BotKeyController {
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+" est en cours de traitement !!!";
                         break;
                     case "TREAT":
-                        
+                        clientFirstAndLastName= "hgutyroiz";
                         statut = "Traitée";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée." +
                         " Solution : " + derniereSolution.getContent();
-                        
-
                         // contenu = solution;
                         break;
                     case "SATISFIED":
-                        statut = "Mesurer et non satisfait";
+                        statut = "Mesurer et  satisfait";
                         contenu = "La réclamation portant le code :  "+ claim.getCodeClient() +
                         "  a été traitée et mesurer." +
                         "  Solution : " + derniereSolution.getContent() + "  Vous êtes satisfait de la solution proposée, et nous nous réjouissons d’avoir répondu à vos attentes. N’hésitez pas à nous contacter pour toute autre demande.";
@@ -572,7 +603,7 @@ public class BotKeyController {
                         // contenu = solution;
                         break;
                     case "UNSATISFIED":
-                        statut = "Mesurer et non";
+                        statut = "Mesurer et non satisfait";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée et mesurer." +
                         " Solution : " + derniereSolution.getContent() +"  Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
@@ -582,14 +613,14 @@ public class BotKeyController {
                     default:
                         break;
                 }
-            
             }else{
                 statut = "Introuvable";
                 contenu = "La réclamation portant le code "+code+" est introuvable !!!";
             }
 
-           // Formatez le JSON manuellement
-           String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\"}", statut, contenu);
+
+            // Formatez le JSON manuellement
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"clientFirstAndLastName\": \"%s\",\"adresse\": \"%s\", \"gender\": \"%s\", \"tel\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"treatBy\": \"%s\",\"language\":\"%s\", \"collectionChannel\": \"%s\",\"retardDay\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,treatBy,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime);
 
             apiResponseDto = ApiResponseDto
                     .builder()
