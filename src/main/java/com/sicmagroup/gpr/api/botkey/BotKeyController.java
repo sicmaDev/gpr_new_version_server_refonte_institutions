@@ -531,7 +531,7 @@ public class BotKeyController {
             // ClaimDto claimDto = convert
             String contenu="";
             String statut ="";
-            String  clientFirstAndLastName = claim.getClientFirstAndLastName();;
+            String  clientFirstAndLastName = claim.getClientFirstAndLastName();
             String adresse = claim.getAddress();
             Gender  gender = claim.getGender();
             String tel = claim.getTel();
@@ -541,24 +541,21 @@ public class BotKeyController {
             String libelleProduit = Produit.getLibelle();
             ServicePointResponse ServicePoint = claim.getServicePoint();
             String libellePoinservice = ServicePoint.getLibelle();
-            UserResponse TreatBy = claim.getTreatBy();
-            String treatBy = TreatBy.getFirstAndLastName();
             LanguageResponse Language = claim.getLanguage();
             String libelleLanguage = Language.getLibelle();
-            CollectionChannelResponse CollectionChannel = claim.getCollectionChannel();
-            String libelleCollectionChannel = CollectionChannel.getLibelle();
+            String libelleCollectionChannel = "";
             // String folderCode = claim.getFolderCode();
             Long retardDay= claim.getRetardDay();
             // String  declenchedDate = claim.getDeclenchedDate();
             String receiptDateTime = claim.getReceiptDateTime();
             String createdAt= claim.getCreatedAt();
             String content = claim.getContent();
-            
+           
+
             
             if (claim != null) {
                 switch ((claim.getStatus()).toString()) {
                     case "TEMP_SAVED":
-                        
                         statut = "En attente";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en attente !!!";
                         break;
@@ -579,7 +576,6 @@ public class BotKeyController {
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+" est en cours de traitement !!!";
                         break;
                     case "TREAT":
-                        clientFirstAndLastName= "hgutyroiz";
                         statut = "Traitée";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée." +
@@ -587,7 +583,7 @@ public class BotKeyController {
                         // contenu = solution;
                         break;
                     case "SATISFIED":
-                        statut = "Mesurer et  satisfait";
+                        statut = "Mesurée et  satisfait";
                         contenu = "La réclamation portant le code :  "+ claim.getCodeClient() +
                         "  a été traitée et mesurer." +
                         "  Solution : " + derniereSolution.getContent() + "  Vous êtes satisfait de la solution proposée, et nous nous réjouissons d’avoir répondu à vos attentes. N’hésitez pas à nous contacter pour toute autre demande.";
@@ -595,7 +591,7 @@ public class BotKeyController {
                         // contenu = solution;
                         break;
                     case "PARTIAL_SATISFIED":
-                        statut = "Mesurer et partiellement satisfait";
+                        statut = "Mesurée et partiellement satisfait";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée et mesurer." +
                         " Solution : " + derniereSolution.getContent() + "  Vous êtes partiellement satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous offrir une nouvelle solution.";
@@ -603,7 +599,7 @@ public class BotKeyController {
                         // contenu = solution;
                         break;
                     case "UNSATISFIED":
-                        statut = "Mesurer et non satisfait";
+                        statut = "Mesurée et non satisfait";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
                         " a été traitée et mesurer." +
                         " Solution : " + derniereSolution.getContent() +"  Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
@@ -620,7 +616,7 @@ public class BotKeyController {
 
 
             // Formatez le JSON manuellement
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"clientFirstAndLastName\": \"%s\",\"adresse\": \"%s\", \"gender\": \"%s\", \"tel\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"treatBy\": \"%s\",\"language\":\"%s\", \"collectionChannel\": \"%s\",\"retardDay\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,treatBy,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime);
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"clientFirstAndLastName\": \"%s\",\"adresse\": \"%s\", \"gender\": \"%s\", \"tel\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"treatBy\": \"%s\",\"language\":\"%s\", \"collectionChannel\": \"%s\",\"retardDay\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime);
 
             apiResponseDto = ApiResponseDto
                     .builder()
