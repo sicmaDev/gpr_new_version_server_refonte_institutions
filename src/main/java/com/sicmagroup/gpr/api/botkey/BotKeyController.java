@@ -617,7 +617,7 @@ public class BotKeyController {
 
 
             // Formatez le JSON manuellement
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"clientFirstAndLastName\": \"%s\",\"adresse\": \"%s\", \"gender\": \"%s\", \"tel\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"language\":\"%s\", \"collectionChannel\": \"%s\",\"retardDay\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"derniereSolution\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,(derniereSolution != null ? derniereSolution.getContent() : ""));
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"clientFirstAndLastName\": \"%s\",\"adresse\": \"%s\", \"gender\": \"%s\", \"tel\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"language\":\"%s\", \"collectionChannel\": \"%s\",\"retardDay\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"detail\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,(derniereSolution != null ? derniereSolution.getContent() : ""));
 
             apiResponseDto = ApiResponseDto
                     .builder()
