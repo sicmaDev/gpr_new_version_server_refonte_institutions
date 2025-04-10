@@ -532,6 +532,8 @@ public class BotKeyController {
             // ClaimDto claimDto = convert
             String contenu="";
             String statut ="";
+            String solution="";
+
             String  clientFirstAndLastName = claim.getClientFirstAndLastName();
             String adresse = claim.getAddress();
             Gender  gender = claim.getGender();
@@ -559,52 +561,54 @@ public class BotKeyController {
                     case "TEMP_SAVED":
                         statut = "En attente";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en attente !!!";
+                        solution="";
                         break;
                     case "AFFECTED":
                         statut = "En cours";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                        solution="";
                     break;
                     case "DESAPPROUVED":
                         statut = "En cours";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                        solution="";
                         break;
                     case "TRANSMITTED":
                         statut = "En cours";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+ " est en cours de traitement !!!";
+                        solution="";
                         break;
                     case "SAVED":
                         statut = "En cours";
                         contenu = "La réclamation portant le code  "+claim.getCodeClient()+" est en cours de traitement !!!";
+                        solution="";
                         break;
                     case "TREAT":
                         statut = "Traitée";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
-                        " a été traitée." +
-                        " Solution : " + derniereSolution.getContent();
+                        " a été traitée." ;
+                        solution=derniereSolution.getContent();
                         // contenu = solution;
                         break;
                     case "SATISFIED":
                         statut = "Mesurée et  satisfait";
                         contenu = "La réclamation portant le code :  "+ claim.getCodeClient() +
-                        "  a été traitée et mesurer." +
-                        "  Solution : " + derniereSolution.getContent() + "  Vous êtes satisfait de la solution proposée, et nous nous réjouissons d’avoir répondu à vos attentes. N’hésitez pas à nous contacter pour toute autre demande.";
-                    
+                        "  a été traitée et mesurée.  Vous êtes satisfait de la solution proposée, et nous nous réjouissons d’avoir répondu à vos attentes. N’hésitez pas à nous contacter pour toute autre demande.";
+                        solution=derniereSolution.getContent();
                         // contenu = solution;
                         break;
                     case "PARTIAL_SATISFIED":
                         statut = "Mesurée et partiellement satisfait";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
-                        " a été traitée et mesurer." +
-                        " Solution : " + derniereSolution.getContent() + "  Vous êtes partiellement satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous offrir une nouvelle solution.";
-                    
+                        " a été traitée et mesurée. Vous êtes partiellement satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous offrir une nouvelle solution.";
+                        solution=derniereSolution.getContent();
                         // contenu = solution;
                         break;
                     case "UNSATISFIED":
                         statut = "Mesurée et non satisfait";
                         contenu = "La réclamation portant le code : "+ claim.getCodeClient() +
-                        " a été traitée et mesurer." +
-                        " Solution : " + derniereSolution.getContent() +"  Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
-                    
+                        " a été traitée et mesurée. Vous n'êtes pas satisfait de la solution proposée, et notre entreprise s’engage à prendre les mesures nécessaires pour vous apporter une nouvelle solution adaptée à vos besoins.";
+                        solution=derniereSolution.getContent();
                         // contenu = solution;
                         break;
                     default:
@@ -617,7 +621,7 @@ public class BotKeyController {
 
 
             // Formatez le JSON manuellement
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"clientFirstAndLastName\": \"%s\",\"adresse\": \"%s\", \"gender\": \"%s\", \"tel\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"language\":\"%s\", \"collectionChannel\": \"%s\",\"retardDay\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"detail\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,(derniereSolution != null ? derniereSolution.getContent() : ""));
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"solution\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,solution);
 
             apiResponseDto = ApiResponseDto
                     .builder()
