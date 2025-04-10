@@ -526,6 +526,7 @@ public class BotKeyController {
                 solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
                 derniereSolution = solutions.get(solutions.size() - 1);
             }
+           
             // solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
             // SolutionDto derniereSolution = solutions.get(solutions.size() - 1);
             // ClaimDto claimDto = convert
@@ -616,7 +617,7 @@ public class BotKeyController {
 
 
             // Formatez le JSON manuellement
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"clientFirstAndLastName\": \"%s\",\"adresse\": \"%s\", \"gender\": \"%s\", \"tel\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"treatBy\": \"%s\",\"language\":\"%s\", \"collectionChannel\": \"%s\",\"retardDay\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime);
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"clientFirstAndLastName\": \"%s\",\"adresse\": \"%s\", \"gender\": \"%s\", \"tel\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"language\":\"%s\", \"collectionChannel\": \"%s\",\"retardDay\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"derniereSolution\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,(derniereSolution != null ? derniereSolution.getContent() : ""));
 
             apiResponseDto = ApiResponseDto
                     .builder()
