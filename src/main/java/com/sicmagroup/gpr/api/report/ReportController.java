@@ -146,7 +146,14 @@ public class ReportController {
 						.build();
 				reportGlobalResponse.setStatistic(statisticReport);
 
-				return ResponseEntity.ok(reportGlobalResponse);
+				apiResponseDto = ApiResponseDto
+						.builder()
+						.status(true)
+						.content(reportGlobalResponse)
+						.build();
+
+				// return ResponseEntity.ok(reportGlobalResponse);
+				return ResponseEntity.ok(apiResponseDto);
 			} else {
 				apiResponseDto = ApiResponseDto
 						.builder()
