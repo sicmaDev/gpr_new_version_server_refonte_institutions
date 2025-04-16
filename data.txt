@@ -1,10 +1,10 @@
 {
-  "createdAt" : "2024-04-30T09:50:38.000000",
-  "serial" : "2a67dcc9-ae6f-45b7-8514-de7de4e23ec1",
-  "company" : "teretere",
-  "activationRequest" : "c0baa70f-c46d-4440-9b64-c53c04399705,365:6",
-  "id" : "390",
-  "fullname" : "teretere",
-  "email" : "tori@sicmagroup.com",
-  "updatedAt" : "2025-01-29T09:50:38.000000"
+  "createdAt" : "2025-04-16T14:42:14.000000",
+  "serial" : "59a98f61-a029-41af-83ac-725d548b22ba",
+  "company" : "SICMA ET ASSOCIES",
+  "activationRequest" : "c99ab65f-1477-4603-9216-1bcca0bd43ee,365:8",
+  "id" : "398",
+  "fullname" : "SICMA ET ASSOCIES",
+  "email" : "info@sicmagroup.com",
+  "updatedAt" : "2025-04-16T15:00:19.000000"
 }
