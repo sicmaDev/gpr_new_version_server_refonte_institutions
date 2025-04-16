@@ -64,6 +64,8 @@ import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
 import com.sicmagroup.gpr.domain.enumeration.Habilitation;
+import com.sicmagroup.gpr.domain.enumeration.LogTarget;
+import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.CategorieObjet;
 import com.sicmagroup.gpr.domain.model.Claim;
@@ -71,6 +73,7 @@ import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.ExistingSolution;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
 import com.sicmagroup.gpr.domain.model.Language;
+import com.sicmagroup.gpr.domain.model.Log;
 import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.Product;
@@ -94,6 +97,7 @@ import com.sicmagroup.gpr.repository.UserRepository;
 import com.sicmagroup.gpr.service.claim.ClaimService;
 import com.sicmagroup.gpr.service.faq.FaqServiceImpl;
 import com.sicmagroup.gpr.service.jwt.JwtServiceImpl;
+import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
 import com.sicmagroup.gpr.utils.Utils;
@@ -122,6 +126,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final ExistingSolutionRepository existingSolutionRepository;
     private final CategorieObjetRepository categorieObjetRepository;
     private final SettingServiceImpl settingServiceImpl;
+    private final LogServiceImpl logServiceImpl;
 
     @Override
     public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException {
@@ -216,6 +221,40 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 HashMap<String, Object> content = new HashMap<String, Object>();
                 content.put("user", userDto);
                 content.put("token", jwtToken);
+
+                //envoi de mail au user
+                String message = "" +
+                "Cher(e) " + user.getFirstandlastname() + ",\n\n" +
+                "Votre compte vient d'être créé sur la plateforme de gestion des plaintes ou réclamations GPR."
+                + "\n\n" +
+                "Identifiants d'accès :" + "\n\n" +
+                "* Email : " + user.getEmail() + "\n" +
+                "* Mot de passe : " + request.getPassword() + "\n";
+               
+                
+                try {
+                    Utils.sendmail(user.getEmail(), "Création de compte", message, null,
+                            " ", settingServiceImpl);
+                } catch (Exception e) {
+                    if (e != null) {
+                        Log log2 = Log
+                                .builder()
+                                .libelle("Echec mail notification")
+                                .content(e.getMessage())
+                                .createdAt(LocalDateTime.now())
+                                .type(LogType.ERROR)
+                                .userId(0L)
+                                .userIpAddress(null)
+                                .target(LogTarget.APP)
+                                .build();
+
+                        logServiceImpl.saveLog(log2);
+                    }
+
+                }
+
+
+
                 return AuthenticationResponse.builder()
                         .response(ApiResponseDto
                                 .builder()
