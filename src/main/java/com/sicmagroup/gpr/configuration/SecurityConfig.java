@@ -20,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -95,19 +97,25 @@ public class SecurityConfig {
 
                 return http.build();
         }
-
         // Extract authorities from the roles claim
 
         // enable CORS for the rest API
         @Bean
         CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
+                String allowed_domains= "http://localhost:3000 , http://localhost:3001";
                 // TODO spécifier l'URL du serveur prod
-                config.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8000", "http://192.168.100.174", "http://192.168.100.5",
-                "http://localhost:9195", "http://localhost:8080", "http://196.168.30.157:81", "https://196.168.30.157", "http://196.168.30.157", "https://196.168.30.157:81", "https://196.168.30.157:443", "https://196.168.30.157:444",
-                 "http://localhost:81", "https://gpsassilassime.sicmagroup.com", "http://192.168.100.51:21465"));
+                // config.setAllowedOrigins(Arrays.asList("http://localhost:3001", "http://localhost:8000", "http://192.168.100.174", "http://192.168.100.5",
+                // "http://localhost:9195", "http://localhost:8080", "http://196.168.30.157:81", "https://196.168.30.157", "http://196.168.30.157", "https://196.168.30.157:81", "https://196.168.30.157:443", "https://196.168.30.157:444",
+                //  "http://localhost:81", "https://gpsassilassime.sicmagroup.com", "http://192.168.100.51:21465"));
+                // config.setAllowedOrigins(Arrays.asList(allowed_domains.split(",")));
                 // config.setAllowedOrigins(Arrays.asList("https://gpr-sicma:9001"));
                 // config.setAllowedOrigins(Arrays.asList("*"));
+                List<String> origins = Arrays.stream(allowed_domains.split(","))
+                             .map(String::trim) // 🔥 supprime les espaces autour
+                             .collect(Collectors.toList());
+
+                config.setAllowedOrigins(origins);
 
                 config.setAllowedMethods(Arrays.asList("*"));
                 config.setAllowedHeaders(Arrays.asList("*"));
