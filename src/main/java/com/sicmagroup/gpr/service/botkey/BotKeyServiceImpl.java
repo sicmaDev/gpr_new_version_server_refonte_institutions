@@ -95,6 +95,7 @@ public class BotKeyServiceImpl implements BotKeyService {
 
         String key = request.getHeader("API_KEY");
         String secret = request.getHeader("API_SECRET");
+    
         if (key == null || secret == null) {
             return false;
         }

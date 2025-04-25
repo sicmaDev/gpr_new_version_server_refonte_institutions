@@ -294,7 +294,31 @@ public class ClaimController {
 
     }
 
-
+    public ClaimDto getClaimWithAudiosByClientCode(String codeClient) throws Exception {
+        Claim claim = service.getByCodeClient(codeClient);
+        List<ClaimAudioResponse> audioResponses = claimAudioServiceImpl.getAudioByClaim(claim);
+        ClaimDto claimDto = modelMapper.map(claim, ClaimDto.class);
+        claimDto.setAudios(audioResponses);
+    
+        return claimDto;
+    }
+    
+    
+    public ClaimDto getClaimWithMediasByClientCode(String codeClient) throws Exception {
+        Claim claim = service.getByCodeClient(codeClient);
+        List<Media> medias = mediaService.getFileByClaim(claim);
+    
+        List<MediaResponse> mediaResponses = medias.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    
+        ClaimDto claimDto = modelMapper.map(claim, ClaimDto.class);
+        claimDto.setMedias(mediaResponses);
+    
+        return claimDto;
+    }
+    
+    
     @GetMapping(value = "/listTreat")
     public ResponseEntity<ApiResponseDto> getTreatList() {
 
@@ -1610,10 +1634,15 @@ public class ClaimController {
             claimDto.setCollector(convertToResponse(claim.getCollector()));
         }
 
-        // if (claim.getMedias() != null) {
-        // claimDto.setMedias(claim.getMedias());
-        // }
+        // List<Media> medias = mediaService.getFileByClaim(claim);
+        // if (medias != null && !medias.isEmpty()) {
+        //     List<MediaResponse> mediaResponses = medias.stream()
+        //         .map(this::convertToResponse)
+        //         .collect(Collectors.toList());
 
+        //     claimDto.setMedias(mediaResponses); // Utilise la version DTO (MediaResponse) ici
+        // }
+        
         if (claim.getSolutions() != null) {
             // System.out.println("Here 10 ");
             claimDto.setSolutionDtos(
@@ -1622,6 +1651,7 @@ public class ClaimController {
             Collections.reverse(claimDto.getSolutionDtos());
 
         }
+        
 
         if (claim.getExternalRecourses() != null) {
             claimDto.setExternalRecourses(
