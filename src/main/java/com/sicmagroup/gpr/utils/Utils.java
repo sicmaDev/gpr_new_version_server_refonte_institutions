@@ -118,10 +118,11 @@ public class Utils {
                 String baseUrl = smsRequest.getUrl();
                 String token = smsRequest.getValMdp();
                 String sender = smsRequest.getValEmetteur();
+                String account = smsRequest.getValId();
                 message = UriEncoder.encode(message);
                 HttpURLConnection con;
 
-                baseUrl += smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender + "&"
+                baseUrl += smsRequest.getLibId() + "=" + account + "&" + smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender + "&"
                         + smsRequest.getLibDestinataire() + "=" + number + "&" + smsRequest.getLibMessage() + "="
                         + message;
                 URL url = new URL(baseUrl);
