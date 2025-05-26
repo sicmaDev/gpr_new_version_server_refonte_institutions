@@ -537,9 +537,13 @@ public class BotKeyController {
                 : new ArrayList<>();
 
             SolutionDto derniereSolution = null;
+            List<String> allSolution = new ArrayList<>();
             if (!solutions.isEmpty()) {
                 solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
                 derniereSolution = solutions.get(solutions.size() - 1);
+                    allSolution = solutions.stream()
+                                        .map(SolutionDto::getContent)
+                                        .collect(Collectors.toList());
             }
            
             // solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
@@ -643,7 +647,7 @@ public class BotKeyController {
             .map(audio ->audio.getPath()) 
             .collect(Collectors.joining(","));
             System.out.println("Fichier " + mediasJson + ", " + audioJson);
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"solution\": \"%s\",\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,solution,delais,mediasJson,audioJson);
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"solution\": \"%s\",\"Allsolution\": \"%s\",\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,solution,allSolution,delais,mediasJson,audioJson);
 
             apiResponseDto = ApiResponseDto
                     .builder()

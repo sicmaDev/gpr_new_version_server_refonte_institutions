@@ -540,9 +540,6 @@ public class SettingController {
 
     }
 
-
-    
-
     @GetMapping(value = "/key")
     public ResponseEntity<ApiResponseDto> apiKeys() {
 
@@ -573,6 +570,7 @@ public class SettingController {
         }
 
     }
+    
     @PostMapping(value = "/key/generate")
     public ResponseEntity<ApiResponseDto> generateApiKey(@RequestBody ApiKeyRequest request) {
 
