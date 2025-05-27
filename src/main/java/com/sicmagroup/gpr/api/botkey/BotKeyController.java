@@ -537,13 +537,19 @@ public class BotKeyController {
                 : new ArrayList<>();
 
             SolutionDto derniereSolution = null;
-            List<String> allSolution = new ArrayList<>();
+            List<SolutionDto> allSolution = null;
             if (!solutions.isEmpty()) {
                 solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
                 derniereSolution = solutions.get(solutions.size() - 1);
-                    allSolution = solutions.stream()
-                                        .map(SolutionDto::getContent)
-                                        .collect(Collectors.toList());
+                allSolution = solutions.stream()
+                                .map(sol -> {
+                                    SolutionDto dto = new SolutionDto();
+                                    dto.setContent(sol.getContent());
+                                    dto.setCreatedAt(sol.getCreatedAt());
+                                    return dto;
+                                })
+                                .collect(Collectors.toList());
+                    
             }
            
             // solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
