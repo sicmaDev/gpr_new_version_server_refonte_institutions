@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import com.sicmagroup.gpr.api.Media.MediaResponse;
+import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
 import com.sicmagroup.gpr.domain.dto.chat.ChatDto;
 import com.sicmagroup.gpr.domain.dto.claimResponse.CollectionChannelResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.ExternalRecourseResponse;
@@ -15,6 +17,7 @@ import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
+import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.User;
@@ -47,7 +50,8 @@ public class ClaimDto {
     private LanguageResponse language;
     private List<SolutionDto> solutionDtos;
     private ClaimStatus status;
-    // private List<Media> medias;
+    private List<MediaResponse> medias;
+    private List<ClaimAudioResponse> audios;
     private String content;
     private UserResponse collector;
     private UserResponse treatmentAffectedBy;

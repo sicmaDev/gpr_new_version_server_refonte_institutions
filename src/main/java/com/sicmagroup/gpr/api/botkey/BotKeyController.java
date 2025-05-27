@@ -22,10 +22,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sicmagroup.gpr.api.Media.MediaResponse;
 import com.sicmagroup.gpr.api.claim.ClaimController;
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.MeasureSatisfactionBotRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
+import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunciationController;
 import com.sicmagroup.gpr.api.denunciation.SaveDenunRequest;
@@ -50,6 +52,8 @@ import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ClaimAudio;
+import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
@@ -62,6 +66,8 @@ import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
@@ -520,11 +526,24 @@ public class BotKeyController {
             // }
             ClaimDto claim = claimController.getClaimClient(code);
             List<SolutionDto> solutions = new ArrayList<>(claim.getSolutionDtos());
+            ClaimDto claimMedias = claimController.getClaimWithMediasByClientCode(code);
+            List<MediaResponse> medias = (claimMedias != null && claimMedias.getMedias() != null)
+                ? new ArrayList<>(claimMedias.getMedias())
+                : new ArrayList<>();
+            ClaimDto claimAudios = claimController.getClaimWithAudiosByClientCode(code);
+
+            List<ClaimAudioResponse> audios = (claimAudios != null && claimAudios.getAudios() != null)
+                ? new ArrayList<>(claimAudios.getAudios())
+                : new ArrayList<>();
 
             SolutionDto derniereSolution = null;
+            List<String> allSolution = new ArrayList<>();
             if (!solutions.isEmpty()) {
                 solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
                 derniereSolution = solutions.get(solutions.size() - 1);
+                    allSolution = solutions.stream()
+                                        .map(SolutionDto::getContent)
+                                        .collect(Collectors.toList());
             }
            
             // solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
@@ -620,9 +639,15 @@ public class BotKeyController {
                 contenu = "La réclamation portant le code "+code+" est introuvable !!!";
             }
 
+            String mediasJson = medias.stream()
+            .map(media -> media.getPath()) 
+            .collect(Collectors.joining(","));
 
-            // Formatez le JSON manuellement
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"solution\": \"%s\",\"delais\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,solution,delais);
+            String audioJson =audios.stream()
+            .map(audio ->audio.getPath()) 
+            .collect(Collectors.joining(","));
+            System.out.println("Fichier " + mediasJson + ", " + audioJson);
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"solution\": \"%s\",\"Allsolution\": \"%s\",\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,solution,allSolution,delais,mediasJson,audioJson);
 
             apiResponseDto = ApiResponseDto
                     .builder()
