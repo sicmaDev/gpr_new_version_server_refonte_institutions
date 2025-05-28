@@ -537,19 +537,31 @@ public class BotKeyController {
                 : new ArrayList<>();
 
             SolutionDto derniereSolution = null;
-            List<SolutionDto> allSolution = null;
+            // List<Map<String, Object>> allSolution = new ArrayList<>();
+           
+            List<String> allSolution = new ArrayList<>();
+            // List<String> allSolution = new ArrayList<>();
+            // List<Map<String, Object>> allSolution;
             if (!solutions.isEmpty()) {
                 solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
                 derniereSolution = solutions.get(solutions.size() - 1);
+                    // allSolution = solutions.stream()
+                    //                     .map(SolutionDto::getContent)
+                    //                     .collect(Collectors.toList());
                 allSolution = solutions.stream()
-                                .map(sol -> {
-                                    SolutionDto dto = new SolutionDto();
-                                    dto.setContent(sol.getContent());
-                                    dto.setCreatedAt(sol.getCreatedAt());
-                                    return dto;
-                                })
-                                .collect(Collectors.toList());
-                    
+                .map(s -> {
+                    Map<String, Object> map = new HashMap<>();
+                    String content = s.getContent();
+                    String createdAt = s.getCreatedAt() != null ? s.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME) : null;
+                    String jsonContent = String.format("{\"contenu\": \"%s\", \"createdAt\": \"%s\"}", content, createdAt);
+
+                    // map.put("content", s.getContent());
+                    // map.put("createdAt", s.getCreatedAt());
+                    return jsonContent;
+                })
+                .collect(Collectors.toList());
+               
+                
             }
            
             // solutions.sort(Comparator.comparing(SolutionDto::getCreatedAt));
@@ -652,8 +664,8 @@ public class BotKeyController {
             String audioJson =audios.stream()
             .map(audio ->audio.getPath()) 
             .collect(Collectors.joining(","));
-            System.out.println("Fichier " + mediasJson + ", " + audioJson);
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"DateSoumission\": \"%s\",\"DateEnregistrement\": \"%s\",\"solution\": \"%s\",\"Allsolution\": \"%s\",\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,solution,allSolution,delais,mediasJson,audioJson);
+            // System.out.println("Fichier " + mediasJson + ", " + audioJson);
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"dateSoumission\": \"%s\",\"dateEnregistrement\": \"%s\",\"solution\": \"%s\",\"allSolutions\": %s,\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,solution,allSolution,delais,mediasJson,audioJson);
 
             apiResponseDto = ApiResponseDto
                     .builder()
