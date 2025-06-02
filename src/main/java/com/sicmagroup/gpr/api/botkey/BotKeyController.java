@@ -665,7 +665,17 @@ public class BotKeyController {
             .map(audio ->audio.getPath()) 
             .collect(Collectors.joining(","));
             // System.out.println("Fichier " + mediasJson + ", " + audioJson);
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"dateSoumission\": \"%s\",\"dateEnregistrement\": \"%s\",\"solution\": \"%s\",\"allSolutions\": %s,\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,solution,allSolution,delais,mediasJson,audioJson);
+
+            String derniereSolutionJson = "{}";
+            if (derniereSolution != null) {
+                derniereSolutionJson = String.format(
+                    "{\"contenu\": \"%s\", \"createdAt\": \"%s\"}",
+                    derniereSolution.getContent(),
+                    derniereSolution.getCreatedAt() != null ? derniereSolution.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME) : null
+                );
+            }
+
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"dateSoumission\": \"%s\",\"dateEnregistrement\": \"%s\",\"solution\": \"%s\",\"allSolutions\": %s,\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,derniereSolutionJson,allSolution,delais,mediasJson,audioJson);
 
             apiResponseDto = ApiResponseDto
                     .builder()
