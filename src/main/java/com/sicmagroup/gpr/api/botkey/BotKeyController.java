@@ -557,10 +557,11 @@ public class BotKeyController {
 
                     // map.put("content", s.getContent());
                     // map.put("createdAt", s.getCreatedAt());
+                    jsonContent = jsonContent.replace("\"", "\\\"");
                     return jsonContent;
                 })
                 .collect(Collectors.toList());
-               
+              
                 
             }
            
@@ -658,24 +659,27 @@ public class BotKeyController {
             }
 
             String mediasJson = medias.stream()
-            .map(media -> media.getPath()) 
+            .map(media -> media.getPath().replace("\\", "\\\\"))
+            // .map(media -> media.getPath()) 
             .collect(Collectors.joining(","));
 
             String audioJson =audios.stream()
-            .map(audio ->audio.getPath()) 
+            .map(audio -> audio.getPath().replace("\\", "\\\\"))
+            // .map(audio ->audio.getPath()) 
             .collect(Collectors.joining(","));
             // System.out.println("Fichier " + mediasJson + ", " + audioJson);
 
-            String derniereSolutionJson = "{}";
+            String derniereSolutionJson = "[]";
             if (derniereSolution != null) {
                 derniereSolutionJson = String.format(
                     "{\"contenu\": \"%s\", \"createdAt\": \"%s\"}",
                     derniereSolution.getContent(),
                     derniereSolution.getCreatedAt() != null ? derniereSolution.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME) : null
                 );
+                derniereSolutionJson = derniereSolutionJson.replace("\"", "\\\"");
             }
 
-            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"dateSoumission\": \"%s\",\"dateEnregistrement\": \"%s\",\"solution\": \"%s\",\"allSolutions\": %s,\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,derniereSolutionJson,allSolution,delais,mediasJson,audioJson);
+            String jsonContent = String.format("{\"statut\": \"%s\", \"message\": \"%s\", \"identite\": \"%s\",\"adresse\": \"%s\", \"genre\": \"%s\", \"telephone\": \"%s\", \"objet\": \"%s\",\"produit\": \"%s\", \"servicePoint\": \"%s\",\"langue\":\"%s\", \"canal\": \"%s\",\"retard\": \"%s\",\"content\": \"%s\",\"dateSoumission\": \"%s\",\"dateEnregistrement\": \"%s\",\"solution\": \"%s\",\"allSolutions\": \"%s\",\"delais\": \"%s\",\"medias\": \"%s\",\"audios\": \"%s\"}", statut, contenu, clientFirstAndLastName,adresse,gender,tel,libelleObjet,libelleProduit,libellePoinservice,libelleLanguage,libelleCollectionChannel,retardDay,content,createdAt,receiptDateTime,derniereSolutionJson,allSolution,delais,mediasJson,audioJson);
 
             apiResponseDto = ApiResponseDto
                     .builder()
