@@ -92,5 +92,6 @@ public interface ClaimService {
         public Claim saveBotClaim(SaveRequest claimToSave, ClaimType type)  throws Exception;
         
         public List<Claim> getAllByStatusIn(List<ClaimStatus> status);
-
+        
+        public void deleteById(Long id) throws NotFoundException;
 }

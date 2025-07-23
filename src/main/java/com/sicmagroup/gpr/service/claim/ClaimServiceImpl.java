@@ -48,10 +48,13 @@ import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
+import com.sicmagroup.gpr.repository.ClaimAudioRepository;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ExistingSolutionRepository;
+import com.sicmagroup.gpr.repository.ExternalRecourseRepository;
 import com.sicmagroup.gpr.repository.InboxMessageRepository;
 import com.sicmagroup.gpr.repository.InboxRepository;
+import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
@@ -73,6 +76,7 @@ import com.sicmagroup.gpr.repository.ServicePointRepository;
 
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
@@ -98,6 +102,9 @@ public class ClaimServiceImpl implements ClaimService {
     private final ServicePointRepository spRepository;
     private final InboxRepository inboxRepository;
     private final InboxMessageRepository messageRepository;
+    private final MediaRepository mediaRepository;
+    private final ClaimAudioRepository claimAudioRepository;
+    private final ExternalRecourseRepository externalRecourseRepository;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -2228,5 +2235,17 @@ public class ClaimServiceImpl implements ClaimService {
     public List<Claim> getAllByStatusIn(List<ClaimStatus> status) {
         return repository.findByStatusIn(status);
     }
+    
+    @Transactional
+    @Override
+    public void deleteById(Long id) throws NotFoundException {
+        Claim claim = repository.findById(id).orElseThrow(() -> new NotFoundException());
 
+        // Supprimer les éléments liés à la réclamation
+        mediaRepository.deleteByClaimId(id);
+        claimAudioRepository.deleteByClaimId(id);
+        
+        // Enfin, supprimer la réclamation elle-même
+        repository.delete(claim);
+    }
 }
