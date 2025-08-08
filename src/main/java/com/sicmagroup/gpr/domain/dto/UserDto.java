@@ -31,5 +31,5 @@ public class UserDto {
     private ServicePointResponse servicePointDto;
     private PosteResponse posteDto;
     private LocalDateTime createdAt;
-    
+    private boolean isRattached;
 }

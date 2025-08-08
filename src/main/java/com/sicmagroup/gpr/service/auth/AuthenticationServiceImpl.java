@@ -291,6 +291,134 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
     }
+    
+    @Override
+    public AuthenticationResponse publicRegister(RegisterRequest request) throws AuthenticationException {
+        Poste poste = posteRepository.findById(request.getPosteId()).orElseThrow(() ->
+            new RuntimeException("Poste non trouvé"));
+        ServicePoint servicePoint = servicePointRepository.findById(request.getServicePointId()).orElseThrow(() ->
+            new RuntimeException("Service Point non trouvé"));
+
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new AuthenticationException("Error this email already exist");
+        }
+
+        int totalUser = 0;
+        String license = "";
+        try {
+            File file = new File("data.txt");
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            StringBuffer sb = new StringBuffer();
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            br.close();
+
+            license = sb.toString();
+            if (!license.isEmpty()) {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode licenseObj = mapper.readTree(license);
+                String activationRequest = licenseObj.get("activationRequest").asText();
+                String[] splitARequest = activationRequest.split(",");
+                String[] splitInfo = splitARequest[1].split(":");
+                totalUser = Integer.parseInt(splitInfo[1]);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        if (!license.isEmpty() && totalUser != 0) {
+            long totalActuUser = userRepository.count();
+            if (totalActuUser < totalUser) {
+                String code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+                while (userRepository.findByCode(code).isPresent()) {
+                    code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
+                }
+
+                User user = User.builder()
+                        .firstandlastname(request.getFirstAndLastName())
+                        .email(request.getEmail())
+                        .password(passwordEncoder.encode(request.getPassword()))
+                        .additionalrole(Role.valueOf(request.getAdditionalRole()))
+                        .tel(request.getTel())
+                        .poste(poste)
+                        .isRa(request.isRa())
+                        .isDeleted(true)
+                        .isRattached(true)
+                        .servicePoint(servicePoint)
+                        .code(code)
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+
+                userRepository.save(user);
+
+                //envoi de mail au user
+                String message = "" +
+                "Cher(e) " + user.getFirstandlastname() + ",\n\n" +
+                "Votre compte vient d'être créé sur la plateforme de gestion des plaintes ou réclamations GPR."
+                + "\n\n" +
+                "Identifiants d'accès :" + "\n\n" +
+                "* Email : " + user.getEmail() + "\n" +
+                "* Mot de passe : " + request.getPassword() + "\n";
+               
+                
+                try {
+                    Utils.sendmail(user.getEmail(), "Création de compte", message, null,
+                            " ", settingServiceImpl);
+                } catch (Exception e) {
+                    if (e != null) {
+                        Log log2 = Log
+                                .builder()
+                                .libelle("Echec mail notification")
+                                .content(e.getMessage())
+                                .createdAt(LocalDateTime.now())
+                                .type(LogType.ERROR)
+                                .userId(0L)
+                                .userIpAddress(null)
+                                .target(LogTarget.APP)
+                                .build();
+
+                        logServiceImpl.saveLog(log2);
+                    }
+
+                }
+
+                return AuthenticationResponse.builder()
+                        .response(ApiResponseDto
+                                .builder()
+                                .status(true)
+                                .content("Inscription réussie. En attente de validation par un administrateur.")
+                                .build())
+                        .build();
+
+            } else {
+                return AuthenticationResponse.builder()
+                        .response(ApiResponseDto
+                                .builder()
+                                .status(false)
+                                .content(ErrorResponse.builder()
+                                        .title("Limite atteinte")
+                                        .message("Limite de compte utilisateur atteinte. Contactez-nous sur info@sicmagroup.com pour une extension.")
+                                        .build())
+                                .build())
+                        .build();
+            }
+        } else {
+            return AuthenticationResponse.builder()
+                    .response(ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .title("Licence manquante")
+                                    .message("Configurer votre institution avant d'effectuer cette action")
+                                    .build())
+                            .build())
+                    .build();
+        }
+    }
 
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
