@@ -94,4 +94,6 @@ public interface ClaimService {
         public List<Claim> getAllByStatusIn(List<ClaimStatus> status);
         
         public void deleteById(Long id) throws NotFoundException;
+        
+        public void deleteById_2(Long id) throws NotFoundException;
 }

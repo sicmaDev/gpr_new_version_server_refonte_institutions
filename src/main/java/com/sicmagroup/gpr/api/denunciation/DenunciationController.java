@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -1088,6 +1089,56 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
         } else {
 
             return ResponseEntity.ok(apiResponseDto);
+        }
+    }
+    
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<ApiResponseDto> deleteClaim(@PathVariable Long id, HttpServletRequest request) {
+        ApiResponseDto apiResponseDto;
+        try {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+            User connectedUser = User.builder().build();
+
+            try {
+                connectedUser = authService.getByEmail(collectorDetails.getUsername());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+            if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                try {
+                    service.deleteById_2(id);
+                    return ResponseEntity.ok(
+                        ApiResponseDto.builder().status(true).content("Réclamation supprimée avec succès.").build()
+                        );
+                } catch (NotFoundException e) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        ApiResponseDto.builder().status(false).content("Réclamation non trouvée.").build()
+                    );
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    ApiResponseDto.builder()
+                        .status(false)
+                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
+                        .build()
+                );
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .build()
+            );
         }
     }
 

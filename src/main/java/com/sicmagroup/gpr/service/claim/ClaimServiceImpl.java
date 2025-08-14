@@ -2240,12 +2240,25 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public void deleteById(Long id) throws NotFoundException {
         Claim claim = repository.findById(id).orElseThrow(() -> new NotFoundException());
-
         // Supprimer les éléments liés à la réclamation
         mediaRepository.deleteByClaimId(id);
         claimAudioRepository.deleteByClaimId(id);
         
         // Enfin, supprimer la réclamation elle-même
+        repository.delete(claim);
+    }
+
+    @Transactional
+    @Override
+    public void deleteById_2(Long id) throws NotFoundException {
+        Claim claim = repository.findById(id).orElseThrow(() -> new NotFoundException());
+        
+        claim.getMedias().clear();
+        repository.save(claim);
+        
+        mediaRepository.deleteByClaimId(id); 
+        claimAudioRepository.deleteByClaimId(id);
+        
         repository.delete(claim);
     }
 }
