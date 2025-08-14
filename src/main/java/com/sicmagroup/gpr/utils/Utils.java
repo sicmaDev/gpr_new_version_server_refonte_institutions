@@ -164,6 +164,63 @@ public class Utils {
         }
     }
 
+    public static Boolean sendSmsToClient(String number, String message, SettingServiceImpl settingServiceImpl) throws Exception {
+        try {
+            System.out.println("sendSmsToClient22 called with request: " + number + ", " + message);
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            if (sms != null) {
+                SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                String baseUrl = smsRequest.getUrl();
+                String token = smsRequest.getValMdp();
+                String sender = smsRequest.getValEmetteur();
+                String account = smsRequest.getValId();
+                message = UriEncoder.encode(message);
+                HttpURLConnection con;
+
+                baseUrl += smsRequest.getLibId() + "=" + account + "&" + smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender + "&"
+                        + smsRequest.getLibDestinataire() + "=" + number + "&" + smsRequest.getLibMessage() + "="
+                        + message;
+                URL url = new URL(baseUrl);
+                con = (HttpURLConnection) url.openConnection();
+                con.setRequestMethod("GET");
+                int status = con.getResponseCode();
+                if (status >= 200 && status <= 299) {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(con.getInputStream()));
+                    String inputLine;
+                    StringBuffer content = new StringBuffer();
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+
+                    return true;
+
+                } else {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(con.getErrorStream()));
+                    String inputLine;
+                    StringBuffer content = new StringBuffer();
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+                    return false;
+
+                }
+            }
+            return false;
+
+        } catch (IOException e) {
+
+            return false;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
     public static Boolean testMailConfig(String to, String subject, String body, String cc, String from,
             SettingServiceImpl settingServiceImpl) {
         SimpleMailMessage message = new SimpleMailMessage();
