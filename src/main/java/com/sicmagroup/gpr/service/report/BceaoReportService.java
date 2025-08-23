@@ -151,7 +151,7 @@ public class BceaoReportService {
         // List<Claim> claimsSatisfied = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
         //         Arrays.asList(ClaimStatus.SATISFIED));
         List<Claim> claimsSatisfied = claimRepository.findByTypeAndStatusInAndReceiptDateTimeBetween(
-                ClaimType.CLAIM, Arrays.asList(ClaimStatus.SATISFIED),start, end);
+                ClaimType.CLAIM, Arrays.asList(ClaimStatus.SATISFIED),start, end); 
         bceaoReport.setTauxSatisfaction(Utils.parseDouble(
                 Utils.percentCalculator(Long.valueOf(claimsSatisfied.size()), Long.valueOf(claims2.size()))));
         // litigate global
