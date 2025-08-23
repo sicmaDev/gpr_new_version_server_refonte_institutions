@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -146,8 +148,10 @@ public class BceaoReportService {
         ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
         List<Claim> claims2 = claimRepository.findByTypeAndStatusInAndReceiptDateTimeBetween(ClaimType.CLAIM,
         allSatisfaction, start, end);
-        List<Claim> claimsSatisfied = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
-                Arrays.asList(ClaimStatus.SATISFIED));
+        // List<Claim> claimsSatisfied = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+        //         Arrays.asList(ClaimStatus.SATISFIED));
+        List<Claim> claimsSatisfied = claimRepository.findByTypeAndStatusInAndReceiptDateTimeBetween(
+                ClaimType.CLAIM, Arrays.asList(ClaimStatus.SATISFIED),start, end);
         bceaoReport.setTauxSatisfaction(Utils.parseDouble(
                 Utils.percentCalculator(Long.valueOf(claimsSatisfied.size()), Long.valueOf(claims2.size()))));
         // litigate global
