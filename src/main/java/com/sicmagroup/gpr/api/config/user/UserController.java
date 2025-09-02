@@ -245,7 +245,7 @@ public class UserController {
                 apiResponseDto = ApiResponseDto
                         .builder()
                         .status(false)
-                        .content(ErrorResponse.builder().title("NOT FOUND").message("User not found").build())
+                        .content(ErrorResponse.builder().title("NOT FOUND").message(e.getMessage()).build())
                         .build();
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
             }

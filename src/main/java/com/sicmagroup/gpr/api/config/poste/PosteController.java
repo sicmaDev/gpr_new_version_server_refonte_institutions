@@ -22,6 +22,7 @@ import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.PosteDto;
 import com.sicmagroup.gpr.domain.model.Poste;
+import com.sicmagroup.gpr.repository.PosteRepository;
 import com.sicmagroup.gpr.service.poste.PosteServiceImpl;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -37,6 +38,7 @@ public class PosteController {
 
     private final ModelMapper modelMapper;
     private final PosteServiceImpl posteServiceImpl;
+    private final PosteRepository posteRepository;
 
     @GetMapping("/list/{deleted}")
     public ResponseEntity<ApiResponseDto> getAll(@PathVariable(name = "deleted", required = false) boolean deleted) {
@@ -116,6 +118,40 @@ public class PosteController {
         } else {
             Poste poste;
             try {
+                poste = posteServiceImpl.getById(id);
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse
+                                .builder()
+                                .title("NOT FOUND")
+                                .message("Poste introuvable")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+            // Vérification habilitation H12
+            if (poste.getHabilitations() != null && poste.getHabilitations().contains("H12")) {
+                try {
+                    long countH12 = posteRepository.countByHabilitationsContaining("H12");
+                    if (countH12 <= 1 && !posteDto.getHabilitations().contains("H12")) {
+                        throw new IllegalStateException("Impossible de modifier le dernier poste avec l’habilitation H12 pour cette institution.");
+                    }
+                } catch (IllegalStateException e) {
+                    apiResponseDto = ApiResponseDto.builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .title("Opération impossible")
+                                    .message(e.getMessage())
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+            }
+
+            try {
                 poste = posteServiceImpl.updatePoste(convertFromDtoToEntity(posteDto));
                 apiResponseDto = ApiResponseDto
                         .builder()
@@ -178,6 +214,25 @@ public class PosteController {
                             .build())
                     .build();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+
+        // Vérification habilitation H12
+        if (poste.getHabilitations() != null && poste.getHabilitations().contains("H12")) {
+            try {
+                long countH12 = posteRepository.countByHabilitationsContaining("H12");
+                if (countH12 <= 1) {
+                    throw new IllegalStateException("Impossible de supprimer le dernier poste avec l’habilitation H12 pour cette institution.");
+                }
+            } catch (IllegalStateException e) {
+                apiResponseDto = ApiResponseDto.builder()
+                        .status(false)
+                        .content(ErrorResponse.builder()
+                                .title("Opération impossible")
+                                .message(e.getMessage())
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
         }
 
         if (poste.getUsers().isEmpty()) {
