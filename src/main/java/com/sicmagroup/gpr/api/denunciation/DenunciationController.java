@@ -5,6 +5,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -203,7 +204,10 @@ public class DenunciationController {
             allClaims = tmpClaims;
         }
 
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
                 .builder()
@@ -317,7 +321,10 @@ public class DenunciationController {
             allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims);
 
         }
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
                 .builder()

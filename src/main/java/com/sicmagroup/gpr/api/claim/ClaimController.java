@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Comparator;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -237,7 +238,10 @@ public class ClaimController {
         // if user don't it can see claims he saved and clamed affected to him for
         // treatment in this case
         // user can see only specific information about the claim
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
                 .builder()
@@ -405,8 +409,10 @@ public class ClaimController {
 
             allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims);
         }
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto)
-                .collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
         apiResponseDto = ApiResponseDto
                 .builder()
                 .status(true)
@@ -474,7 +480,10 @@ public class ClaimController {
         } else {
             allClaims = service.getClaimByStatus(ClaimType.CLAIM, status);
         }
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
                 .builder()
@@ -492,7 +501,10 @@ public class ClaimController {
         ApiResponseDto apiResponseDto;
         allClaims = service.getAllWithApprovedSolutionByTypeAndStatus(ClaimType.CLAIM,
                 Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED));
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
                 .builder()

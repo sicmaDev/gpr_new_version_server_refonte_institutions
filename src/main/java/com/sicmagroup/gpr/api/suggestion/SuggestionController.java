@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -77,7 +78,11 @@ public class SuggestionController {
     public ResponseEntity<ApiResponseDto> getList() {
         ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
         List<Suggestion> suggestions = service.getAllByStatusNot(ClaimStatus.TEMP_SAVED);
-        List<SuggestionDto> suggestionDtos = suggestions.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<SuggestionDto> suggestionDtos = suggestions.stream()
+            .map(this::convertToDto)
+            .sorted(Comparator.comparing(SuggestionDto::getCreatedAt).reversed())
+            .collect(Collectors.toList());
+            
         // List<Suggestion> suggestions = service.get
         apiResponseDto = ApiResponseDto
                 .builder()
@@ -142,7 +147,11 @@ public class SuggestionController {
         } else {
             suggestions = service.getAllByStatusIn(Arrays.asList(status));
         }
-        List<SuggestionDto> suggestionDtos = suggestions.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<SuggestionDto> suggestionDtos = suggestions.stream()
+            .map(this::convertToDto)
+            .sorted(Comparator.comparing(SuggestionDto::getCreatedAt).reversed())
+            .collect(Collectors.toList());
+
         // List<Suggestion> suggestions = service.get
         apiResponseDto = ApiResponseDto
                 .builder()
