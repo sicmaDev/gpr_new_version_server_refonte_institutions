@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
@@ -202,6 +203,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 }
 
                 user = userRepository.save(user);
+                final User userForMail = user;
                 // HashMap<String, Object> extras = new HashMap<>();
                 // extras.put("additionalRole", user.getAdditionalrole());
                 // extras.put("habilitations", user.getHabilitations());
@@ -222,36 +224,49 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 content.put("user", userDto);
                 content.put("token", jwtToken);
 
-                //envoi de mail au user
-                String message = "" +
-                "Cher(e) " + user.getFirstandlastname() + ",\n\n" +
-                "Votre compte vient d'être créé sur la plateforme de gestion des plaintes ou réclamations GPR."
-                + "\n\n" +
-                "Identifiants d'accès :" + "\n\n" +
-                "* Email : " + user.getEmail() + "\n" +
-                "* Mot de passe : " + request.getPassword() + "\n";
-               
-                
-                try {
-                    Utils.sendmail(user.getEmail(), "Création de compte", message, null,
-                            " ", settingServiceImpl);
-                } catch (Exception e) {
-                    if (e != null) {
-                        Log log2 = Log
-                                .builder()
-                                .libelle("Echec mail notification")
-                                .content(e.getMessage())
-                                .createdAt(LocalDateTime.now())
-                                .type(LogType.ERROR)
-                                .userId(0L)
-                                .userIpAddress(null)
-                                .target(LogTarget.APP)
-                                .build();
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        //envoi de mail au user
+                        String message = "" +
+                        "Cher(e) " + userForMail.getFirstandlastname() + ",\n\n" +
+                        "Votre compte vient d'être créé sur la plateforme de gestion des plaintes ou réclamations GPR."
+                        + "\n\n" +
+                        "Identifiants d'accès :" + "\n\n" +
+                        "* Email : " + userForMail.getEmail() + "\n" +
+                        "* Mot de passe : " + request.getPassword() + "\n";
+                       
+                        Utils.sendmail(userForMail.getEmail(), "Création de compte", message, null,
+                                " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification création compte")
+                            .content("Success mail notification création compte")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
 
-                        logServiceImpl.saveLog(log2);
+                        logServiceImpl.saveLog(successLog);                                 
+                    } catch (Exception e) {
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification création compte")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress(null)
+                                    .target(LogTarget.APP)
+                                    .build();
+    
+                            logServiceImpl.saveLog(log2);
+                        }
                     }
-
-                }
+                });
 
 
 
@@ -355,36 +370,50 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
                 userRepository.save(user);
 
-                //envoi de mail au user
-                String message = "" +
-                "Cher(e) " + user.getFirstandlastname() + ",\n\n" +
-                "Votre compte vient d'être créé sur la plateforme de gestion des plaintes ou réclamations GPR."
-                + "\n\n" +
-                "Identifiants d'accès :" + "\n\n" +
-                "* Email : " + user.getEmail() + "\n" +
-                "* Mot de passe : " + request.getPassword() + "\n";
-               
-                
-                try {
-                    Utils.sendmail(user.getEmail(), "Création de compte", message, null,
-                            " ", settingServiceImpl);
-                } catch (Exception e) {
-                    if (e != null) {
-                        Log log2 = Log
-                                .builder()
-                                .libelle("Echec mail notification")
-                                .content(e.getMessage())
-                                .createdAt(LocalDateTime.now())
-                                .type(LogType.ERROR)
-                                .userId(0L)
-                                .userIpAddress(null)
-                                .target(LogTarget.APP)
-                                .build();
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        //envoi de mail au user
+                        String message = "" +
+                        "Cher(e) " + user.getFirstandlastname() + ",\n\n" +
+                        "Votre compte vient d'être créé sur la plateforme de gestion des plaintes ou réclamations GPR."
+                        + "\n\n" +
+                        "Identifiants d'accès :" + "\n\n" +
+                        "* Email : " + user.getEmail() + "\n" +
+                        "* Mot de passe : " + request.getPassword() + "\n";                   
+                        
+                        Utils.sendmail(user.getEmail(), "Création de compte", message, null,
+                        " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification création compte")
+                            .content("Success mail notification création compte")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
 
-                        logServiceImpl.saveLog(log2);
+                        logServiceImpl.saveLog(successLog);                         
+                    } catch (Exception e) {
+                        if (e != null) { 
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification création compte")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress(null)
+                                    .target(LogTarget.APP)
+                                    .build();
+    
+                            logServiceImpl.saveLog(log2);
+                        }
+    
                     }
-
-                }
+                });
 
                 return AuthenticationResponse.builder()
                         .response(ApiResponseDto
@@ -746,16 +775,50 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
             List<User> userMailTo = new ArrayList<>();
             userMailTo.add(user);
-            String message = "" +
-                    "Hello \n" +
-                    "Bravo,votre mot de passe a été reinstallé sur GPR"
-                    + "\n\n" +
-                    "Voici vos informations de connexion:" + "\n\n" +
-                    "* Email: " + user.getEmail() + "\n" +
-                    "* Mot de passe : " + new String(password) + "\n" +
-                    "Ce mail ne doit pas etre divulger.";
+            
+            // Envoi de mail en parallèle
+            CompletableFuture.runAsync(() -> {
+                try {
+                    String message = "" +
+                        "Hello \n" +
+                        "Bravo,votre mot de passe a été reinstallé sur GPR"
+                        + "\n\n" +
+                        "Voici vos informations de connexion:" + "\n\n" +
+                        "* Email: " + user.getEmail() + "\n" +
+                        "* Mot de passe : " + new String(password) + "\n" +
+                        "Ce mail ne doit pas etre divulger.";
 
-            Utils.sendmail(userMailTo, "Modification plateforme de GPR", message, null, " ", settingServiceImpl);
+                    Utils.sendmail(userMailTo, "Modification plateforme de GPR", message, null, " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification mot de passe oublié")
+                            .content("Success mail notification mot de passe oublié")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                        logServiceImpl.saveLog(successLog);                     
+                } catch (Exception e) {
+                    if (e != null) {
+                        Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification mot de passe oublié")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(null)
+                            .target(LogTarget.APP)
+                            .build();
+
+                        logServiceImpl.saveLog(log2);
+                    }
+                }
+            });
+            
             user.setPassword(passwordEncoder.encode(new String(password)));
             userRepository.save(user);
 

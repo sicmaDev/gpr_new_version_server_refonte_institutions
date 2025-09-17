@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -27,10 +28,13 @@ import com.sicmagroup.gpr.domain.dto.chat.VoteDto;
 import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ChatStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
+import com.sicmagroup.gpr.domain.enumeration.LogTarget;
+import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.enumeration.SolutionStatus;
 import com.sicmagroup.gpr.domain.enumeration.VoteType;
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.Log;
 import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
@@ -45,6 +49,7 @@ import com.sicmagroup.gpr.repository.chat.MessageRepository;
 import com.sicmagroup.gpr.repository.chat.UserVoteRepository;
 import com.sicmagroup.gpr.repository.chat.VoteRepository;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
+import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
@@ -64,6 +69,7 @@ public class MessageServiceImp implements MessageService {
     private final VoteRepository voteRepository;
     private final SolutionRepository solutionRepository;
     private final SettingServiceImpl settingServiceImpl;
+    private final LogServiceImpl logServiceImpl;
 
     @Override
     public Message send(NewMessageRequest request) throws Exception {
@@ -335,9 +341,43 @@ public class MessageServiceImp implements MessageService {
                         "La solution proposée est la suivante : " + "\n" +
                         solution2.getContent() + "\n\n" +
                         "Nous vous invitons à communiquer la solution au plaignant pour mesurer sa satisfaction.";
+            
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Utils.sendmail(pilote.get(0).getEmail(), "Réclamation traitée",
+                                messageStr, null, " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification réclamation traitée")
+                            .content("Success mail notification réclamation traitée")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
 
-                Utils.sendmail(pilote.get(0).getEmail(), "Réclamation traitée",
-                        messageStr, null, " ", settingServiceImpl);
+                        logServiceImpl.saveLog(successLog);                                 
+                    } catch (Exception e) {
+                        // e.printStackTrace();
+                        
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail réclamation traitée")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+
+                            logServiceImpl.saveLog(log2);
+                        }
+                    }
+                }); 
             }
         }
 

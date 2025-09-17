@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.boot.actuate.autoconfigure.health.HealthProperties.Status;
 import org.springframework.stereotype.Service;
@@ -75,40 +76,56 @@ public class ChatServiceImpl implements ChatService {
                     u.getChatsMember().add(chat);
                     userRepository.save(u);
                 }
-                try {
 
-                    Double apercuContent = claim.getContent().length() * 0.5;
-                    String message = "Bonjour cher utilisateur, le collaborateur " +
-                            user.getFirstandlastname()
-                            + " a démarré une session. \n\n" +
-                            "\t * Code réclamation : " + claim.getCode() + " \n" +
-                            "Détails de la réclamation :" + "\n\n" +
-                            "* Date d'enregistrement : " +
-                            Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
-                            + "\n" +
-                            "* Aperçu du contenu : " + claim.getContent().substring(0,
-                                    apercuContent.intValue())
-                            + "...\n\n" +
-                            "Nous vous invitons à rejoindre cette session afin de procéder à son traitement.";
-                    Utils.sendmail(members, "Démarrage d'une session", message, null,
-                            " ", settingServiceImpl);
-                } catch (Exception e) {
-                    if (e != null) {
-                        Log log2 = Log
-                                .builder()
-                                .libelle("Echec mail notification")
-                                .content(e.getMessage())
-                                .createdAt(LocalDateTime.now())
-                                .type(LogType.ERROR)
-                                .userId(0L)
-                                .userIpAddress("")
-                                .target(LogTarget.APP)
-                                .build();
+                Double apercuContent = claim.getContent().length() * 0.5;
+            
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        String message = "Bonjour cher utilisateur, le collaborateur " +
+                                user.getFirstandlastname()
+                                + " a démarré une session. \n\n" +
+                                "\t * Code réclamation : " + claim.getCode() + " \n" +
+                                "Détails de la réclamation :" + "\n\n" +
+                                "* Date d'enregistrement : " +
+                                Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
+                                + "\n" +
+                                "* Aperçu du contenu : " + claim.getContent().substring(0,
+                                        apercuContent.intValue())
+                                + "...\n\n" +
+                                "Nous vous invitons à rejoindre cette session afin de procéder à son traitement.";
+                        
+                        Utils.sendmail(members, "Démarrage d'une session", message, null,
+                                " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification création session")
+                            .content("Success mail notification création session")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
 
-                        logServiceImpl.saveLog(log2);
+                        logServiceImpl.saveLog(successLog);                                 
+                    } catch (Exception e) {
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification création session")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+
+                            logServiceImpl.saveLog(log2);
+                        }
                     }
-
-                }
+                });
 
                 return chat;
             } else {
@@ -177,21 +194,51 @@ public class ChatServiceImpl implements ChatService {
         }
 
         chat = repository.save(chat);
-
+        final Chat finalChat = chat;
         
         userRepository.save(guest);
-
-        try {
-            String message = "Cher " + guest.getFirstandlastname() + ", \n\n" +
+            
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                String message = "Cher " + guest.getFirstandlastname() + ", \n\n" +
                     "Vous êtes invité à intervenir dans les discussions à propos de la réclamation : "
-                    + chat.getClaim().getCode() + " \n\n" +
+                    + finalChat.getClaim().getCode() + " \n\n" +
                     "Connectez vous sur la plateforme GPR.";
-            Utils.sendmail(guest.getEmail(), "Invitation chat", message, null, "", settingServiceImpl);
-            Utils.sendSms(Arrays.asList(guest), message, settingServiceImpl);
-        } catch (Exception e) {
-            e.printStackTrace();
-            // TODO: save in log
-        }
+
+                Utils.sendmail(guest.getEmail(), "Invitation chat", message, null, "", settingServiceImpl);
+                                                
+                Log successLog = Log.builder()
+                    .libelle("Mail notification invitation chat")
+                    .content("Success mail notification invitation chat")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog); 
+
+                Utils.sendSms(Arrays.asList(guest), message, settingServiceImpl);
+            } catch (Exception e) {
+                // e.printStackTrace();
+                // TODO: save in log
+                
+                Log log2 = Log
+                        .builder()
+                        .libelle("Echec mail notification invitation chat")
+                        .content(e.getMessage())
+                        .createdAt(LocalDateTime.now())
+                        .type(LogType.ERROR)
+                        .userId(0L)
+                        .userIpAddress(null)
+                        .target(LogTarget.APP)
+                        .build();
+    
+                logServiceImpl.saveLog(log2);
+            }
+        });
 
         SessionJoinResponse sessionJoinResponse = SessionJoinResponse
             .builder()
@@ -221,23 +268,53 @@ public class ChatServiceImpl implements ChatService {
 
         chat.setUpdatedAt(LocalDateTime.now());
         chat = repository.save(chat);
+        final Chat finalChat = chat;
         if (guest.getChatsGuest().contains(chat)) {
             guest.getChatsGuest().remove(chat);
             guest.setUpdatedAt(LocalDateTime.now());
             userRepository.save(guest);
         }
+            
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                String message = "Cher(e) " + guest.getFirstandlastname() + ", \n\n" +
+                        "Vous avez exclus de la discussion sur le traitement de la réclamation : "
+                        + finalChat.getClaim().getCode() + " \n\n" +
+                        "Contactez le collaborateur ayant initié la session s'il s'agit d'une erreur.";
 
-        try {
-            String message = "Cher(e) " + guest.getFirstandlastname() + ", \n\n" +
-                    "Vous avez exclus de la discussion sur le traitement de la réclamation : "
-                    + chat.getClaim().getCode() + " \n\n" +
-                    "Contactez le collaborateur ayant initié la session s'il s'agit d'une erreur.";
-            Utils.sendmail(guest.getEmail(), "Ejection du chat", message, null, "", settingServiceImpl);
-            // Utils.sendSms(Arrays.asList(guest), message);
-        } catch (Exception e) {
-            e.printStackTrace();
-            // TODO: save in log
-        }
+                Utils.sendmail(guest.getEmail(), "Ejection du chat", message, null, "", settingServiceImpl);
+                                                                
+                Log successLog = Log.builder()
+                    .libelle("Mail notification éjection chat")
+                    .content("Success mail notification éjection chat")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog); 
+                // Utils.sendSms(Arrays.asList(guest), message);
+            } catch (Exception e) {
+                // e.printStackTrace();
+                // TODO: save in log
+                
+                Log log2 = Log
+                        .builder()
+                        .libelle("Echec mail notification éjection chat")
+                        .content(e.getMessage())
+                        .createdAt(LocalDateTime.now())
+                        .type(LogType.ERROR)
+                        .userId(0L)
+                        .userIpAddress(null)
+                        .target(LogTarget.APP)
+                        .build();
+    
+                logServiceImpl.saveLog(log2);
+            }
+        });
         
         SessionJoinResponse sessionJoinResponse = SessionJoinResponse
             .builder()

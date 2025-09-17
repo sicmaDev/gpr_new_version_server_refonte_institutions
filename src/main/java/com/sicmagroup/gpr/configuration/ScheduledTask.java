@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -39,16 +40,58 @@ public class ScheduledTask {
         List<AlertDto> claimAlertDtos = claimService.getAllAlertDtosByType(ClaimType.CLAIM);
         List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));
         List<User> usersToContact = authServiceImpl.getUsersByRoles(roles);
-        try {
-            Utils.sendmail(usersToContact, " Notification retard de traitement", claimAlertDtos.size()
-                    + " Réclamation(s) ont un retard de traitement. Connectez-vous à la plateforme de GPR pour proposer des solutions adéquates à ces réclamations.",
-                    null,
-                    " ", settingServiceImpl);
-        } catch (Exception e) {
-            if (e != null) {
+
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(usersToContact, " Notification retard de traitement", claimAlertDtos.size()
+                        + " Réclamation(s) ont un retard de traitement. Connectez-vous à la plateforme de GPR pour proposer des solutions adéquates à ces réclamations.",
+                        null,
+                        " ", settingServiceImpl);
+                                        
+                Log successLog = Log.builder()
+                    .libelle("Mail notification Réclamation Alerte notification")
+                    .content("Success mail notification Réclamation Alerte notification")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog);                         
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail Réclamation Alerte notification")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(null)
+                            .target(LogTarget.APP)
+                            .build();
+    
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
+
+        // denunciation
+        List<AlertDto> denunciationAlerts = claimService.getAllAlertDtosByType(ClaimType.DENUNCIACION);
+
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(usersToContact, " Notification retard de traitement", denunciationAlerts.size()
+                        + " Dénonciation(s) ont un retard de traitement. Connectez-vous à la plateforme de GPR pour proposer des solutions adéquates à ces dénonciations.",
+                        null,
+                        " ", settingServiceImpl);
+            } catch (Exception e) {
                 Log log2 = Log
                         .builder()
-                        .libelle("Echec mail Réclamation Alerte notification")
+                        .libelle("Echec mail Dénonciation Alerte notification")
                         .content(e.getMessage())
                         .createdAt(LocalDateTime.now())
                         .type(LogType.ERROR)
@@ -56,32 +99,9 @@ public class ScheduledTask {
                         .userIpAddress(null)
                         .target(LogTarget.APP)
                         .build();
-
+    
                 logServiceImpl.saveLog(log2);
             }
-        }
-
-        // denunciation
-        claimAlertDtos = claimService.getAllAlertDtosByType(ClaimType.DENUNCIACION);
-        try {
-            Utils.sendmail(usersToContact, " Notification retard de traitement", claimAlertDtos.size()
-                    + " Dénonciation(s) ont un retard de traitement. Connectez-vous à la plateforme de GPR pour proposer des solutions adéquates à ces dénonciations.",
-                    null,
-                    " ", settingServiceImpl);
-        } catch (Exception e) {
-            Log log2 = Log
-                    .builder()
-                    .libelle("Echec mail Dénonciation Alerte notification")
-                    .content(e.getMessage())
-                    .createdAt(LocalDateTime.now())
-                    .type(LogType.ERROR)
-                    .userId(0L)
-                    .userIpAddress(null)
-                    .target(LogTarget.APP)
-                    .build();
-
-            logServiceImpl.saveLog(log2);
-        }
-
+        });
     }
 }
