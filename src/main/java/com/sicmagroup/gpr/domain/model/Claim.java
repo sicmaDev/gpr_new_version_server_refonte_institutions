@@ -39,8 +39,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @Table(name = "gps_claim")
 public class Claim {
-
-
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -142,6 +140,4 @@ public class Claim {
 	public int hashCode() {
 		return Objects.hash(code);
 	}
-
-
 }

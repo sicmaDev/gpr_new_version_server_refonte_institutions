@@ -15,6 +15,7 @@ import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.SatisfactionStatus;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
 
@@ -96,4 +97,6 @@ public interface ClaimService {
         public void deleteById(Long id) throws NotFoundException;
         
         public void deleteById_2(Long id) throws NotFoundException;
+        
+        Claim saveExtra(ExtraContent extraContent, MultipartFile[] files, MultipartFile[] audios, Long id) throws Exception;
 }

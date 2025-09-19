@@ -11,12 +11,14 @@ import org.springframework.web.multipart.MultipartFile;
 import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ClaimAudio;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 
 public interface ClaimAudioService {
     
     List<ClaimAudio> store(MultipartFile[] files, Claim claim);
+    List<ClaimAudio> store(MultipartFile[] files, Claim claim,ExtraContent extraContent);    
 
     List<ClaimAudio> store(MultipartFile[] files, Suggestion suggestion);
 

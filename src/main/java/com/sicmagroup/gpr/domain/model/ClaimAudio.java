@@ -33,6 +33,12 @@ public class ClaimAudio {
 
     private Long size;
 
+    @Column(name="is_extra",columnDefinition = "boolean default false")
+    private boolean is_extra;
+
+    @ManyToOne
+    private ExtraContent extraContent;
+
     @ManyToOne
     private Claim claim;
 

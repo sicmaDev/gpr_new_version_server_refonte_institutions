@@ -40,6 +40,7 @@ import com.sicmagroup.gpr.domain.dto.ExistingSolutionResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.ObjetDto;
 import com.sicmagroup.gpr.domain.dto.SatisfactionMeasureDto;
+import com.sicmagroup.gpr.domain.dto.ExtraContentResponse;
 import com.sicmagroup.gpr.domain.dto.SolutionDto;
 import com.sicmagroup.gpr.domain.dto.chat.ChatDto;
 import com.sicmagroup.gpr.domain.dto.chat.MessageDto;
@@ -74,6 +75,7 @@ import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.domain.model.chat.Message;
 import com.sicmagroup.gpr.domain.model.chat.UserVote;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.chat.Vote;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
@@ -145,6 +147,7 @@ public class ClaimController {
                 .status(true)
                 .content(mediaResponses)
                 .build();
+        System.out.println("getAllFilesForAClaim" + mediaResponses);
         return ResponseEntity.ok(apiResponseDto);
     }
 
@@ -533,6 +536,51 @@ public class ClaimController {
     }
 
 
+    @PostMapping(value = "/add/extra", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
+            MediaType.MULTIPART_FORM_DATA_VALUE })
+    public ResponseEntity<ApiResponseDto> saveExtraClaim(
+            @RequestPart("claim_id") String claim_id,
+            @RequestPart(name = "contenu", required = false) String contenu,
+            @RequestPart(name = "files", required = false) MultipartFile[] files,
+            @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request)
+            throws JsonMappingException, JsonProcessingException {
+
+        ApiResponseDto apiResponseDto;
+        try {
+            if(contenu == null && (files == null || files.length ==0 ) &&  (audios == null || audios.length ==0 ) ){
+                throw new Exception("Les parametres ne sont pas valides");
+            }
+            boolean isFile = contenu == null;
+            ExtraContent extraContent = ExtraContent.builder()
+                    .contenu(contenu)
+                    .status(null)
+                    .file(isFile)
+                    .claim(null)
+                    .suggestion(null)
+                    .build();
+
+            Claim claim = service.saveExtra(extraContent, files, audios, Long.parseLong(claim_id));
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(convertToDto(claim))
+                    .build();
+
+            return ResponseEntity.ok(apiResponseDto);
+
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                    .build();
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
+        }
+    }
 
 
     @PostMapping(value = "/add", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
@@ -1654,9 +1702,20 @@ public class ClaimController {
         return existingSolutionDto;
     }
 
+    // private MediaResponse convertToResponse(Media media) {
+    //     MediaResponse mediaResponse = modelMapper.map(media, MediaResponse.class);
+    //     mediaResponse.setSize(media.getSize());
+    //     return mediaResponse;
+    // }
+
     private MediaResponse convertToResponse(Media media) {
         MediaResponse mediaResponse = modelMapper.map(media, MediaResponse.class);
         mediaResponse.setSize(media.getSize());
+        if (media.getExtraContent() instanceof ExtraContent) {
+            mediaResponse.setExtra(modelMapper.map(media.getExtraContent(),
+            ExtraContentResponse.class));
+        }
+
         return mediaResponse;
     }
 

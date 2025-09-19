@@ -31,6 +31,9 @@ public class Media {
     @Lob
     @Column(name = "path", columnDefinition = "TEXT")
     private String path;
+    
+    @Column(name="is_extra",columnDefinition = "boolean default false")
+    private Boolean is_extra;
 
     private Long size;
 
@@ -39,4 +42,7 @@ public class Media {
 
     @ManyToOne
     private Suggestion suggestion;
+    
+    @ManyToOne
+    private ExtraContent extraContent;
 }

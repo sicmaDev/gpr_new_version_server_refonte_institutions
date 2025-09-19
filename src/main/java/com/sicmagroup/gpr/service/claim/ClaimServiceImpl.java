@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.ProposedSolutionRequest;
@@ -37,6 +38,7 @@ import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.ExistingSolution;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Inbox;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Language;
@@ -63,6 +65,7 @@ import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.collectionChannel.CollectionChannelServiceImpl;
 import com.sicmagroup.gpr.service.existingSolution.ExistingSolutionServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
+import com.sicmagroup.gpr.service.extra.ExtraContentServiceImpl;
 import com.sicmagroup.gpr.service.language.LanguageServiceImpl;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
@@ -72,7 +75,9 @@ import com.sicmagroup.gpr.service.satisfactionMeasure.SatifactionMeasureServiceI
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
+import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.utils.Utils;
+import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 
 import org.springframework.batch.core.launch.JobLauncher;
@@ -105,7 +110,9 @@ public class ClaimServiceImpl implements ClaimService {
     private final InboxMessageRepository messageRepository;
     private final MediaRepository mediaRepository;
     private final ClaimAudioRepository claimAudioRepository;
+    private final ExtraContentServiceImpl extraContentServiceImpl;
     private final ExternalRecourseRepository externalRecourseRepository;
+    private final CurrentUserUtils userAuth;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -378,6 +385,37 @@ public class ClaimServiceImpl implements ClaimService {
 
         return claim;
 
+    }
+
+    @Override
+    public Claim saveExtra(ExtraContent extraContent, MultipartFile[] files, MultipartFile[] audios, Long id)
+            throws Exception {
+        Claim claim = getById(id);
+        extraContent.setStatus(claim.getStatus());
+        extraContent.setType(claim.getType());
+        extraContent.setClaim(claim);
+        extraContent.setSuggestion(null);
+        extraContent.setUser(userAuth.getUser());
+        extraContent.setCreatedAt(LocalDateTime.now());
+        extraContent.setUpdatedAt(LocalDateTime.now());
+
+        ExtraContent extraContentSave = extraContentServiceImpl.saveExtraContent(extraContent);
+        if (extraContentSave.isFile()) { 
+            if (files != null && files.length != 0) {
+                List<Media> medias = mediaServiceImpl.store(files, claim, extraContentSave);
+                claim.setUpdatedAt(LocalDateTime.now());
+                
+                return repository.save(claim);
+            }
+            if (audios != null && audios.length != 0) {
+                List<ClaimAudio> audio = claimAudioServiceImpl.store(audios, claim, extraContentSave);
+                claim.setUpdatedAt(LocalDateTime.now());
+                
+                return repository.save(claim);
+            }
+        }
+        
+        return claim;
     }
 
     @Override
