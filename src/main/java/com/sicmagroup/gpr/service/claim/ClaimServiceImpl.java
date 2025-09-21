@@ -67,6 +67,7 @@ import com.sicmagroup.gpr.service.collectionChannel.CollectionChannelServiceImpl
 import com.sicmagroup.gpr.service.existingSolution.ExistingSolutionServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
 import com.sicmagroup.gpr.service.extra.ExtraContentServiceImpl;
+import com.sicmagroup.gpr.service.historiqueAffectation.HistoriqueAffectationServiceImpl;
 import com.sicmagroup.gpr.service.language.LanguageServiceImpl;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
@@ -113,6 +114,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final ClaimAudioRepository claimAudioRepository;
     private final ExtraContentServiceImpl extraContentServiceImpl;
     private final ExternalRecourseRepository externalRecourseRepository;
+    private final HistoriqueAffectationServiceImpl historiqueAffectationServiceImpl;
     private final CurrentUserUtils userAuth;
 
     @Override
@@ -718,6 +720,8 @@ public class ClaimServiceImpl implements ClaimService {
         if (!affectTreatmentRequest.getMessage().isEmpty()) {
             message = affectTreatmentRequest.getMessage();
         }
+
+        historiqueAffectationServiceImpl.storeHistorique(affectTreatmentRequest);
         
         final String finalMessage = message;
         // Envoi de mail en parallèle
