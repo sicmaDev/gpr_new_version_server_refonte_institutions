@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.sicmagroup.gpr.api.claim.AffectTreatmentRequest;
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.ProposedSolutionRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
@@ -670,7 +671,7 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public Claim affectTreatmentToUser(Claim claim, User affectedTo, User affectedBy, Boolean anonymous,
-            String remoteAddress)
+            String remoteAddress, AffectTreatmentRequest affectTreatmentRequest)
             throws Exception {
         // Claim claim = repository.findById(claimId).orElseThrow(() -> new
         // ClaimException("Claim choosed not found"));
@@ -710,13 +711,19 @@ public class ClaimServiceImpl implements ClaimService {
                 "Détails de la réclamation :" + "\n\n" +
                 "* Code de réclamation : " + claim.getCode() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
+                "* Délai de traitement : " + affectTreatmentRequest.getDelai() + " jours \n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "Veuillez prendre les mesures nécessaires pour examiner et traiter cette réclamation dans les plus brefs délais";
-                    
+
+        if (!affectTreatmentRequest.getMessage().isEmpty()) {
+            message = affectTreatmentRequest.getMessage();
+        }
+        
+        final String finalMessage = message;
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                Utils.sendmail(affectedTo.getEmail(), "Affectation de réclamation", message, null,
+                Utils.sendmail(affectedTo.getEmail(), "Affectation de réclamation", finalMessage, null,
                         " ", settingServiceImpl);
                 
                 Log successLog = Log.builder()

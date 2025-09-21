@@ -645,7 +645,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
 
                 try {
                     claim = service.affectTreatmentToUser(claim, affectedTo, affectedBy, request.getAffectedAnonymous(),
-                            request2.getRemoteAddr());
+                            request2.getRemoteAddr(), request);
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)

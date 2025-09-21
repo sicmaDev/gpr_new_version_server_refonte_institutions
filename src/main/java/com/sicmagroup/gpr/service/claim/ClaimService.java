@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.sicmagroup.gpr.api.claim.AffectTreatmentRequest;
 import com.sicmagroup.gpr.api.claim.ProposedSolutionRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
@@ -31,7 +32,7 @@ public interface ClaimService {
 
         public Claim saveTempClaim(SaveRequest claimToSave, ClaimType type) throws Exception;
 
-        public Claim affectTreatmentToUser(Claim claim, User affectedTo, User affectedBy, Boolean anonymous, String remoteAddress)
+        public Claim affectTreatmentToUser(Claim claim, User affectedTo, User affectedBy, Boolean anonymous, String remoteAddress, AffectTreatmentRequest affectTreatmentRequest)
                         throws Exception;
 
         public Claim treatClaim(Claim claim, User treator, ProposedSolutionRequest request) throws Exception;
@@ -97,6 +98,6 @@ public interface ClaimService {
         public void deleteById(Long id) throws NotFoundException;
         
         public void deleteById_2(Long id) throws NotFoundException;
-        
+
         Claim saveExtra(ExtraContent extraContent, MultipartFile[] files, MultipartFile[] audios, Long id) throws Exception;
 }

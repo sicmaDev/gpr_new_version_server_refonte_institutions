@@ -786,7 +786,7 @@ public class ClaimController {
                 try {
                     // System.out.println("anomymat" + request.getAffectedAnonymous());
                     claim = service.affectTreatmentToUser(claim, affectedTo, affectedBy, request.getAffectedAnonymous(),
-                            httpRequest.getRemoteAddr());
+                            httpRequest.getRemoteAddr(), request);
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)

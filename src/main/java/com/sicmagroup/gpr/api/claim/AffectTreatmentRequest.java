@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AffectTreatmentRequest {
     private Long claimId;
+    private Long delai;
+    private String message;
     private Long affectToId;
     private Long affectorId;
     private Boolean affectedAnonymous;
