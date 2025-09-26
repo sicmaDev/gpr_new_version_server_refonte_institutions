@@ -24,6 +24,8 @@ public interface AuthenticationService {
 
     public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException ;
 
+    public AuthenticationResponse publicRegister(RegisterRequest request) throws AuthenticationException ;
+
     public AuthenticationResponse authenticate(AuthenticationRequest request) ;
 
     public ResponseEntity<ApiResponseDto> getAuthData();

@@ -189,6 +189,33 @@ public class UserController {
         }
     }
 
+    @PostMapping("/publicRegister")
+    public ResponseEntity<AuthenticationResponse> publicRegister(@RequestBody RegisterRequest request) {
+        if (request.getAdditionalRole() == null || request.getAdditionalRole().equals("")) {
+            request.setAdditionalRole(Role.MOLDUE.name());
+        }
+
+        try {
+            return ResponseEntity.ok(authenticationServiceImpl.publicRegister(request));
+        } catch (AuthenticationException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                            .title("Invalid email")
+                            .message("This email already exists")
+                            .build())
+                    .build();
+
+            AuthenticationResponse authenticationResponse = AuthenticationResponse
+                    .builder()
+                    .response(apiResponseDto)
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(authenticationResponse);
+        }
+    }
+
     @PutMapping("/{id}/update")
     public ResponseEntity<ApiResponseDto> updateServicePoint(@PathVariable(name = "id") Long id,
             @RequestBody RegisterRequest request) {
@@ -218,7 +245,7 @@ public class UserController {
                 apiResponseDto = ApiResponseDto
                         .builder()
                         .status(false)
-                        .content(ErrorResponse.builder().title("NOT FOUND").message("User not found").build())
+                        .content(ErrorResponse.builder().title("NOT FOUND").message(e.getMessage()).build())
                         .build();
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
             }

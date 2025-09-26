@@ -74,6 +74,8 @@ public class User implements UserDetails {
 
 	@Column(columnDefinition = "boolean default false")
 	private boolean isDeleted;
+	@Column(columnDefinition = "boolean default false")
+	private boolean isRattached;
 
 	@OneToMany(mappedBy = "collector")
 	private List<Claim> claimsCollect;

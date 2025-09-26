@@ -107,10 +107,114 @@ public class Utils {
         return type;
     }
 
+    // @Async
+    // public static Future<String> sendmail(String to, String subject, String body, String cc, String from,
+    //                                     SettingServiceImpl settingServiceImpl) {
+    //     SimpleMailMessage message = new SimpleMailMessage();
+    //     JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+    //     ObjectMapper objectMapper = new ObjectMapper();
+
+    //     try {
+    //         // ⚡ Ici : on ne filtre pas par institution → une seule config globale
+    //         Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+
+    //         if (mail != null) {
+    //             MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+
+    //             mailSender.setHost(mailRequest.getHost());
+    //             mailSender.setPort(Integer.parseInt(mailRequest.getPort()));
+    //             mailSender.setUsername(mailRequest.getUser());
+    //             mailSender.setPassword(mailRequest.getPwd());
+
+    //             Properties props = mailSender.getJavaMailProperties();
+    //             props.put("mail.transport.protocol", "smtp");
+    //             props.put("mail.smtp.auth", "true");
+    //             props.put("mail.smtp.ssl.enable", "true");
+    //             props.put("mail.smtp.starttls.enable", "true");
+    //             props.put("mail.debug", "true");
+
+    //             // Ajout des CC si présents
+    //             if (cc != null && !cc.isEmpty()) {
+    //                 String[] listCc = cc.split(",");
+    //                 message.setCc(listCc);
+    //             }
+
+    //             message.setTo(to);
+    //             message.setSubject(subject);
+    //             message.setText(body);
+    //             message.setFrom(mailRequest.getUser());
+
+    //             mailSender.send(message);
+    //         }
+
+    //     } catch (Exception e) {
+    //         e.printStackTrace();
+    //     }
+
+    //     return null;
+    // }
+
     public static Boolean testSmsConfig(String number, String message, SettingServiceImpl settingServiceImpl)
             throws Exception {
 
         try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            if (sms != null) {
+                SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                String baseUrl = smsRequest.getUrl();
+                String token = smsRequest.getValMdp();
+                String sender = smsRequest.getValEmetteur();
+                String account = smsRequest.getValId();
+                message = UriEncoder.encode(message);
+                HttpURLConnection con;
+
+                baseUrl += smsRequest.getLibId() + "=" + account + "&" + smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender + "&"
+                        + smsRequest.getLibDestinataire() + "=" + number + "&" + smsRequest.getLibMessage() + "="
+                        + message;
+                URL url = new URL(baseUrl);
+                con = (HttpURLConnection) url.openConnection();
+                con.setRequestMethod("GET");
+                int status = con.getResponseCode();
+                if (status >= 200 && status <= 299) {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(con.getInputStream()));
+                    String inputLine;
+                    StringBuffer content = new StringBuffer();
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+
+                    return true;
+
+                } else {
+                    BufferedReader in = new BufferedReader(
+                            new InputStreamReader(con.getErrorStream()));
+                    String inputLine;
+                    StringBuffer content = new StringBuffer();
+                    while ((inputLine = in.readLine()) != null) {
+                        content.append(inputLine);
+                    }
+                    in.close();
+                    return false;
+
+                }
+            }
+            return false;
+
+        } catch (IOException e) {
+
+            return false;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    public static Boolean sendSmsToClient(String number, String message, SettingServiceImpl settingServiceImpl) throws Exception {
+        try {
+            System.out.println("sendSmsToClient22 called with request: " + number + ", " + message);
+
             ObjectMapper objectMapper = new ObjectMapper();
             Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
             if (sms != null) {
@@ -237,7 +341,7 @@ public class Utils {
                 props.put("mail.smtp.starttls.enable", "true");
                 props.put("mail.debug", "true");
 
-                if (cc != "" && cc != null) {
+                if (cc != null && !cc.isEmpty()) {
                     String[] listCc = cc.split(",");
                     message.setCc(listCc);
                 }
@@ -259,109 +363,6 @@ public class Utils {
 
     }
 
-    // public static Boolean testMailConfig(String to, String subject, String body,
-    // String cc, String from,
-    // SettingServiceImpl settingServiceImpl) {
-    // SimpleMailMessage message = new SimpleMailMessage();
-    // JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
-    // ObjectMapper objectMapper = new ObjectMapper();
-
-    // try {
-    // Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
-    // if (mail != null) {
-    // MailRequest mailRequest = objectMapper.readValue(mail.getValue(),
-    // MailRequest.class);
-    // // System.out.println("try b");
-    // mailSenderr.setHost(mailRequest.getHost());
-    // mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
-    // mailSenderr.setUsername(mailRequest.getUser());
-    // mailSenderr.setPassword(mailRequest.getPwd());
-
-    // Properties props = mailSenderr.getJavaMailProperties();
-    // props.put("mail.transport.protocol", "smtp");
-    // props.put("mail.smtp.auth", "true");
-    // props.put("mail.smtp.ssl.enable", "true");
-    // props.put("mail.smtp.starttls.enable", "true");
-    // props.put("mail.debug", "true");
-
-    // if (cc != "" && cc != null) {
-    // String[] listCc = cc.split(",");
-    // message.setCc(listCc);
-    // }
-
-    // message.setTo(to);
-    // message.setSubject(subject);
-    // message.setText(body);
-    // message.setFrom(mailRequest.getUser());
-
-    // mailSenderr.send(message);
-    // return true;
-    // }else{
-    // return false;
-    // }
-
-    // } catch(MailException ex){
-    // return false;
-
-    // }catch (Exception e) {
-
-    // return false;
-    // }
-
-    // }
-
-    // @Async
-    // public static Future<String> sendmail(List<User> usersTo, String subject,
-    // String body, String cc, String from,
-    // SettingServiceImpl settingServiceImpl) throws Exception {
-    // SimpleMailMessage message = new SimpleMailMessage();
-    // JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
-    // ObjectMapper objectMapper = new ObjectMapper();
-    // try {
-
-    // Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
-    // if (mail != null) {
-
-    // MailRequest mailRequest = objectMapper.readValue(mail.getValue(),
-    // MailRequest.class);
-    // // System.out.println("try b");
-    // mailSenderr.setHost(mailRequest.getHost());
-    // mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
-    // mailSenderr.setUsername(mailRequest.getUser());
-    // mailSenderr.setPassword(mailRequest.getPwd());
-
-    // Properties props = mailSenderr.getJavaMailProperties();
-    // props.put("mail.transport.protocol", "smtp");
-    // props.put("mail.smtp.auth", "true");
-    // props.put("mail.smtp.ssl.enable", "true");
-    // props.put("mail.debug", "true");
-    // mailSenderr.setJavaMailProperties(props);
-
-    // if (cc != "" && cc != null) {
-    // String[] listCc = cc.split(",");
-    // message.setCc(listCc);
-    // }
-    // List<String> emails = usersTo.stream().map(user ->
-    // user.getEmail()).collect(Collectors.toList());
-    // System.out.println(emails);
-    // System.out.println(emails.iterator().next());
-    // String[] recipients = emails.toArray(new String[0]);
-    // System.out.println("recipients");
-
-    // message.setTo(recipients);
-    // message.setSubject(subject);
-    // message.setText(body);
-    // message.setFrom(mailRequest.getUser());
-    // mailSenderr.send(message);
-    // }
-    // } catch (Exception e) {
-    // throw e;
-    // // e.printStackTrace();
-
-    // }
-
-    // return null;
-    // }
 
     @Async
     public static Future<String> sendmail(List<User> usersTo, String subject, String body, String cc, String from,
@@ -387,7 +388,8 @@ public class Utils {
                 Properties props = mailSenderr.getJavaMailProperties();
                 props.put("mail.transport.protocol", "smtp");
                 props.put("mail.smtp.auth", "true");
-                props.put("mail.smtp.ssl.enable", "false");
+                props.put("mail.smtp.ssl.enable", "true");
+                props.put("mail.smtp.starttls.enable", "true");
                 props.put("mail.debug", "true");
                 mailSenderr.setJavaMailProperties(props);
 

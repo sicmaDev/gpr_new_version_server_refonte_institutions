@@ -8,6 +8,7 @@ import com.sicmagroup.gpr.service.report.ReportServiceImpl;
 import com.sicmagroup.gpr.service.report.StatsClaim;
 import com.sicmagroup.gpr.service.report.StatsDenun;
 import com.sicmagroup.gpr.service.report.StatsSuggest;
+import com.sicmagroup.gpr.service.report.TemplateServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
@@ -15,20 +16,26 @@ import lombok.RequiredArgsConstructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
+import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.reports.BandChart.BandChart;
 import com.sicmagroup.gpr.domain.dto.reports.StackedBar.StackedBar;
 import com.sicmagroup.gpr.domain.dto.reports.pieChart.PieChartDto;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.model.Template;
 
 @RestController
 @RequestMapping("/api/v1/report")
@@ -39,6 +46,7 @@ public class ReportController {
 	private final StatsDenun serviceStatsDenun;
 	private final StatsSuggest serviceStatsSuggest;
 	private final BceaoReportService bceaoReportService;
+	private final TemplateServiceImpl templateService;
 
 	@GetMapping(value = "/global")
 	public ResponseEntity<Object> generatReport() {
@@ -387,5 +395,85 @@ public class ReportController {
 
 		return result;
 		
+	}
+
+	
+	@GetMapping(value = "/templates")
+	public ResponseEntity<ApiResponseDto>getAllTemplate() {
+		try {
+            List<Template> result = templateService.findAll();
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(result)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+        } catch (Exception e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                    .build();
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
+        }
+	}
+
+	@PostMapping(value = "/templates/update")
+	public ResponseEntity<ApiResponseDto> createOrUpdateTemplate(@RequestBody Template request) {
+		try {
+			Template result = templateService.createOrUpdate(request);
+			System.out.println("TemplateRequest" + result);
+			ApiResponseDto apiResponseDto = ApiResponseDto
+					.builder()
+					.status(true)
+					.content(result)
+					.build();
+			return ResponseEntity.ok(apiResponseDto);
+
+		} catch (Exception e) {
+			ApiResponseDto apiResponseDto = ApiResponseDto
+					.builder()
+					.status(false)
+					.content(ErrorResponse.builder()
+							.message(e.getMessage())
+							.title("EXCEPTION TGHROW")
+							.build())
+					.build();
+
+			if (e.getMessage().contains("not found")) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+			} else {
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+			}
+		}
+	}
+	@DeleteMapping(value="/templates/{id}")
+	
+	public ResponseEntity<ApiResponseDto> deleteTemplate(@PathVariable(name = "id") Long id) {
+		ApiResponseDto apiResponseDto;
+		try {
+			templateService.delete(id);
+			apiResponseDto = ApiResponseDto
+					.builder()
+					.status(true)
+					.content("Suppression réussie")
+					.build();
+			return ResponseEntity.ok(apiResponseDto);
+		} catch (Exception e) {
+			e.printStackTrace();
+			apiResponseDto = ApiResponseDto
+					.builder()
+					.status(false)
+					.content(ErrorResponse.builder()
+							.title("NOT FOUND")
+							.message(e.getMessage())
+							.build())
+					.build();
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+		}
 	}
 }

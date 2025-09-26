@@ -14,4 +14,6 @@ public interface PosteRepository extends JpaRepository<Poste, Long> {
     List<Poste> findByHabilitationsContaining(String habilitation);
 
     Optional<Poste> findByIdAndIsDeleted(Long id, boolean deleted);
+    
+    long countByHabilitationsContaining(String habilitation);
 }

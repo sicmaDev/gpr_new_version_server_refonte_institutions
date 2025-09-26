@@ -9,13 +9,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.sicmagroup.gpr.api.claim.AffectTreatmentRequest;
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.ProposedSolutionRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
@@ -36,6 +39,7 @@ import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.ExistingSolution;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Inbox;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Language;
@@ -48,10 +52,14 @@ import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
+import com.sicmagroup.gpr.repository.ClaimAudioRepository;
+import com.sicmagroup.gpr.repository.ExtraContentRepository;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ExistingSolutionRepository;
+import com.sicmagroup.gpr.repository.ExternalRecourseRepository;
 import com.sicmagroup.gpr.repository.InboxMessageRepository;
 import com.sicmagroup.gpr.repository.InboxRepository;
+import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
@@ -59,6 +67,8 @@ import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.collectionChannel.CollectionChannelServiceImpl;
 import com.sicmagroup.gpr.service.existingSolution.ExistingSolutionServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
+import com.sicmagroup.gpr.service.extra.ExtraContentServiceImpl;
+import com.sicmagroup.gpr.service.historiqueAffectation.HistoriqueAffectationServiceImpl;
 import com.sicmagroup.gpr.service.language.LanguageServiceImpl;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
@@ -68,11 +78,14 @@ import com.sicmagroup.gpr.service.satisfactionMeasure.SatifactionMeasureServiceI
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
+import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.utils.Utils;
+import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
@@ -98,6 +111,13 @@ public class ClaimServiceImpl implements ClaimService {
     private final ServicePointRepository spRepository;
     private final InboxRepository inboxRepository;
     private final InboxMessageRepository messageRepository;
+    private final MediaRepository mediaRepository;
+    private final ClaimAudioRepository claimAudioRepository;
+    private final ExtraContentRepository extraContentRepository;
+    private final ExtraContentServiceImpl extraContentServiceImpl;
+    private final ExternalRecourseRepository externalRecourseRepository;
+    private final HistoriqueAffectationServiceImpl historiqueAffectationServiceImpl;
+    private final CurrentUserUtils userAuth;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -314,26 +334,41 @@ public class ClaimServiceImpl implements ClaimService {
 
             // jobLauncher.run(notificationJob, jobParameters); // Lancer le Job
 
-                // try {
-        //     Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
-        //             " ", settingServiceImpl);
-        // } catch (Exception e) {
-        //     if (e != null) {
-        //         Log log2 = Log
-        //                 .builder()
-        //                 .libelle("Echec mail notification")
-        //                 .content(e.getMessage())
-        //                 .createdAt(LocalDateTime.now())
-        //                 .type(LogType.ERROR)
-        //                 .userId(0L)
-        //                 .userIpAddress(claimPart.getRemoteAddress())
-        //                 .target(LogTarget.APP)
-        //                 .build();
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
+                        " ", settingServiceImpl);
+                
+                Log successLog = Log.builder()
+                    .libelle("Mail notification d'enregistrement de réclamation")
+                    .content("Success mail notification réclamation affectée")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress(claimPart.getRemoteAddress())
+                    .target(LogTarget.APP)
+                    .build();
 
-        //         logServiceImpl.saveLog(log2);
-        //     }
+                logServiceImpl.saveLog(successLog);
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification réclamation créée")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(claimPart.getRemoteAddress())
+                            .target(LogTarget.APP)
+                            .build();
 
-        // }
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
+
         // try {
         //     Utils.sendSms(usersToContact,
         //             "Nouvelle réclamation enregistrée de niveau de gravité "
@@ -355,6 +390,37 @@ public class ClaimServiceImpl implements ClaimService {
 
         return claim;
 
+    }
+
+    @Override
+    public Claim saveExtra(ExtraContent extraContent, MultipartFile[] files, MultipartFile[] audios, Long id)
+            throws Exception {
+        Claim claim = getById(id);
+        extraContent.setStatus(claim.getStatus());
+        extraContent.setType(claim.getType());
+        extraContent.setClaim(claim);
+        extraContent.setSuggestion(null);
+        extraContent.setUser(userAuth.getUser());
+        extraContent.setCreatedAt(LocalDateTime.now());
+        extraContent.setUpdatedAt(LocalDateTime.now());
+
+        ExtraContent extraContentSave = extraContentServiceImpl.saveExtraContent(extraContent);
+        if (extraContentSave.isFile()) { 
+            if (files != null && files.length != 0) {
+                List<Media> medias = mediaServiceImpl.store(files, claim, extraContentSave);
+                claim.setUpdatedAt(LocalDateTime.now());
+                
+                return repository.save(claim);
+            }
+            if (audios != null && audios.length != 0) {
+                List<ClaimAudio> audio = claimAudioServiceImpl.store(audios, claim, extraContentSave);
+                claim.setUpdatedAt(LocalDateTime.now());
+                
+                return repository.save(claim);
+            }
+        }
+        
+        return claim;
     }
 
     @Override
@@ -609,7 +675,7 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public Claim affectTreatmentToUser(Claim claim, User affectedTo, User affectedBy, Boolean anonymous,
-            String remoteAddress)
+            String remoteAddress, AffectTreatmentRequest affectTreatmentRequest)
             throws Exception {
         // Claim claim = repository.findById(claimId).orElseThrow(() -> new
         // ClaimException("Claim choosed not found"));
@@ -649,28 +715,53 @@ public class ClaimServiceImpl implements ClaimService {
                 "Détails de la réclamation :" + "\n\n" +
                 "* Code de réclamation : " + claim.getCode() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
+                "* Délai de traitement : " + affectTreatmentRequest.getDelai() + " jours \n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "Veuillez prendre les mesures nécessaires pour examiner et traiter cette réclamation dans les plus brefs délais";
-        try {
-            Utils.sendmail(affectedTo.getEmail(), "Affectation de réclamation", message, null,
-                    " ", settingServiceImpl);
-        } catch (Exception e) {
-            if (e != null) {
-                Log log2 = Log
-                        .builder()
-                        .libelle("Echec mail notification")
-                        .content(e.getMessage())
-                        .createdAt(LocalDateTime.now())
-                        .type(LogType.ERROR)
-                        .userId(0L)
-                        .userIpAddress(remoteAddress)
-                        .target(LogTarget.APP)
-                        .build();
 
-                logServiceImpl.saveLog(log2);
-            }
-
+        if (!affectTreatmentRequest.getMessage().isEmpty()) {
+            message = affectTreatmentRequest.getMessage();
         }
+
+        historiqueAffectationServiceImpl.storeHistorique(affectTreatmentRequest);
+        
+        final String finalMessage = message;
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(affectedTo.getEmail(), "Affectation de réclamation", finalMessage, null,
+                        " ", settingServiceImpl);
+                
+                Log successLog = Log.builder()
+                    .libelle("Mail notification d'affectation de réclamation")
+                    .content("Success mail notification réclamation affectée")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress(remoteAddress)
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog);
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification réclamation affectée")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(remoteAddress)
+                            .target(LogTarget.APP)
+                            .build();
+    
+                    logServiceImpl.saveLog(log2);
+                }
+    
+            }
+        });
+
         try {
             Utils.sendSms(Arrays.asList(affectedTo), "Une nouvelle réclamation de niveau de gravité "
                     + claim.getObjet().getRisqueLevel().name() + " vous a été affectée", settingServiceImpl);
@@ -748,6 +839,9 @@ public class ClaimServiceImpl implements ClaimService {
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
             type = "dénonciation";
         }
+
+        final Claim finalClaim = claim;
+        final String finalType = type;
         if (claim.hasAffectedTreatment() && treator.getCode() == claim.getTreatmentAffectedTo().getCode()) {
             // Is treator is user who receiverd affectation
             // claim.setStatus(ClaimStatus.TO_APPROUVED);
@@ -767,16 +861,48 @@ public class ClaimServiceImpl implements ClaimService {
                     "La solution proposée par " + treator.getFirstandlastname() + " est la suivante : " + "\n" +
                     request.getSolution() + "\n\n" +
                     "Nous vous invitons à examiner attentivement cette solution.";
+            
+            // Envoi de mail en parallèle
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Utils.sendmail(finalClaim.getTreatmentAffectedBy().getEmail(), "Proposition de solution à une " + finalType + "",
+                            message, null, " ", settingServiceImpl);
+                
+                    Log successLog = Log.builder()
+                        .libelle("Mail notification  proposition de solution")
+                        .content("Success mail notification proposition de solution")
+                        .createdAt(LocalDateTime.now())
+                        .type(LogType.INFO)
+                        .userId(0L)
+                        .userIpAddress("")
+                        .target(LogTarget.APP)
+                        .build();
 
-            Utils.sendmail(claim.getTreatmentAffectedBy().getEmail(), "Proposition de solution à une " + type + "",
-                    message, null, " ", settingServiceImpl);
+                    logServiceImpl.saveLog(successLog);                            
+                } catch (Exception e) {                
+                    if (e != null) {
+                        Log log2 = Log
+                                .builder()
+                                .libelle("Echec mail proposition de solution")
+                                .content(e.getMessage())
+                                .createdAt(LocalDateTime.now())
+                                .type(LogType.ERROR)
+                                .userId(0L)
+                                .userIpAddress("")
+                                .target(LogTarget.APP)
+                                .build();
+
+                        logServiceImpl.saveLog(log2);
+                    }
+                }
+            });
         } else {
             claim.setStatus(ClaimStatus.TREAT);
             solution2.setStatus(SolutionStatus.APPROVED);
             solution2.setUpdatedAt(LocalDateTime.now());
             Double apercuContent = claim.getContent().length() * 0.3;
             List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-            if (pilote != null && !pilote.isEmpty()) {
+            if (pilote != null && !pilote.isEmpty()) {                            
                 String message = "" +
                         "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote de la plateforme GPR, \n\n" +
                         "l'utilisateur " + treator.getFirstandlastname()
@@ -793,8 +919,41 @@ public class ClaimServiceImpl implements ClaimService {
                         request.getSolution() + "\n\n" +
                         "Nous vous invitons à communiquer la solution au plaignant pour mesurer sa satisfaction. ";
 
-                Utils.sendmail(pilote.get(0).getEmail(), "" + type + " traitée",
-                        message, null, " ", settingServiceImpl);
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+        
+                        Utils.sendmail(pilote.get(0).getEmail(), "" + finalType + " traitée",
+                                message, null, " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification notification " + finalType + " traitée")
+                            .content("Success mail notification notification " + finalType + " traitée")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                        logServiceImpl.saveLog(successLog);
+                    } catch (Exception e) {                        
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification " + finalType + " traitée")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+
+                            logServiceImpl.saveLog(log2);
+                        }
+                    }
+                }); 
             }
 
         }
@@ -845,23 +1004,82 @@ public class ClaimServiceImpl implements ClaimService {
                         "Veuillez vous connectez à la plateforme GPR afin de prendre des mesures adéquates par rapport à cette réclamation.";
                 List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
 
-                try {
-                    Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null, " ", settingServiceImpl);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                            
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null, " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification réclamation non satisfaite")
+                            .content("Success mail notification réclamation non satisfaite")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                        logServiceImpl.saveLog(successLog);
+                    } catch (Exception e) {                    
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification réclamation non satisfaite")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+    
+                            logServiceImpl.saveLog(log2);
+                        }
+                    }
+                });
             } else {// TODE and CA if it's come from CGR
                 String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
                         + claim.getCode()
                         + " est non-satisfait de la solution qui lui a été proposée. \n\n" +
                         "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
                 List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
-                try {
-                    Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null,
-                            " ", settingServiceImpl);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+
+                            
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try { 
+                        Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null,
+                                " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification réclamation non satisfaite")
+                            .content("Success mail notification réclamation non satisfaite")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                        logServiceImpl.saveLog(successLog);                                
+                    } catch (Exception e) {                        
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification réclamation non satisfaite")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+
+                            logServiceImpl.saveLog(log2);
+                        }
+                    }
+                });
             }
 
         } else {
@@ -874,12 +1092,41 @@ public class ClaimServiceImpl implements ClaimService {
                         "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
                 List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
 
-                try {
-                    Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
-                            " ", settingServiceImpl);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                                            
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
+                                " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification réclamation partiellement satisfaite")
+                            .content("Success mail notification réclamation partiellement satisfaite")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                        logServiceImpl.saveLog(successLog);                                
+                    } catch (Exception e) {                    
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification réclamation partiellement satisfaite")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+    
+                            logServiceImpl.saveLog(log2);
+                        }
+                    }
+                }); 
             } else {// TODE and CA if it's come from CGR
                 String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
                         + claim.getCode()
@@ -888,12 +1135,41 @@ public class ClaimServiceImpl implements ClaimService {
                         
                         "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
                 List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
-                try {
-                    Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
-                            " ", settingServiceImpl);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                                            
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
+                                " ", settingServiceImpl);
+                                                
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification réclamation partiellement satisfaite")
+                            .content("Success mail notification réclamation partiellement satisfaite")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                        logServiceImpl.saveLog(successLog);                                
+                    } catch (Exception e) {                    
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification réclamation partiellement satisfaite")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+    
+                            logServiceImpl.saveLog(log2);
+                        }
+                    }
+                });
             }
         }
 
@@ -942,26 +1218,41 @@ public class ClaimServiceImpl implements ClaimService {
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "* Motif de désapprobation : " + commentaire + "\n\n" +
                 "Nous vous invitons à examiner attentivement le commentaire laissé puis à proposer une nouvelle solution.";
-        try {
-            Utils.sendmail(cgrMembers, "Solution désapprouvée",
-                    message, null, " ", settingServiceImpl);
-        } catch (Exception e) {
-            if (e != null) {
-                Log log2 = Log
-                        .builder()
-                        .libelle("Echec mail notification")
-                        .content(e.getMessage())
+                                    
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(cgrMembers, "Solution désapprouvée",
+                        message, null, " ", settingServiceImpl);
+                                                
+                    Log successLog = Log.builder()
+                        .libelle("Mail notification solution désapprouvée")
+                        .content("Success mail notification solution désapprouvée")
                         .createdAt(LocalDateTime.now())
-                        .type(LogType.ERROR)
+                        .type(LogType.INFO)
                         .userId(0L)
                         .userIpAddress("")
                         .target(LogTarget.APP)
                         .build();
 
-                logServiceImpl.saveLog(log2);
+                    logServiceImpl.saveLog(successLog);                        
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification solution désapprouvée")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+    
+                    logServiceImpl.saveLog(log2);
+                }    
             }
-
-        }
+        });
 
         return claim;
     }
@@ -978,18 +1269,52 @@ public class ClaimServiceImpl implements ClaimService {
         claim.setStatus(ClaimStatus.TREAT);
         claim.setUpdatedAt(LocalDateTime.now());
         claim = repository.save(claim);
+        final Claim finalClaim = claim;
         String type = "réclamation";
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
             type = "dénonciation";
         }
         String message = "" +
-                "Cher(e) " + claim.getTreatmentAffectedTo().getFirstandlastname() + ",\n\n" +
+                "Cher(e) " + finalClaim.getTreatmentAffectedTo().getFirstandlastname() + ",\n\n" +
                 "L'utilisateur " + approuver.getFirstandlastname()
                 + " a examiné et approuvé la solution que vous avez proposée pour la " + type + " portant le code : "
-                + claim.getCode() + "\n\n";
+                + finalClaim.getCode() + "\n\n";
+                            
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(finalClaim.getTreatmentAffectedTo().getEmail(), "Solution approuvée",
+                        message, null, " ", settingServiceImpl);
+                                                
+                Log successLog = Log.builder()
+                    .libelle("Mail notification solution approuvée")
+                    .content("Success mail notification solution approuvée")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
 
-        Utils.sendmail(claim.getTreatmentAffectedTo().getEmail(), "Solution approuvée",
-                message, null, " ", settingServiceImpl);
+                logServiceImpl.saveLog(successLog);                        
+            } catch (Exception e) {             
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification solution approuvée")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(null)
+                            .target(LogTarget.APP)
+                            .build();
+    
+                    logServiceImpl.saveLog(log2);
+                }
+            }      
+        });
+
         return claim;
     }
 
@@ -1213,9 +1538,8 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         claim = repository.save(claim);
+        final Claim finalClaim = claim;
 
-
-        
         if (claimPart.getFiles() != null && claimPart.getFiles().length != 0) {
             List<Media> medias = mediaServiceImpl.store(claimPart.getFiles(), claim);
             claim.setUpdatedAt(LocalDateTime.now());
@@ -1257,27 +1581,42 @@ public class ClaimServiceImpl implements ClaimService {
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour son traitement. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
-        try {
-            Utils.sendmail(authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint()),
-                    " Notification d'enregistrement de réclamation", message, null,
-                    " ", settingServiceImpl);
-        } catch (Exception e) {
-            if (e != null) {
-                Log log2 = Log
-                        .builder()
-                        .libelle("Echec mail notification")
-                        .content(e.getMessage())
-                        .createdAt(LocalDateTime.now())
-                        .type(LogType.ERROR)
-                        .userId(0L)
-                        .userIpAddress(claimPart.getRemoteAddress())
-                        .target(LogTarget.APP)
-                        .build();
+                                    
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(authServiceImpl.getEmailReceiversForNotif(finalClaim.getServicePoint()),
+                        " Notification d'enregistrement de réclamation", message, null,
+                        " ", settingServiceImpl);
+                                                
+                Log successLog = Log.builder()
+                    .libelle("Mail notification nouvelle réclamation")
+                    .content("Success mail notification nouvelle réclamation")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
 
-                logServiceImpl.saveLog(log2);
+                logServiceImpl.saveLog(successLog);                           
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification nouvelle réclamation")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(claimPart.getRemoteAddress())
+                            .target(LogTarget.APP)
+                            .build();
+    
+                    logServiceImpl.saveLog(log2);
+                }
             }
-
-        }
+        });
 
         return claim;
     }
@@ -1939,6 +2278,8 @@ public class ClaimServiceImpl implements ClaimService {
 
             // Sauvegarder la réclamation mise à jour
             claim = repository.save(claim);
+            final Claim finalClaim = claim;
+            final User finalTransmittedTo = transmittedTo;
 
             // TODO send mail
             // Initialisation de la liste
@@ -1951,35 +2292,64 @@ public class ClaimServiceImpl implements ClaimService {
                 throw new Exception("Le destinataire (transmittedTo) est null, impossible de l'ajouter à la liste.");
             }
 
-            // if (!pilote.isEmpty()) {
-                try {
-                    Double apercuContent = claim.getContent().length() * 0.5;
-                    String message = "" +
-                            "Bonjour " + transmittedTo.getFirstandlastname() + ",\n\n" +
-                            "Nous vous informons qu'un utilisateur a transmis la gestion d'une réclamation/dénonciation à votre attention, car il est dans l'incapacité de la traiter.\n"
-                            +
-                            "* Code de la Réclamation : " + claim.getCode() + "\n" +
-                            "* Aperçu de la réclamation : " + claim.getContent().substring(0, apercuContent.intValue())
-                            + "...\n\n" +
-                            "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
-                            + "\n" +
-                            "Veuillez prendre les mesures nécessaires pour permettre le traitement de cette réclamation dans les meilleurs délais.\n\n"
-                            +
-                            "Cordialement,\n" ;
-                            // "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
-                            // "Poste : " + claim.getCollector().getPoste().getLibelle();
-                    Utils.sendmail(destis, "TRANSMISSION DE TRAITEMENT", message, null, "", settingServiceImpl);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+            // if (!pilote.isEmpty()) {                           
+                // Envoi de mail en parallèle
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Double apercuContent = finalClaim.getContent().length() * 0.5;
+                        String message = "" +
+                                "Bonjour " + finalTransmittedTo.getFirstandlastname() + ",\n\n" +
+                                "Nous vous informons qu'un utilisateur a transmis la gestion d'une réclamation/dénonciation à votre attention, car il est dans l'incapacité de la traiter.\n"
+                                +
+                                "* Code de la Réclamation : " + finalClaim.getCode() + "\n" +
+                                "* Aperçu de la réclamation : " + finalClaim.getContent().substring(0, apercuContent.intValue())
+                                + "...\n\n" +
+                                "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime())
+                                + "\n" +
+                                "Veuillez prendre les mesures nécessaires pour permettre le traitement de cette réclamation dans les meilleurs délais.\n\n"
+                                +
+                                "Cordialement,\n" ;
+                                // "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
+                                // "Poste : " + claim.getCollector().getPoste().getLibelle();
+                        Utils.sendmail(destis, "TRANSMISSION DE TRAITEMENT", message, null, "", settingServiceImpl);
+                                                        
+                        Log successLog = Log.builder()
+                            .libelle("Mail notification création session")
+                            .content("Success mail notification création session")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
 
-                try {
-                    String message = "La réclamation " + claim.getCode()
-                            + " vous a été transmis pour prise en charge. Merci de la prendre en charge.";
-                    Utils.sendSms(destis, message, settingServiceImpl);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                        logServiceImpl.saveLog(successLog);                           
+                    } catch (Exception e) {                        
+                        if (e != null) {
+                            Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification création session")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+
+                            logServiceImpl.saveLog(log2);
+                        }
+                    }
+
+                    try {
+                        String message = "La réclamation " + finalClaim.getCode()
+                                + " vous a été transmis pour prise en charge. Merci de la prendre en charge.";
+                        Utils.sendSms(destis, message, settingServiceImpl);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+
                 return claim;
             // } else {
             //     throw new Exception("Plateforme mal configurée. Pilote introuvable");
@@ -2173,21 +2543,55 @@ public class ClaimServiceImpl implements ClaimService {
         // }
 
         claim = repository.save(claim);
+        final Claim finalClaim = claim;
         List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));
 
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
 
         Double apercuContent = claim.getContent().length() * 0.5;
-       
-              
-        try {
-            Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
-                    " ", settingServiceImpl);
-        } catch (Exception e) {
-            if (e != null) {
+                                          
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
+                        " ", settingServiceImpl);
+                                        
+                Log successLog = Log.builder()
+                    .libelle("Mail notification enregistrement réclamation")
+                    .content("Success mail notification enregistrement réclamation")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog);                           
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification enregistrement réclamation")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now()) 
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(claimPart.getRemoteAddress())
+                            .target(LogTarget.APP)
+                            .build();
+    
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+
+            try {
+                Utils.sendSms(usersToContact,
+                        "Nouvelle réclamation enregistrée de niveau de gravité "
+                                + finalClaim.getObjet().getRisqueLevel().name(), settingServiceImpl);
+            } catch (Exception e) {
                 Log log2 = Log
                         .builder()
-                        .libelle("Echec mail notification")
+                        .libelle("Echec sms notification")
                         .content(e.getMessage())
                         .createdAt(LocalDateTime.now())
                         .type(LogType.ERROR)
@@ -2195,29 +2599,11 @@ public class ClaimServiceImpl implements ClaimService {
                         .userIpAddress(claimPart.getRemoteAddress())
                         .target(LogTarget.APP)
                         .build();
-
+    
                 logServiceImpl.saveLog(log2);
             }
+        });    
 
-        }
-        try {
-            Utils.sendSms(usersToContact,
-                    "Nouvelle réclamation enregistrée de niveau de gravité "
-                            + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
-        } catch (Exception e) {
-            Log log2 = Log
-                    .builder()
-                    .libelle("Echec sms notification")
-                    .content(e.getMessage())
-                    .createdAt(LocalDateTime.now())
-                    .type(LogType.ERROR)
-                    .userId(0L)
-                    .userIpAddress(claimPart.getRemoteAddress())
-                    .target(LogTarget.APP)
-                    .build();
-
-            logServiceImpl.saveLog(log2);
-        }
 
         return claim;
 
@@ -2228,5 +2614,32 @@ public class ClaimServiceImpl implements ClaimService {
     public List<Claim> getAllByStatusIn(List<ClaimStatus> status) {
         return repository.findByStatusIn(status);
     }
+    
+    @Transactional
+    @Override
+    public void deleteById(Long id) throws NotFoundException {
+        Claim claim = repository.findById(id).orElseThrow(() -> new NotFoundException());
+        // Supprimer les éléments liés à la réclamation
+        mediaRepository.deleteByClaimId(id);
+        claimAudioRepository.deleteByClaimId(id);
+        extraContentRepository.deleteByClaimId(id);
+        
+        // Enfin, supprimer la réclamation elle-même
+        repository.delete(claim);
+    }
 
+    @Transactional
+    @Override
+    public void deleteById_2(Long id) throws NotFoundException {
+        Claim claim = repository.findById(id).orElseThrow(() -> new NotFoundException());
+        
+        claim.getMedias().clear();
+        repository.save(claim);
+        
+        mediaRepository.deleteByClaimId(id); 
+        claimAudioRepository.deleteByClaimId(id);
+        extraContentRepository.deleteByClaimId(id);
+        
+        repository.delete(claim);
+    }
 }

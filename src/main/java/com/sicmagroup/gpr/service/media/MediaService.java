@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
@@ -16,8 +17,10 @@ import com.sicmagroup.gpr.domain.model.Suggestion;
 public interface MediaService {
 
     List<Media> store(MultipartFile[] files, Claim claim);
+    List<Media> store(MultipartFile[] files, Claim claim,ExtraContent extraContent);
 
     List<Media> store(MultipartFile[] files, Suggestion suggestion);
+    // List<Media> store(MultipartFile[] files, Suggestion suggestion,ExtraContent extraContent);
 
     List<Media> storeFromString(List<String> files, Claim claim);
 

@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Comparator;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -15,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,6 +40,7 @@ import com.sicmagroup.gpr.domain.dto.ExistingSolutionResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.ObjetDto;
 import com.sicmagroup.gpr.domain.dto.SatisfactionMeasureDto;
+import com.sicmagroup.gpr.domain.dto.ExtraContentResponse;
 import com.sicmagroup.gpr.domain.dto.SolutionDto;
 import com.sicmagroup.gpr.domain.dto.chat.ChatDto;
 import com.sicmagroup.gpr.domain.dto.chat.MessageDto;
@@ -72,6 +75,7 @@ import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.domain.model.chat.Message;
 import com.sicmagroup.gpr.domain.model.chat.UserVote;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.chat.Vote;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
@@ -143,6 +147,7 @@ public class ClaimController {
                 .status(true)
                 .content(mediaResponses)
                 .build();
+        System.out.println("getAllFilesForAClaim" + mediaResponses);
         return ResponseEntity.ok(apiResponseDto);
     }
 
@@ -236,7 +241,10 @@ public class ClaimController {
         // if user don't it can see claims he saved and clamed affected to him for
         // treatment in this case
         // user can see only specific information about the claim
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
                 .builder()
@@ -404,15 +412,16 @@ public class ClaimController {
 
             allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims);
         }
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto)
-                .collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
         apiResponseDto = ApiResponseDto
                 .builder()
                 .status(true)
                 .content(allClaimDtos)
                 .build();
         return ResponseEntity.ok(apiResponseDto);
-
     }
 
     @GetMapping(value = "/list/{status}")
@@ -474,7 +483,10 @@ public class ClaimController {
         } else {
             allClaims = service.getClaimByStatus(ClaimType.CLAIM, status);
         }
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
                 .builder()
@@ -492,7 +504,10 @@ public class ClaimController {
         ApiResponseDto apiResponseDto;
         allClaims = service.getAllWithApprovedSolutionByTypeAndStatus(ClaimType.CLAIM,
                 Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED));
-        List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        List<ClaimDto> allClaimDtos = allClaims.stream()
+            .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
                 .builder()
@@ -521,6 +536,51 @@ public class ClaimController {
     }
 
 
+    @PostMapping(value = "/add/extra", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
+            MediaType.MULTIPART_FORM_DATA_VALUE })
+    public ResponseEntity<ApiResponseDto> saveExtraClaim(
+            @RequestPart("claim_id") String claim_id,
+            @RequestPart(name = "contenu", required = false) String contenu,
+            @RequestPart(name = "files", required = false) MultipartFile[] files,
+            @RequestPart(name = "audios", required = false) MultipartFile[] audios, HttpServletRequest request)
+            throws JsonMappingException, JsonProcessingException {
+
+        ApiResponseDto apiResponseDto;
+        try {
+            if(contenu == null && (files == null || files.length ==0 ) &&  (audios == null || audios.length ==0 ) ){
+                throw new Exception("Les parametres ne sont pas valides");
+            }
+            boolean isFile = contenu == null;
+            ExtraContent extraContent = ExtraContent.builder()
+                    .contenu(contenu)
+                    .status(null)
+                    .file(isFile)
+                    .claim(null)
+                    .suggestion(null)
+                    .build();
+
+            Claim claim = service.saveExtra(extraContent, files, audios, Long.parseLong(claim_id));
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(convertToDto(claim))
+                    .build();
+
+            return ResponseEntity.ok(apiResponseDto);
+
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
+                    .build();
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
+        }
+    }
 
 
     @PostMapping(value = "/add", consumes = { MediaType.APPLICATION_OCTET_STREAM_VALUE,
@@ -726,7 +786,7 @@ public class ClaimController {
                 try {
                     // System.out.println("anomymat" + request.getAffectedAnonymous());
                     claim = service.affectTreatmentToUser(claim, affectedTo, affectedBy, request.getAffectedAnonymous(),
-                            httpRequest.getRemoteAddr());
+                            httpRequest.getRemoteAddr(), request);
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
@@ -1524,6 +1584,56 @@ public class ClaimController {
         }
     }
 
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<ApiResponseDto> deleteClaim(@PathVariable Long id, HttpServletRequest request) {
+        ApiResponseDto apiResponseDto;
+        try {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+            User connectedUser = User.builder().build();
+
+            try {
+                connectedUser = authService.getByEmail(collectorDetails.getUsername());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+            if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                try {
+                    service.deleteById(id);
+                    return ResponseEntity.ok(
+                        ApiResponseDto.builder().status(true).content("Réclamation supprimée avec succès.").build()
+                        );
+                } catch (NotFoundException e) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        ApiResponseDto.builder().status(false).content("Réclamation non trouvée.").build()
+                    );
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    ApiResponseDto.builder()
+                        .status(false)
+                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
+                        .build()
+                );
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .build()
+            );
+        }
+    }
+
     private ChatDto convertToDto(Chat chat) {
         ChatDto chatDto = modelMapper.map(chat, ChatDto.class);
         if (chat.getMessages() != null && !chat.getMessages().isEmpty()) {
@@ -1592,9 +1702,20 @@ public class ClaimController {
         return existingSolutionDto;
     }
 
+    // private MediaResponse convertToResponse(Media media) {
+    //     MediaResponse mediaResponse = modelMapper.map(media, MediaResponse.class);
+    //     mediaResponse.setSize(media.getSize());
+    //     return mediaResponse;
+    // }
+
     private MediaResponse convertToResponse(Media media) {
         MediaResponse mediaResponse = modelMapper.map(media, MediaResponse.class);
         mediaResponse.setSize(media.getSize());
+        if (media.getExtraContent() instanceof ExtraContent) {
+            mediaResponse.setExtra(modelMapper.map(media.getExtraContent(),
+            ExtraContentResponse.class));
+        }
+
         return mediaResponse;
     }
 

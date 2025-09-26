@@ -9,6 +9,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.modelmapper.ModelMapper;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -17,8 +18,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
+import com.sicmagroup.gpr.domain.dto.ExtraContentResponse;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ClaimAudio;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.repository.ClaimAudioRepository;
@@ -27,6 +30,7 @@ import com.sicmagroup.gpr.service.media.FileStorageException;
 import com.sicmagroup.gpr.service.media.FileStorageProperties;
 import com.sicmagroup.gpr.utils.Constante;
 
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -35,6 +39,7 @@ import lombok.RequiredArgsConstructor;
 public class ClaimAudioServiceImpl implements ClaimAudioService {
 
     private final ClaimAudioRepository repository;
+    private final ModelMapper modelMapper;
 
     @Override
     public List<ClaimAudio> store(MultipartFile[] files, Claim claim) {
@@ -51,6 +56,16 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
         List<ClaimAudio> medias = new ArrayList<>();
         for (MultipartFile file : files) {
             medias.add(storeOneFile(file, suggestion));
+        }
+
+        return medias;
+    }
+
+    @Override
+    public List<ClaimAudio> store(MultipartFile[] files, Claim claim,ExtraContent extraContent) {
+        List<ClaimAudio> medias = new ArrayList<>();
+        for (MultipartFile file : files) {
+            medias.add(storeOneFile(file, claim,extraContent));
         }
 
         return medias;
@@ -105,6 +120,31 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
 
     }
 
+    // @Override
+    // public List<ClaimAudioResponse> getAudioByClaim(Claim claim) {
+    //     List<ClaimAudio> list = repository.findByClaim(claim);
+    //     List<ClaimAudioResponse> responses = new ArrayList<>();
+    //     for (ClaimAudio audio : list) {
+    //         ClaimAudioResponse claimAudioResponse;
+    //         try {
+    //             claimAudioResponse = ClaimAudioResponse
+    //                     .builder()
+    //                     .id(audio.getId())
+    //                     .name(audio.getName())
+    //                     .path(audio.getPath())
+    //                     .size(audio.getSize())
+    //                     .data(loadAsResource(audio).getContentAsByteArray())
+    //                     .build();
+    //             responses.add(claimAudioResponse);
+    //         } catch (IOException e) {
+    //             e.printStackTrace();
+    //         }
+
+    //     }
+    //     return responses;
+    // }
+
+    
     @Override
     public List<ClaimAudioResponse> getAudioByClaim(Claim claim) {
         List<ClaimAudio> list = repository.findByClaim(claim);
@@ -112,10 +152,18 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
         for (ClaimAudio audio : list) {
             ClaimAudioResponse claimAudioResponse;
             try {
+                ExtraContentResponse extra = null;
+                if(audio.getExtraContent() instanceof ExtraContent){
+                    extra = modelMapper.map(audio.getExtraContent(),ExtraContentResponse.class);
+                }
+                
+                
                 claimAudioResponse = ClaimAudioResponse
                         .builder()
                         .id(audio.getId())
                         .name(audio.getName())
+                        .is_extra(audio.is_extra())
+                        .extra(extra)
                         .path(audio.getPath())
                         .size(audio.getSize())
                         .data(loadAsResource(audio).getContentAsByteArray())
@@ -154,6 +202,45 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
     }
 
    
+    private ClaimAudio storeOneFile(MultipartFile file, Claim claim,@Nullable ExtraContent extraContent) {
+        // System.out.println("store fnction");
+        FileStorageProperties fileStorageProperties = new FileStorageProperties();
+        Path fileStorageLocation = Paths.get(Constante.DEVMODE ? Constante.TEST_PATH_AUDIO :Constante.PROD_PATH_AUDIO)
+                .toAbsolutePath().normalize();
+        // System.out.println(fileStorageLocation.toAbsolutePath().toString());
+        try {
+            Files.createDirectories(fileStorageLocation);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            throw new FileStorageException("Could not create the directory where the uploaded files will be stored.",
+                    e);
+        }
+
+        String fileName = StringUtils.cleanPath(file.getOriginalFilename());
+
+        if (fileName.contains("..")) {
+            throw new FileStorageException("Sorry! Filename contains invalid path sequence " + fileName);
+        }
+
+        Path targetLocation = fileStorageLocation.resolve(fileName);
+        try {
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new FileStorageException("Sorry! Filename cann't be upload " + fileName);
+        }
+
+        ClaimAudio media;
+        media = ClaimAudio
+                .builder()
+                .claim(claim)
+                .extraContent(extraContent)
+                .is_extra(extraContent != null)
+                .name(fileName)
+                .size(file.getSize())
+                .path(targetLocation.toAbsolutePath().toFile().getAbsolutePath())
+                .build();
+        return repository.save(media);
+    }
 
     private ClaimAudio storeOneFile(MultipartFile file, Claim claim) {
         // System.out.println("store fnction");

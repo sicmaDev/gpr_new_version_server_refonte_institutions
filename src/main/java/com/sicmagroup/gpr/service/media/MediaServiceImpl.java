@@ -20,6 +20,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Inbox;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Media;
@@ -29,6 +30,7 @@ import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.utils.Constante;
 
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -44,6 +46,15 @@ public class MediaServiceImpl implements MediaService {
         List<Media> medias = new ArrayList<>();
         for (MultipartFile file : files) {
             medias.add(storeOneFile(file, claim));
+        }
+
+        return medias;
+    }
+    @Override
+    public List<Media> store(MultipartFile[] files, Claim claim,ExtraContent extraContent) {
+        List<Media> medias = new ArrayList<>() ;
+        for (MultipartFile file : files) {
+            medias.add(storeOneFile(file, claim,extraContent));
         }
 
         return medias;
@@ -143,6 +154,45 @@ public class MediaServiceImpl implements MediaService {
                 .size(file.getSize())
                 .path(targetLocation.toAbsolutePath().toFile().getAbsolutePath())
                 .build();
+        return repository.save(media);
+    }
+
+    private Media storeOneFile(MultipartFile file, Claim claim,@Nullable ExtraContent extraContent){
+        // System.out.println("store fnction");
+        // FileStorageProperties fileStorageProperties = new FileStorageProperties();
+        Path fileStorageLocation = Paths.get(Constante.DEVMODE ? Constante.TEST_PATH_PIECE_JOINTES :Constante.PROD_PATH_PIECE_JOINTES)
+            .toAbsolutePath().normalize();  
+        //  System.out.println(fileStorageLocation.toAbsolutePath().toString());
+        try {
+            Files.createDirectories(fileStorageLocation);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            throw new FileStorageException("Could not create the directory where the uploaded files will be stored.", e);
+        }
+
+        String fileName = StringUtils.cleanPath(file.getOriginalFilename());
+
+        if(fileName.contains("..")){
+            throw new FileStorageException("Sorry! Filename contains invalid path sequence " + fileName);
+        }
+
+        Path targetLocation = fileStorageLocation.resolve(fileName);
+        try {
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new FileStorageException("Sorry! Filename cann't be upload " + fileName);
+        }
+
+        Media media;
+        media = Media
+            .builder()
+            .claim(claim)
+            .name(fileName)
+            .extraContent(extraContent)
+            .is_extra(extraContent != null )
+            .size(file.getSize())
+            .path(targetLocation.toAbsolutePath().toFile().getAbsolutePath())
+            .build();
         return repository.save(media);
     }
 

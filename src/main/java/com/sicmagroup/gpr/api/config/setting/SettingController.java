@@ -403,6 +403,46 @@ public class SettingController {
 
     }
 
+    @PostMapping(value = "/others/sms/sendSmsToClient")
+    public ResponseEntity<ApiResponseDto> sendSmsToClient(@RequestBody SmsTestRequest request) {
+        ObjectMapper Obj = new ObjectMapper();
+
+        System.out.println("sendSmsToClient called with request: " + request);
+        try {
+            Boolean isSuccess = Utils.sendSmsToClient(request.getPhone(), request.getMessage(), serviceImpl);
+            if (!isSuccess) {
+                throw new Exception("SMS non envoyé");
+            }
+            
+            System.out.println("sendSmsToClient2 called with request: " + request);
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(request)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        }
+
+        // Catch block to handle exceptions
+        catch (IOException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+
+        }
+    }
+
     @PostMapping(value = "/others/mail/test")
     public ResponseEntity<ApiResponseDto> testMail(@RequestBody MailTestRequest request) {
 
