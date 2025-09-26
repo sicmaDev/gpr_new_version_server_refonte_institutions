@@ -107,6 +107,53 @@ public class Utils {
         return type;
     }
 
+    // @Async
+    // public static Future<String> sendmail(String to, String subject, String body, String cc, String from,
+    //                                     SettingServiceImpl settingServiceImpl) {
+    //     SimpleMailMessage message = new SimpleMailMessage();
+    //     JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+    //     ObjectMapper objectMapper = new ObjectMapper();
+
+    //     try {
+    //         // ⚡ Ici : on ne filtre pas par institution → une seule config globale
+    //         Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+
+    //         if (mail != null) {
+    //             MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+
+    //             mailSender.setHost(mailRequest.getHost());
+    //             mailSender.setPort(Integer.parseInt(mailRequest.getPort()));
+    //             mailSender.setUsername(mailRequest.getUser());
+    //             mailSender.setPassword(mailRequest.getPwd());
+
+    //             Properties props = mailSender.getJavaMailProperties();
+    //             props.put("mail.transport.protocol", "smtp");
+    //             props.put("mail.smtp.auth", "true");
+    //             props.put("mail.smtp.ssl.enable", "true");
+    //             props.put("mail.smtp.starttls.enable", "true");
+    //             props.put("mail.debug", "true");
+
+    //             // Ajout des CC si présents
+    //             if (cc != null && !cc.isEmpty()) {
+    //                 String[] listCc = cc.split(",");
+    //                 message.setCc(listCc);
+    //             }
+
+    //             message.setTo(to);
+    //             message.setSubject(subject);
+    //             message.setText(body);
+    //             message.setFrom(mailRequest.getUser());
+
+    //             mailSender.send(message);
+    //         }
+
+    //     } catch (Exception e) {
+    //         e.printStackTrace();
+    //     }
+
+    //     return null;
+    // }
+
     public static Boolean testSmsConfig(String number, String message, SettingServiceImpl settingServiceImpl)
             throws Exception {
 
@@ -294,7 +341,7 @@ public class Utils {
                 props.put("mail.smtp.starttls.enable", "true");
                 props.put("mail.debug", "true");
 
-                if (cc != "" && cc != null) {
+                if (cc != null && !cc.isEmpty()) {
                     String[] listCc = cc.split(",");
                     message.setCc(listCc);
                 }

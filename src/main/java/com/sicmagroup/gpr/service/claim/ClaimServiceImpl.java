@@ -53,6 +53,7 @@ import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.repository.ClaimAudioRepository;
+import com.sicmagroup.gpr.repository.ExtraContentRepository;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ExistingSolutionRepository;
 import com.sicmagroup.gpr.repository.ExternalRecourseRepository;
@@ -112,6 +113,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final InboxMessageRepository messageRepository;
     private final MediaRepository mediaRepository;
     private final ClaimAudioRepository claimAudioRepository;
+    private final ExtraContentRepository extraContentRepository;
     private final ExtraContentServiceImpl extraContentServiceImpl;
     private final ExternalRecourseRepository externalRecourseRepository;
     private final HistoriqueAffectationServiceImpl historiqueAffectationServiceImpl;
@@ -2620,6 +2622,7 @@ public class ClaimServiceImpl implements ClaimService {
         // Supprimer les éléments liés à la réclamation
         mediaRepository.deleteByClaimId(id);
         claimAudioRepository.deleteByClaimId(id);
+        extraContentRepository.deleteByClaimId(id);
         
         // Enfin, supprimer la réclamation elle-même
         repository.delete(claim);
@@ -2635,6 +2638,7 @@ public class ClaimServiceImpl implements ClaimService {
         
         mediaRepository.deleteByClaimId(id); 
         claimAudioRepository.deleteByClaimId(id);
+        extraContentRepository.deleteByClaimId(id);
         
         repository.delete(claim);
     }

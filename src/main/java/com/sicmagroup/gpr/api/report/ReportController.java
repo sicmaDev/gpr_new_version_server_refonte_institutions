@@ -20,7 +20,9 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -418,5 +420,60 @@ public class ReportController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
             }
         }
+	}
+
+	@PostMapping(value = "/templates/update")
+	public ResponseEntity<ApiResponseDto> createOrUpdateTemplate(@RequestBody Template request) {
+		try {
+			Template result = templateService.createOrUpdate(request);
+			System.out.println("TemplateRequest" + result);
+			ApiResponseDto apiResponseDto = ApiResponseDto
+					.builder()
+					.status(true)
+					.content(result)
+					.build();
+			return ResponseEntity.ok(apiResponseDto);
+
+		} catch (Exception e) {
+			ApiResponseDto apiResponseDto = ApiResponseDto
+					.builder()
+					.status(false)
+					.content(ErrorResponse.builder()
+							.message(e.getMessage())
+							.title("EXCEPTION TGHROW")
+							.build())
+					.build();
+
+			if (e.getMessage().contains("not found")) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+			} else {
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+			}
+		}
+	}
+	@DeleteMapping(value="/templates/{id}")
+	
+	public ResponseEntity<ApiResponseDto> deleteTemplate(@PathVariable(name = "id") Long id) {
+		ApiResponseDto apiResponseDto;
+		try {
+			templateService.delete(id);
+			apiResponseDto = ApiResponseDto
+					.builder()
+					.status(true)
+					.content("Suppression réussie")
+					.build();
+			return ResponseEntity.ok(apiResponseDto);
+		} catch (Exception e) {
+			e.printStackTrace();
+			apiResponseDto = ApiResponseDto
+					.builder()
+					.status(false)
+					.content(ErrorResponse.builder()
+							.title("NOT FOUND")
+							.message(e.getMessage())
+							.build())
+					.build();
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+		}
 	}
 }

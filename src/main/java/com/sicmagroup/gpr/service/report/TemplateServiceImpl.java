@@ -23,7 +23,6 @@ public class TemplateServiceImpl implements TemplateService {
     @Override
     public Template createOrUpdate(Template template) {
         try {
-            // Si le nouveau est marqué "par défaut", on désactive les autres
             if (template.isDefault()) {
                 repository.findAll()
                     .stream()
@@ -34,17 +33,25 @@ public class TemplateServiceImpl implements TemplateService {
                     });
             }
 
-            return repository.findById(template.getId()).map(old -> {
-                old.setUpdatedAt(LocalDateTime.now());
-                old.setValeurs(template.getValeurs());
-                old.setTitle(template.getTitle());
-                old.setDefault(template.isDefault());
-                return repository.save(old);
-            }).orElseGet(() -> {
+            if (template.getId() == null) {
                 template.setCreatedAt(LocalDateTime.now());
                 template.setUpdatedAt(LocalDateTime.now());
                 return repository.save(template);
-            });
+            }
+
+            return repository.findById(template.getId())
+                .map(old -> {
+                    old.setUpdatedAt(LocalDateTime.now());
+                    old.setValeurs(template.getValeurs());
+                    old.setTitle(template.getTitle());
+                    old.setDefault(template.isDefault());
+                    return repository.save(old);
+                })
+                .orElseGet(() -> {
+                    template.setCreatedAt(LocalDateTime.now());
+                    template.setUpdatedAt(LocalDateTime.now());
+                    return repository.save(template);
+                });
 
         } catch (Exception e) {
             e.printStackTrace();
