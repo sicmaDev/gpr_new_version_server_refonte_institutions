@@ -542,7 +542,8 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
     }
 
-    
-   
-
+    @Override
+    public Suggestion getByCode(String code) throws Exception {
+        return repository.findByCode(code).orElseThrow(() -> new Exception("Suggestion introuvable"));
+    }
 }

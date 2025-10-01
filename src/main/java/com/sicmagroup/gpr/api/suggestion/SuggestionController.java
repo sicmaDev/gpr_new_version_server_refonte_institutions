@@ -14,6 +14,7 @@ import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
+import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
@@ -433,6 +434,13 @@ public class SuggestionController {
         if (suggestion.getTreatAt() != null) {
             suggestionDto.setTreatAt(suggestion.getTreatAt().toString());
         }
+        
+        if (suggestion.getConvertedAt() != null) {
+            suggestionDto.setConvertedAt(suggestion.getConvertedAt().toString());
+        }
+        if (suggestion.getConvertedBy() != null) {
+            suggestionDto.setConvertedBy(convertToResponse(suggestion.getConvertedBy()));
+        }
 
         return suggestionDto;
     }
@@ -442,5 +450,8 @@ public class SuggestionController {
         mediaResponse.setSize(media.getSize());
         return mediaResponse;
     }
-
+    private UserResponse convertToResponse(User user) {
+        UserResponse userResponse = modelMapper.map(user, UserResponse.class);
+        return userResponse;
+    };
 }

@@ -8,6 +8,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Comparator;
+import java.util.Objects;
+import java.util.Map;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -85,6 +87,7 @@ import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
+import com.sicmagroup.gpr.service.suggestion.SuggestionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -97,6 +100,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 public class ClaimController {
 
     private final ClaimServiceImpl service;
+    private final SuggestionServiceImpl suggestionServiceImpl;
     private final ModelMapper modelMapper;
     private final ExternalRecourseServiceImpl externalRecourseServiceImpl;
 
@@ -1634,6 +1638,77 @@ public class ClaimController {
         }
     }
 
+    @PostMapping("/convert")
+    public ResponseEntity<ApiResponseDto> convertClaimToSuggestionOrDenunciation(@RequestBody Map<String, String> body) {
+        String code = (body.get("code")).trim();
+        Long claimId = Long.valueOf(body.get("claimId"));
+        ApiResponseDto apiResponseDto;
+        try {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+            User connectedUser = User.builder().build();
+
+            try {
+                connectedUser = authService.getByEmail(collectorDetails.getUsername());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+            System.out.println("claimId :" + claimId);
+            if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                if (code.startsWith("rec")) {
+                    Claim claim = service.getByCode(code);
+                    service.convertClaimToDenunciation(claim.getId());
+
+                    apiResponseDto = ApiResponseDto.builder()
+                            .status(true)
+                            .content("La réclamation a été convertie en dénonciationavec succès.")
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } else if (code.startsWith("sug")) {
+                    Suggestion suggestion = suggestionServiceImpl.getByCode(code);
+                    service.convertClaimToSuggestion(claimId, suggestion.getId());
+
+                    apiResponseDto = ApiResponseDto.builder()
+                            .status(true)
+                            .content("La réclamation a été convertie en suggestion avec succès.")
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } else {
+                    apiResponseDto = ApiResponseDto.builder()
+                            .status(false)
+                            .content(ErrorResponse.builder()
+                                    .message("Code inconnu : ni réclamation ni suggestion")
+                                    .title("INVALID CODE")
+                                    .build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    ApiResponseDto.builder()
+                        .status(false)
+                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
+                        .build()
+                );
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .build()
+            );
+        }
+    }
+
     private ChatDto convertToDto(Chat chat) {
         ChatDto chatDto = modelMapper.map(chat, ChatDto.class);
         if (chat.getMessages() != null && !chat.getMessages().isEmpty()) {
@@ -1773,7 +1848,10 @@ public class ClaimController {
 
         }
         
-
+        if (claim.getExtraContents() != null) {
+            claimDto.setExtras(claim.getExtraContents().stream().map(this::convertToResponse).filter(Objects::nonNull).collect(Collectors.toList()));
+        }
+       
         if (claim.getExternalRecourses() != null) {
             claimDto.setExternalRecourses(
                     claim.getExternalRecourses().stream().map(this::convertToResponse).collect(Collectors.toList()));
@@ -1941,4 +2019,15 @@ public class ClaimController {
         return externalRecourseResponse;
     }
 
+    private ExtraContentResponse convertToResponse(ExtraContent extraContent) {
+        if(!extraContent.isFile()){
+
+            ExtraContentResponse extraContentResponse = modelMapper.map(extraContent,
+            ExtraContentResponse.class);
+            // satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+            return extraContentResponse;
+        }else{
+            return null;
+        }
+    }
 }

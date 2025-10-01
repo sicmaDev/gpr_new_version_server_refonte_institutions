@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -47,6 +48,7 @@ import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
 import com.sicmagroup.gpr.domain.dto.ClaimDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.ExistingSolutionResponse;
+import com.sicmagroup.gpr.domain.dto.ExtraContentResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SatisfactionMeasureDto;
 import com.sicmagroup.gpr.domain.dto.SolutionDto;
@@ -70,6 +72,7 @@ import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.ExistingSolution;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Objet;
@@ -1352,6 +1355,10 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
             claimDto.setCollector(convertToResponse(claim.getCollector()));
         }
 
+        if (claim.getExtraContents() != null) {
+            claimDto.setExtras(claim.getExtraContents().stream().map(this::convertToResponse).filter(Objects::nonNull).collect(Collectors.toList()));
+        }
+
         // if (claim.getMedias() != null) {
         // claimDto.setMedias(claim.getMedias());
         // }
@@ -1387,6 +1394,14 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
 
         if (claim.getSession() != null) {
             claimDto.setSession(convertToDto(claim.getSession()));
+        }
+
+        if (claim.getConvertedAt() != null) {
+            claimDto.setConvertedAt(claimDto.convertDate(claim.getConvertedAt()));
+        }
+
+        if (claim.getConvertedBy() != null) {
+            claimDto.setConvertedBy(convertToResponse(claim.getConvertedBy()));
         }
 
         //Date déclenchement de retard de traitement
@@ -1569,5 +1584,16 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
         ExternalRecourseResponse externalRecourseResponse = modelMapper.map(externalRecourse,
                 ExternalRecourseResponse.class);
         return externalRecourseResponse;
+    }
+    private ExtraContentResponse convertToResponse(ExtraContent extraContent) {
+        if(!extraContent.isFile()){
+
+            ExtraContentResponse extraContentResponse = modelMapper.map(extraContent,
+            ExtraContentResponse.class);
+            // satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+            return extraContentResponse;
+        }else{
+            return null;
+        }
     }
 }

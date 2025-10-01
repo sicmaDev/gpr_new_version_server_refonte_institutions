@@ -50,6 +50,7 @@ import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.domain.model.SatisfactionMeasure;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Solution;
+import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.repository.ClaimAudioRepository;
@@ -82,6 +83,7 @@ import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.utils.Utils;
 import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
+import com.sicmagroup.gpr.repository.SuggestionRepository;
 
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,6 +120,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final ExternalRecourseRepository externalRecourseRepository;
     private final HistoriqueAffectationServiceImpl historiqueAffectationServiceImpl;
     private final CurrentUserUtils userAuth;
+    private final SuggestionRepository suggestionRepository;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -2617,6 +2620,88 @@ public class ClaimServiceImpl implements ClaimService {
     
     @Transactional
     @Override
+    public void convertClaimToDenunciation(Long id) throws NotFoundException {
+        Claim claim = repository.findById(id).orElseThrow(() -> new NotFoundException());
+
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User connectedUser;
+        try {
+            connectedUser = authServiceImpl.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            throw new RuntimeException("Impossible de récupérer l'utilisateur connecté", e);
+        }
+
+        claim.setType(ClaimType.DENUNCIACION);
+
+        claim.setTel(null);
+        claim.setGender(null);
+        claim.setClientFirstAndLastName(null);
+        claim.setAddress(null);
+        claim.setCrew(null);
+        claim.setFolderCode(null);
+        claim.setLanguage(null);
+
+        claim.setConvertedAt(LocalDateTime.now());
+        claim.setConvertedBy(connectedUser);
+        
+        // Modifier aussi le type de tous les ExtraContent liés
+        if (claim.getExtraContents() != null) {
+            for (ExtraContent extra : claim.getExtraContents()) {
+                extra.setType(ClaimType.DENUNCIACION);
+                extraContentRepository.save(extra);
+            }
+        }
+
+        repository.save(claim);
+    }
+    
+    @Transactional
+    @Override
+    public void convertClaimToSuggestion(Long idClaim, Long idSuggestion) throws NotFoundException {
+        Claim claim = repository.findById(idClaim).orElseThrow(() -> new NotFoundException());
+        Suggestion suggestion = suggestionRepository.findById(idSuggestion).orElseThrow(() -> new NotFoundException());
+
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User connectedUser;
+        try {
+            connectedUser = authServiceImpl.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            throw new RuntimeException("Impossible de récupérer l'utilisateur connecté", e);
+        }
+
+        suggestion.setCreatedAt(claim.getCreatedAt());
+        suggestion.setConvertedAt(LocalDateTime.now());
+        suggestion.setConvertedBy(connectedUser);
+        
+        suggestionRepository.save(suggestion);  
+
+        if (claim.getExtraContents() != null) {
+            for (ExtraContent extra : claim.getExtraContents()) {
+                extra.setClaim(null);
+                extra.setSuggestion(suggestion);
+                extraContentRepository.save(extra);
+            }
+        }
+
+        List<Media> medias = mediaRepository.findByClaimId(claim.getId());
+        for (Media media : medias) {
+            media.setClaim(null);
+            media.setSuggestion(suggestion);
+            mediaRepository.save(media);
+        }
+
+        List<ClaimAudio> audios = claimAudioRepository.findByClaimId(claim.getId());
+        for (ClaimAudio audio : audios) {
+            audio.setClaim(null);
+            audio.setSuggestion(suggestion);
+            claimAudioRepository.save(audio);
+        }
+
+        repository.delete(claim);
+    }
+    
+    @Transactional
+    @Override
     public void deleteById(Long id) throws NotFoundException {
         Claim claim = repository.findById(id).orElseThrow(() -> new NotFoundException());
         // Supprimer les éléments liés à la réclamation
@@ -2637,7 +2722,7 @@ public class ClaimServiceImpl implements ClaimService {
         repository.save(claim);
         
         mediaRepository.deleteByClaimId(id); 
-        claimAudioRepository.deleteByClaimId(id);
+        claimAudioRepository.deleteByClaimId(id); 
         extraContentRepository.deleteByClaimId(id);
         
         repository.delete(claim);

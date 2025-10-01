@@ -92,7 +92,10 @@ public class Claim {
 
     @OneToMany(fetch = FetchType.EAGER)
     private List<Solution> solutions;
-
+    
+    @OneToMany(fetch = FetchType.EAGER,mappedBy = "claim")
+    private List<ExtraContent> extraContents;
+    
     @Enumerated(EnumType.STRING)
     private ClaimStatus status;
 
@@ -123,6 +126,12 @@ public class Claim {
     public boolean hasAffectedTreatment(){
         return treatmentAffectedBy != null;
     }
+    
+    private LocalDateTime convertedAt;
+    
+    @ManyToOne
+    @JoinColumn(name = "converted_by_id")
+    private User convertedBy;
 
     @Override
     public boolean equals(Object obj){

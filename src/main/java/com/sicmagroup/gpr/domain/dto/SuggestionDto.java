@@ -43,4 +43,6 @@ public class SuggestionDto {
     private String receiptDateTime;
     private String updatedAt;
     private String treatAt;
+    private String convertedAt;
+    private UserResponse convertedBy;
 }

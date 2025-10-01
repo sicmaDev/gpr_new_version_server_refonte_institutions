@@ -76,6 +76,10 @@ public class ClaimDto {
     private ChatDto session;
     private String declenchedDate;
     private Long retardDay;
+    private List<ExtraContentResponse> extras;
+
+    private String convertedAt;
+    private UserResponse convertedBy;
 
     public String convertDate(LocalDateTime dateTime){
         

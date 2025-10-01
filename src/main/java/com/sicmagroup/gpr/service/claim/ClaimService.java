@@ -95,6 +95,9 @@ public interface ClaimService {
         
         public List<Claim> getAllByStatusIn(List<ClaimStatus> status);
         
+        void convertClaimToDenunciation(Long id) throws NotFoundException;
+        void convertClaimToSuggestion(Long idClaim, Long idSuggestion) throws NotFoundException;
+        
         public void deleteById(Long id) throws NotFoundException;
         
         public void deleteById_2(Long id) throws NotFoundException;

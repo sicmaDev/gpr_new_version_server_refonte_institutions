@@ -34,7 +34,7 @@ public interface SuggestionService {
 
     public void saveSuggestionOffline(SuggestionAddRequest request, ClaimStatus status) throws Exception;
 
-    
+    public Suggestion getByCode(String code) throws Exception;
  
 
 

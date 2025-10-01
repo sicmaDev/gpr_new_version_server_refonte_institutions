@@ -26,4 +26,7 @@ public interface ClaimAudioRepository extends JpaRepository<ClaimAudio, Long>{
     @Transactional
     @Query(value = "DELETE FROM gps_claim_audio WHERE claim_id = :claimId", nativeQuery = true)
     void deleteByClaimId(@Param("claimId") Long claimId);
+
+    @Query("SELECT c FROM ClaimAudio c WHERE c.claim.id = :claimId")
+    List<ClaimAudio> findByClaimId(@Param("claimId") Long claimId);
 }

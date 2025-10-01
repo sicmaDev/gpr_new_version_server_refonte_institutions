@@ -82,6 +82,12 @@ public class Suggestion {
      @Lob
     @Column(columnDefinition = "TEXT")
 	private String commentaire;
+        
+    private LocalDateTime convertedAt;
+    
+    @ManyToOne
+    @JoinColumn(name = "converted_by_id")
+    private User convertedBy;
 
 
     private LocalDateTime createdAt;
