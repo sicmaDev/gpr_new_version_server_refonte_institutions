@@ -2679,6 +2679,7 @@ public class ClaimServiceImpl implements ClaimService {
             for (ExtraContent extra : claim.getExtraContents()) {
                 extra.setClaim(null);
                 extra.setSuggestion(suggestion);
+                extra.setType(ClaimType.SUGGESTION);
                 extraContentRepository.save(extra);
             }
         }
