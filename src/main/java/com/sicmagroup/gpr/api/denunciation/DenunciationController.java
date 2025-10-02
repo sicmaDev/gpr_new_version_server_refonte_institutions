@@ -1156,7 +1156,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
         }
     }
 
-        @PostMapping("/convert")
+    @PostMapping("/convert")
     public ResponseEntity<ApiResponseDto> convertClaimToSuggestionOrDenunciation(@RequestBody Map<String, String> body) {
         String code = (body.get("code")).trim();
         Long claimId = Long.valueOf(body.get("claimId"));
