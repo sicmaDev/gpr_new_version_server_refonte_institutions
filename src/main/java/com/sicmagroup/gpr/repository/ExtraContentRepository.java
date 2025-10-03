@@ -25,4 +25,9 @@ public interface ExtraContentRepository extends JpaRepository<ExtraContent, Long
     @Transactional
     @Query(value = "DELETE FROM gps_extra_content WHERE claim_id = :claimId", nativeQuery = true)
     void deleteByClaimId(@Param("claimId") Long claimId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM gps_extra_content WHERE suggestion_id = :suggestionId", nativeQuery = true)
+    void deleteBySuggestionId(@Param("suggestionId") Long suggestionId);
 }

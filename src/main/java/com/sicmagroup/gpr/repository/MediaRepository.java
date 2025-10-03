@@ -33,6 +33,16 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
     @Query(value = "DELETE FROM gps_media WHERE claim_id = :claimId", nativeQuery = true)
     void deleteByClaimId(@Param("claimId") Long claimId);
 
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM gps_media WHERE suggestion_id = :suggestionId", nativeQuery = true)
+    void deleteBySuggestionId(@Param("suggestionId") Long suggestionId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM gps_suggestion_files WHERE suggestion_id = :suggestionId", nativeQuery = true)
+    void deleteFromJoinTableBySuggestionId(@Param("suggestionId") Long suggestionId);
+
     @Query("SELECT m FROM Media m WHERE m.claim.id = :claimId")
     List<Media> findByClaimId(@Param("claimId") Long claimId);
 }

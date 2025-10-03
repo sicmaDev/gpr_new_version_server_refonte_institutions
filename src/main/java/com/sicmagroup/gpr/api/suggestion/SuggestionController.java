@@ -12,6 +12,7 @@ import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
+import com.sicmagroup.gpr.domain.dto.ExtraContentResponse;
 import com.sicmagroup.gpr.domain.dto.LicenceControl;
 import com.sicmagroup.gpr.domain.dto.SuggestionDto;
 import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
@@ -19,6 +20,7 @@ import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
@@ -28,12 +30,14 @@ import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.service.suggestion.SuggestionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
@@ -43,6 +47,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -416,6 +421,56 @@ public class SuggestionController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<ApiResponseDto> deleteSuggestion(@PathVariable Long id, HttpServletRequest request) {
+        ApiResponseDto apiResponseDto;
+        try {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+            User connectedUser = User.builder().build();
+
+            try {
+                connectedUser = authService.getByEmail(collectorDetails.getUsername());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+            if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                try {
+                    service.deleteById(id);
+                    return ResponseEntity.ok(
+                        ApiResponseDto.builder().status(true).content("Suggestion supprimée avec succès.").build()
+                        );
+                } catch (NotFoundException e) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        ApiResponseDto.builder().status(false).content("Suggestion non trouvée.").build()
+                    );
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    ApiResponseDto.builder()
+                        .status(false)
+                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
+                        .build()
+                );
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .build()
+            );
+        }
+    }
+
     private SuggestionDto convertToDto(Suggestion suggestion) {
         SuggestionDto suggestionDto = modelMapper.map(suggestion, SuggestionDto.class);
         if (suggestion.getCreatedAt() != null) {
@@ -442,6 +497,10 @@ public class SuggestionController {
             suggestionDto.setConvertedBy(convertToResponse(suggestion.getConvertedBy()));
         }
 
+        if (suggestion.getExtraContents() != null) {
+            suggestionDto.setExtras(suggestion.getExtraContents().stream().map(this::convertToResponse).filter(Objects::nonNull).collect(Collectors.toList()));
+        }
+
         return suggestionDto;
     }
 
@@ -454,4 +513,16 @@ public class SuggestionController {
         UserResponse userResponse = modelMapper.map(user, UserResponse.class);
         return userResponse;
     };
+    
+    private ExtraContentResponse convertToResponse(ExtraContent extraContent) {
+        if(!extraContent.isFile()){
+
+            ExtraContentResponse extraContentResponse = modelMapper.map(extraContent,
+            ExtraContentResponse.class);
+            // satisfactionMeasureDto.setMeasurer(convertToResponse(satisfactionMeasure.getMeasurer()));
+            return extraContentResponse;
+        }else{
+            return null;
+        }
+    }
 }

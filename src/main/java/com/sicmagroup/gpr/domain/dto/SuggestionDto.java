@@ -1,6 +1,7 @@
     package com.sicmagroup.gpr.domain.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.sicmagroup.gpr.domain.dto.claimResponse.CollectionChannelResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.LanguageResponse;
@@ -43,6 +44,7 @@ public class SuggestionDto {
     private String receiptDateTime;
     private String updatedAt;
     private String treatAt;
+    private List<ExtraContentResponse> extras;
     private String convertedAt;
     private UserResponse convertedBy;
 }

@@ -4,7 +4,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.StreamReadConstraints.Builder;
 import com.sicmagroup.gpr.api.suggestion.SuggestionAddRequest;
@@ -24,6 +26,9 @@ import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.InboxMessageRepository;
 import com.sicmagroup.gpr.repository.InboxRepository;
+import com.sicmagroup.gpr.repository.MediaRepository;
+import com.sicmagroup.gpr.repository.ClaimAudioRepository;
+import com.sicmagroup.gpr.repository.ExtraContentRepository;
 import com.sicmagroup.gpr.repository.SuggestionRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
@@ -52,6 +57,9 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final MediaServiceImpl mediaServiceImpl;
     private final InboxMessageRepository messageRepository;
     private final InboxRepository inboxRepository;
+    private final MediaRepository mediaRepository;
+    private final ClaimAudioRepository claimAudioRepository;
+    private final ExtraContentRepository extraContentRepository;
 
     
 
@@ -545,5 +553,20 @@ public class SuggestionServiceImpl implements SuggestionService {
     @Override
     public Suggestion getByCode(String code) throws Exception {
         return repository.findByCode(code).orElseThrow(() -> new Exception("Suggestion introuvable"));
+    }
+        
+    @Transactional
+    @Override
+    public void deleteById(Long id) throws NotFoundException {
+        Suggestion suggestion = repository.findById(id).orElseThrow(() -> new NotFoundException());
+
+        // Supprimer les éléments liés à la suggestion
+        mediaRepository.deleteFromJoinTableBySuggestionId(id);
+        mediaRepository.deleteBySuggestionId(id);
+        claimAudioRepository.deleteBySuggestionId(id);
+        extraContentRepository.deleteBySuggestionId(id);
+
+        // Enfin, supprimer la suggestion elle-même
+        repository.delete(suggestion);
     }
 }

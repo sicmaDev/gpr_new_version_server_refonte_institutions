@@ -36,6 +36,5 @@ public interface SuggestionService {
 
     public Suggestion getByCode(String code) throws Exception;
  
-
-
+    public void deleteById(Long id) throws NotFoundException;
 }
