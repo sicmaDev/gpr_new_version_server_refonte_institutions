@@ -2643,6 +2643,15 @@ public class ClaimServiceImpl implements ClaimService {
 
         claim.setConvertedAt(LocalDateTime.now());
         claim.setConvertedBy(connectedUser);
+
+        // Mettre à jour le code et codeClient en changeant uniquement le préfixe
+        if (claim.getCodeClient() != null && claim.getCodeClient().startsWith("REC-")) {
+            claim.setCodeClient("DEN-" + claim.getCodeClient().substring(4));
+        }
+
+        if (claim.getCode() != null && claim.getCode().startsWith("rec")) {
+            claim.setCode("den" + claim.getCode().substring(3));
+        }
         
         // Modifier aussi le type de tous les ExtraContent liés
         if (claim.getExtraContents() != null) {
