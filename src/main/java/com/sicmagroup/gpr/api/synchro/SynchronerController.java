@@ -313,8 +313,6 @@ public class SynchronerController {
 		List<Claim> tmpClaims = new ArrayList<>();
 		System.out.println("Size " + allClaims.size());
 		if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
-				&& !connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
-				&& !connectedUser.getAdditionalrole().equals(Role.PR_CGR)
 				&& !connectedUser.getAdditionalrole().equals(Role.DE)) {
 
 			for (Claim claim : allClaims) {
@@ -364,8 +362,6 @@ public class SynchronerController {
 		List<Claim> allDenun = claimServiceImpl.getAll(ClaimType.DENUNCIACION);
 		List<Claim> tmpDenun = new ArrayList<>();
 		if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
-				&& !connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
-				&& !connectedUser.getAdditionalrole().equals(Role.PR_CGR)
 				&& !connectedUser.getAdditionalrole().equals(Role.DE)) {
 
 			for (Claim claim : allDenun) {
@@ -410,8 +406,6 @@ public class SynchronerController {
 		List<Suggestion> suggestions = service.getAll();
 		List<Suggestion> tmpSuggestions = new ArrayList<>();
 		if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
-				&& !connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
-				&& !connectedUser.getAdditionalrole().equals(Role.PR_CGR)
 				&& !connectedUser.getAdditionalrole().equals(Role.DE)) {
 
 			for (Suggestion claim : suggestions) {

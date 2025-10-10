@@ -51,10 +51,10 @@ public class ChatServiceImpl implements ChatService {
         }
         User user = userRepository.findById(request.getCreatorId())
                 .orElseThrow(() -> new Exception("Compte utilisateur invalide"));
-        // if (user.getAdditionalrole().equals(Role.MEMBRE_CGR) || user.getAdditionalrole().equals(Role.PR_CGR)) {
+       
             if (Arrays.asList(ClaimStatus.SAVED,
             ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED).contains(claim.getStatus()) ) {
-                // List<User> members = userRepository.findByAdditionalroleIn(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
+               
                 List<User> members = Arrays.asList(user);
                 Chat chat = Chat
                         .builder()
@@ -82,10 +82,10 @@ public class ChatServiceImpl implements ChatService {
                 // Envoi de mail en parallèle
                 CompletableFuture.runAsync(() -> {
                     try {
-                        String message = "Bonjour cher utilisateur, le collaborateur " +
+                        String message = "Bonjour cher(e) utilisateur, le collaborateur " +
                                 user.getFirstandlastname()
                                 + " a démarré une session. \n\n" +
-                                "\t * Code réclamation : " + claim.getCode() + " \n" +
+                                "\t * Code réclamation : " + claim.getCodeClient() + " \n" +
                                 "Détails de la réclamation :" + "\n\n" +
                                 "* Date d'enregistrement : " +
                                 Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
@@ -146,7 +146,7 @@ public class ChatServiceImpl implements ChatService {
         User user = userRepository.findById(request.getCreatorId())
                 .orElseThrow(() -> new Exception("Compte utilisateur invalide"));
 
-        if (user.getAdditionalrole().equals(Role.MEMBRE_CGR) || user.getAdditionalrole().equals(Role.PR_CGR)) {
+       
             if (claim.getStatus().equals(ClaimStatus.PARTIAL_SATISFIED)
                     || claim.getStatus().equals(ClaimStatus.UNSATISFIED)) {
                 Chat chat = repository.findByClaim(claim)
@@ -161,10 +161,7 @@ public class ChatServiceImpl implements ChatService {
                 throw new Exception("Status de la réclamation invalide");
                 // TODO: Save this in log
             }
-        } else {
-            throw new Exception("Utilisateur non autorisé. Cette action sera répertoriée.");
-            // TODO: Save this in log
-        }
+       
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'reInit'");
     }
@@ -201,9 +198,9 @@ public class ChatServiceImpl implements ChatService {
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                String message = "Cher " + guest.getFirstandlastname() + ", \n\n" +
+                String message = "Cher(e) " + guest.getFirstandlastname() + ", \n\n" +
                     "Vous êtes invité à intervenir dans les discussions à propos de la réclamation : "
-                    + finalChat.getClaim().getCode() + " \n\n" +
+                    + finalChat.getClaim().getCodeClient() + " \n\n" +
                     "Connectez vous sur la plateforme GPR.";
 
                 Utils.sendmail(guest.getEmail(), "Invitation chat", message, null, "", settingServiceImpl);
@@ -280,7 +277,7 @@ public class ChatServiceImpl implements ChatService {
             try {
                 String message = "Cher(e) " + guest.getFirstandlastname() + ", \n\n" +
                         "Vous avez exclus de la discussion sur le traitement de la réclamation : "
-                        + finalChat.getClaim().getCode() + " \n\n" +
+                        + finalChat.getClaim().getCodeClient() + " \n\n" +
                         "Contactez le collaborateur ayant initié la session s'il s'agit d'une erreur.";
 
                 Utils.sendmail(guest.getEmail(), "Ejection du chat", message, null, "", settingServiceImpl);

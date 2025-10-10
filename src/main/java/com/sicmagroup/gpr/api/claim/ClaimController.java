@@ -228,8 +228,6 @@ public class ClaimController {
                     .collect(Collectors.toList());
             }
         }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
-                && !connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
-                && !connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 && !connectedUser.getAdditionalrole().equals(Role.DE)) {
 
             for (Claim claim : allClaims) {
@@ -387,8 +385,6 @@ public class ClaimController {
                     .collect(Collectors.toList());
             }
         }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
-                || connectedUser.getAdditionalrole().equals(Role.MEMBRE_CGR)
-                || connectedUser.getAdditionalrole().equals(Role.PR_CGR)
                 || connectedUser.getAdditionalrole().equals(Role.DE))) {
             // System.out.println(connectedUser.getPoste().getHabilitations());
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.CLAIM, Arrays.asList(ClaimStatus.SAVED,
@@ -402,8 +398,7 @@ public class ClaimController {
                 allClaims.addAll(moreClaim);
             }
 
-            if (connectedUser.getAdditionalrole().equals(Role.MEMBRE_CA)
-                    || connectedUser.getAdditionalrole().equals(Role.DE)) {
+            if (connectedUser.getAdditionalrole().equals(Role.DE)) {
                 allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims);
             }
         } else {
@@ -857,9 +852,7 @@ public class ClaimController {
                 }
                 // System.out.println("Here 2 ");
                 if (claim.getObjet().getRisqueLevel() == GravityLevel.GRAVE &&
-                        (!treator.getAdditionalrole().equals(Role.MEMBRE_CGR) &&
-                                !treator.getAdditionalrole().equals(Role.PR_CGR) &&
-                                !treator.getAdditionalrole().equals(Role.DE))
+                        (!treator.getAdditionalrole().equals(Role.DE))
                         && !treator.canTreatHighRiskClaim()) {
                     apiResponseDto = ApiResponseDto
                             .builder()
@@ -871,9 +864,7 @@ public class ClaimController {
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
                 } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MOYEN &&
-                        (!treator.getAdditionalrole().equals(Role.MEMBRE_CGR) &&
-                                !treator.getAdditionalrole().equals(Role.PR_CGR) &&
-                                !treator.getAdditionalrole().equals(Role.DE))
+                        (!treator.getAdditionalrole().equals(Role.DE))
                         && !treator.canTreatMiddleRiskClaim()) {
                     apiResponseDto = ApiResponseDto
                             .builder()
