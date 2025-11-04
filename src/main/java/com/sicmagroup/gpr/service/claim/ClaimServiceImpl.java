@@ -314,8 +314,7 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         claim = repository.save(claim);
-        List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));
-
+       
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
 
         Double apercuContent = claim.getContent().length() * 0.5;
@@ -324,18 +323,10 @@ public class ClaimServiceImpl implements ClaimService {
                 "une nouvelle réclamation a été enregistrée avec succès dans votre système. Vous recevez ce mail en tant qu'utilisateur habilité à recevoir une notification lors d'enregistrement de nouvelles réclamations."
                 + "\n\n" +
                 "Détails de la réclamation :" + "\n\n" +
-                "* Code de réclamation : " + claim.getCode() + "\n" +
+                "* Code de réclamation : " + claim.getCodeClient() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
-         
-            // Lancer le Job de notification
-            // JobParameters jobParameters = new JobParametersBuilder()
-            //         .addParameter("usersToContact", usersToContact)
-            //         .addParameter("message", message)
-            //         .toJobParameters();
-
-            // jobLauncher.run(notificationJob, jobParameters); // Lancer le Job
 
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
@@ -720,7 +711,7 @@ public class ClaimServiceImpl implements ClaimService {
                 "Le traitement d'une nouvelle réclamation vous a été affecté(e). Cette réclamation nécessite votre attention et votre expertise pour garantir une résolution rapide et satisfaisante."
                 + "\n\n" +
                 "Détails de la réclamation :" + "\n\n" +
-                "* Code de réclamation : " + claim.getCode() + "\n" +
+                "* Code de réclamation : " + claim.getCodeClient() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Délai de traitement : " + affectTreatmentRequest.getDelai() + " jours \n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
@@ -862,7 +853,7 @@ public class ClaimServiceImpl implements ClaimService {
                     + claim.getCode()
                     + " qui lui a été affectée et a proposé une solution pour résoudre cette " + type + "." + "\n\n" +
                     "Détails de la " + type + " :" + "\n\n" +
-                    "* Code de " + type + " : " + claim.getCode() + "\n" +
+                    "* Code de " + type + " : " + claim.getCodeClient() + "\n" +
                     "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                     "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                     "La solution proposée par " + treator.getFirstandlastname() + " est la suivante : " + "\n" +
@@ -914,10 +905,10 @@ public class ClaimServiceImpl implements ClaimService {
                         "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote de la plateforme GPR, \n\n" +
                         "l'utilisateur " + treator.getFirstandlastname()
                         + " a examiné la " + type + " portant le code : "
-                        + claim.getCode()
+                        + claim.getCodeClient()
                         + " et l'a traitée." + "\n\n" +
                         "Détails de la " + type + " :" + "\n\n" +
-                        "* Code de " + type + " : " + claim.getCode() + "\n" +
+                        "* Code de " + type + " : " + claim.getCodeClient() + "\n" +
                         "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
                         + "\n" +
                         "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n"
@@ -1005,7 +996,7 @@ public class ClaimServiceImpl implements ClaimService {
             // send mail to
 
             if (claim.getSession() == null) { // To CGR if it is direct treat
-                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCode()
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCodeClient()
                         + " n'est pas satisfait de la solution proposée par "
                         + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
                         "Veuillez vous connectez à la plateforme GPR afin de prendre des mesures adéquates par rapport à cette réclamation.";
@@ -1047,7 +1038,7 @@ public class ClaimServiceImpl implements ClaimService {
                 });
             } else {// TODE and CA if it's come from CGR
                 String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
-                        + claim.getCode()
+                        + claim.getCodeClient()
                         + " est non-satisfait de la solution qui lui a été proposée. \n\n" +
                         "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
                 List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
@@ -1093,7 +1084,7 @@ public class ClaimServiceImpl implements ClaimService {
             claim.setStatus(ClaimStatus.PARTIAL_SATISFIED);
 
             if (claim.getSession() == null) { // To CGR if it is direct treat
-                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCode()
+                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCodeClient()
                         + " est partiellement satisfait de la solution proposée par "
                         + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
                         "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
@@ -1136,7 +1127,7 @@ public class ClaimServiceImpl implements ClaimService {
                 }); 
             } else {// TODE and CA if it's come from CGR
                 String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
-                        + claim.getCode()
+                        + claim.getCodeClient()
                         + " est partiellement satisfait de la solution proposée par " 
                         + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
                         
@@ -1209,17 +1200,17 @@ public class ClaimServiceImpl implements ClaimService {
         claim = repository.save(claim);
         // TODO send mail to CGR User
         Double apercuContent = claim.getContent().length() * 0.5;
-        List<User> cgrMembers = authServiceImpl.getUsersByRoles(Arrays.asList(Role.MEMBRE_CGR, Role.PR_CGR));
+        List<User> cgrMembers = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         System.out.println("here 6");
         String type = "réclamation";
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
             type = "dénonciation";
         }
         String message = "" +
-                "Cher(e) membre utilisateur ,\n\n" +
+                "Cher(e) utilisateur ,\n\n" +
                 "le DE " + unApprouver.getFirstandlastname()
                 + " a examiné et désapprouvé la solution que vous avez proposé pour la " + type + " portant le code : "
-                + claim.getCode() + "\n\n" +
+                + claim.getCodeClient() + "\n\n" +
                 "Détails de la " + type + " :" + "\n\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
@@ -1285,7 +1276,7 @@ public class ClaimServiceImpl implements ClaimService {
                 "Cher(e) " + finalClaim.getTreatmentAffectedTo().getFirstandlastname() + ",\n\n" +
                 "L'utilisateur " + approuver.getFirstandlastname()
                 + " a examiné et approuvé la solution que vous avez proposée pour la " + type + " portant le code : "
-                + finalClaim.getCode() + "\n\n";
+                + finalClaim.getCodeClient() + "\n\n";
                             
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
@@ -1574,17 +1565,13 @@ public class ClaimServiceImpl implements ClaimService {
             }
         }
 
-        List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));
-
-        // List<User> usersToContact = authServiceImpl.getUsersByRoles(roles);
-
         Double apercuContent = claim.getContent().length() * 0.3;
         String message = "" +
                 "Cher(e) utilisteur" +
                 "Une nouvelle réclamation a été enregistrée avec succès dans notre système. Vous recevez cette notification en tant qu'utilisateur habilité à recevoir des notification lorsqu'une nouvelle réclamation est enregistrée."
                 + "\n\n" +
                 "Détails de la réclamation :" + "\n\n" +
-                "* Code de réclamation : " + claim.getCode() + "\n" +
+                "* Code de réclamation : " + claim.getCodeClient() + "\n" +
                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
                 "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
                 "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour son traitement. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
@@ -2308,7 +2295,7 @@ public class ClaimServiceImpl implements ClaimService {
                                 "Bonjour " + finalTransmittedTo.getFirstandlastname() + ",\n\n" +
                                 "Nous vous informons qu'un utilisateur a transmis la gestion d'une réclamation/dénonciation à votre attention, car il est dans l'incapacité de la traiter.\n"
                                 +
-                                "* Code de la Réclamation : " + finalClaim.getCode() + "\n" +
+                                "* Code de la Réclamation : " + finalClaim.getCodeClient() + "\n" +
                                 "* Aperçu de la réclamation : " + finalClaim.getContent().substring(0, apercuContent.intValue())
                                 + "...\n\n" +
                                 "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime())
@@ -2424,7 +2411,7 @@ public class ClaimServiceImpl implements ClaimService {
         Claim claim = Claim
                 .builder()
                 .clientFirstAndLastName(claimToSave.getClientFirstAndLastName())
-                .code(claimToSave.getCode())
+                .code(claimToSave.getCodeClient())
                 // .gender(Gender.valueOf(claimToSave.getGender()))
                 .type(ClaimType.CLAIM)
                 // .address(claimToSave.getAddress())
@@ -2551,8 +2538,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         claim = repository.save(claim);
         final Claim finalClaim = claim;
-        List<Role> roles = new ArrayList<>(Arrays.asList(Role.PILOTE, Role.MEMBRE_CGR, Role.PR_CGR));
-
+        
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
 
         Double apercuContent = claim.getContent().length() * 0.5;

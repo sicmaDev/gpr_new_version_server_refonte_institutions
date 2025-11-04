@@ -330,10 +330,10 @@ public class MessageServiceImp implements MessageService {
                 String messageStr = "" +
                         "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote de la plateforme GPR,\n\n" +
                         "la réclamation portant le code : "
-                        + claim.getCode()
+                        + claim.getCodeClient()
                         + " a été traitée." + "\n\n" +
                         "Détails de la réclamation :" + "\n\n" +
-                        "* Code de réclamation : " + claim.getCode() + "\n" +
+                        "* Code de réclamation : " + claim.getCodeClient() + "\n" +
                         "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
                         + "\n" +
                         "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n"

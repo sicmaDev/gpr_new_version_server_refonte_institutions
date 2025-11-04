@@ -92,7 +92,7 @@ public class AuthenticationController {
                     String responseBody = response.getBody();
         
                     // Affiche la réponse brute pour vérifier sa structure
-                    System.out.println("Réponse brute de l'API : " + responseBody);
+                    // System.out.println("Réponse brute de l'API : " + responseBody);
                       // Utiliser ObjectMapper pour analyser la réponse brute en un JsonNode
                     ObjectMapper objectMapper = new ObjectMapper();
                     JsonNode rootNode = objectMapper.readTree(responseBody);
@@ -100,7 +100,7 @@ public class AuthenticationController {
                     // Accéder à une valeur spécifique (par exemple, "serial")
                     JsonNode reponse = rootNode;  // Si c'est un tableau, accès au premier élément
                     if (reponse != null) {
-                        System.out.println("Serial15 : " + reponse.get("serial").asText());
+                        // System.out.println("Serial15 : " + reponse.get("serial").asText());
                        
                             try {
                                 ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
@@ -113,7 +113,7 @@ public class AuthenticationController {
                                 licenseMap.put("activationRequest", reponse.get("activation_request").asText());
                                 licenseMap.put("createdAt", reponse.get("createdAt").asText());
                                 licenseMap.put("updatedAt", reponse.get("updatedAt").asText());
-                                System.out.println(licenseMap);
+                                // System.out.println(licenseMap);
                                 String json = ow.writeValueAsString(licenseMap);
         
                                 FileWriter fw = new FileWriter("data.txt");

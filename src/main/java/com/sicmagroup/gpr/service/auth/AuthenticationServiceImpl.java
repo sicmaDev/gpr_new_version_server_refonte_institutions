@@ -782,12 +782,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 try {
                     String message = "" +
                         "Hello \n" +
-                        "Bravo,votre mot de passe a été reinstallé sur GPR"
+                        "Bravo , votre mot de passe a été reinitialisé sur GPR."
                         + "\n\n" +
                         "Voici vos informations de connexion:" + "\n\n" +
                         "* Email: " + user.getEmail() + "\n" +
                         "* Mot de passe : " + new String(password) + "\n" +
-                        "Ce mail ne doit pas etre divulger.";
+                        "Ce mail ne doit pas etre divulguer.";
 
                     Utils.sendmail(userMailTo, "Modification plateforme de GPR", message, null, " ", settingServiceImpl);
                                                 
@@ -1247,7 +1247,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         //envoi de mail au user
                         String message = "" +
                         "Cher(e) " + userForMail.getFirstandlastname() + ",\n\n" +
-                        "Votre compte a été validé avec succès sur la plateforme de gestion des plaintes et réclamations (GPR).\n" +
+                        "Votre compte a été validé avec succès sur la plateforme de gestion des plaintes et réclamations GPR.\n" +
                         "Vous pouvez désormais vous connecter et accéder à toutes les fonctionnalités disponibles.";
 
                         Utils.sendmail(userForMail.getEmail(), "Validation de compte", message, null,
