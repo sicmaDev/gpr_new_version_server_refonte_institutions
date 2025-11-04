@@ -1,8 +1,11 @@
 package com.sicmagroup.gpr.service.suggestion;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
@@ -14,17 +17,22 @@ import com.sicmagroup.gpr.api.suggestion.SuggestionRequest;
 import com.sicmagroup.gpr.api.suggestion.TreatSuggestionRequest;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
+import com.sicmagroup.gpr.domain.enumeration.LogTarget;
+import com.sicmagroup.gpr.domain.enumeration.LogType;
+import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Language;
+import com.sicmagroup.gpr.domain.model.Log;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.InboxMessageRepository;
+import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.repository.ClaimAudioRepository;
@@ -38,6 +46,7 @@ import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.service.objet.ObjetServcieImpl;
 import com.sicmagroup.gpr.service.product.ProductServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
@@ -51,6 +60,8 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final ProductServiceImpl productServiceImpl;
     private final ObjetServcieImpl objetServcieImpl;
     private final ClaimAudioServiceImpl claimAudioServiceImpl;
+    private final SettingServiceImpl settingServiceImpl;
+    private final LogServiceImpl logServiceImpl;
 
     private final LanguageServiceImpl languageServiceImpl;
     private final AuthenticationServiceImpl authServiceImpl;
@@ -378,6 +389,79 @@ public class SuggestionServiceImpl implements SuggestionService {
         suggestion.setTreatAt(LocalDateTime.now());
 
         suggestion = repository.save(suggestion);
+
+        User transmittedTo = null;
+        List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+
+        if (transmittedTo == null) {
+            transmittedTo = pilote.get(0);
+        
+            // Si aucun PILOTE n'a été trouvé, lever une exception
+            if (transmittedTo == null) {
+                throw new Exception("Aucun PILOTE trouvé pour le point de service.");
+            }
+        }
+
+        // Sauvegarder la réclamation mise à jour
+        final Suggestion finalSuggestion = suggestion;
+        final User finalTransmittedTo = transmittedTo;
+
+        // Initialisation de la liste
+        List<User> destis = new ArrayList<>();
+
+        // Ajouter transmittedTo à la liste destis
+        if (transmittedTo != null) {
+            destis.add(transmittedTo);
+        } else {
+            throw new Exception("Le destinataire (transmittedTo) est null, impossible de l'ajouter à la liste.");
+        }
+
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Double apercuContent = finalSuggestion.getContent().length() * 0.5;
+                String message = "" +
+                        "Bonjour " + finalTransmittedTo.getFirstandlastname() + ",\n\n" +
+                        "Nous vous informons qu'un utilisateur vient de traiter une suggestion.\n"
+                        +
+                        "* Code de la suggestion : " + finalSuggestion.getCode() + "\n" +
+                        "* Aperçu de la suggestion : " + finalSuggestion.getContent().substring(0, apercuContent.intValue())
+                        + "...\n\n" +
+                        "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(finalSuggestion.getReceiptDateTime())
+                        + "\n" +
+                        "Cordialement,\n" ;
+                        // "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
+                        // "Poste : " + claim.getCollector().getPoste().getLibelle();
+                Utils.sendmail(destis, "TRAITEMENT SUGGESTION", message, null, "", settingServiceImpl);
+                                                
+                Log successLog = Log.builder()
+                    .libelle("Mail notification suggestion traité")
+                    .content("Success mail notification suggestion traité")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog);                           
+            } catch (Exception e) {                        
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification suggestion traité")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
 
         return suggestion;
     }

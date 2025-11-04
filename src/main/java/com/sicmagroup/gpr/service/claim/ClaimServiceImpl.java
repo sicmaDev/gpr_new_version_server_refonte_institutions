@@ -428,6 +428,8 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public Claim saveTempClaim(SaveRequest claimPart, ClaimType type) throws Exception {
+        System.out.println("claim id00: " + claimPart.getClaimRequest());
+
         ClaimRequest claimToSave = claimPart.getClaimRequest();
         Log log = Log
                 .builder().build();
@@ -449,7 +451,9 @@ public class ClaimServiceImpl implements ClaimService {
         }
         log.setTarget(targetLog);
 
+        System.out.println("claim id: " + claimToSave.getId());
         if (claimToSave.getId() != null) {
+            System.out.println("claim id: " + claimToSave.getId());
             Claim oldClaim = repository.findById(claimToSave.getId())
                     .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
             claim = oldClaim;

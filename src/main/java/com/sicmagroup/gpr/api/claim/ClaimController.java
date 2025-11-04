@@ -1663,7 +1663,7 @@ public class ClaimController {
 
             System.out.println("claimId :" + claimId);
             if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
-                if (code.startsWith("rec")) {
+                if (code.startsWith("rec") || code.startsWith("bot")) {
                     Claim claim = service.getByCode(code);
                     service.convertClaimToDenunciation(claim.getId());
 
