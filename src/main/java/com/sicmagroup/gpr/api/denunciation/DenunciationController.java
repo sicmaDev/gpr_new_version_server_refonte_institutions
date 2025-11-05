@@ -392,7 +392,8 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
 
         // Ajouter toutes les dénonciations "bot"
         for (Claim claim : allFilteredClaims) {
-            if (claim.getCode().startsWith("bot")) {
+            if (claim.getCode().startsWith("bot") &&
+                allClaims.stream().noneMatch(c -> c.getId().equals(claim.getId()))) {
                 allClaims.add(claim);
             }
         }
@@ -400,7 +401,12 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
         // Si le statut est TEMP_SAVED, ajouter les dénonciations sauvegardées par le pilote
         if (status == ClaimStatus.TEMP_SAVED) {
             List<Claim> savedByPilot = service.getAllByTypeStatusCollector(ClaimType.DENUNCIACION, status, connectedUser);
-            allClaims.addAll(savedByPilot);
+            // allClaims.addAll(savedByPilot);
+            for (Claim claim : savedByPilot) {
+                if (allClaims.stream().noneMatch(c -> c.getId().equals(claim.getId()))) {
+                    allClaims.add(claim);
+                }
+            }
         }
     } else {
         // Si l'utilisateur n'est pas un PILOTE, appliquer la logique normale

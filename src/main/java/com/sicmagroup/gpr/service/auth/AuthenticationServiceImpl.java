@@ -1230,6 +1230,49 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         userOld.setDeleted(true);
         userOld.setDeletedAt(LocalDateTime.now());
         userOld = userRepository.save(userOld);
+
+        final User userForMail = userOld;
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                //envoi de mail au user
+                String message = "" +
+                "Cher(e) " + userForMail.getFirstandlastname() + ",\n\n" +
+                "Votre compte a été désactivé avec succès sur la plateforme de gestion des plaintes et réclamations GPR.\n" +
+                "Vous pouvez désormais vous connecter et accéder à toutes les fonctionnalités disponibles.";
+
+                Utils.sendmail(userForMail.getEmail(), "Désactivation de compte", message, null,
+                        " ", settingServiceImpl);
+                                        
+                Log successLog = Log.builder()
+                    .libelle("Mail notification désactivation compte")
+                    .content("Success mail notification désactivation compte")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog);                                 
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification désactivation compte")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(null)
+                            .target(LogTarget.APP)
+                            .build();
+
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
+
         return userOld;
     }
 
@@ -1242,45 +1285,45 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         final User userForMail = userOld;
         // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        //envoi de mail au user
-                        String message = "" +
-                        "Cher(e) " + userForMail.getFirstandlastname() + ",\n\n" +
-                        "Votre compte a été validé avec succès sur la plateforme de gestion des plaintes et réclamations GPR.\n" +
-                        "Vous pouvez désormais vous connecter et accéder à toutes les fonctionnalités disponibles.";
+        CompletableFuture.runAsync(() -> {
+            try {
+                //envoi de mail au user
+                String message = "" +
+                "Cher(e) " + userForMail.getFirstandlastname() + ",\n\n" +
+                "Votre compte a été validé avec succès sur la plateforme de gestion des plaintes et réclamations GPR.\n" +
+                "Vous pouvez désormais vous connecter et accéder à toutes les fonctionnalités disponibles.";
 
-                        Utils.sendmail(userForMail.getEmail(), "Validation de compte", message, null,
-                                " ", settingServiceImpl);
-                                                
-                        Log successLog = Log.builder()
-                            .libelle("Mail notification validation compte")
-                            .content("Success mail notification validation compte")
+                Utils.sendmail(userForMail.getEmail(), "Validation de compte", message, null,
+                        " ", settingServiceImpl);
+                                        
+                Log successLog = Log.builder()
+                    .libelle("Mail notification validation compte")
+                    .content("Success mail notification validation compte")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog);                                 
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification création compte")
+                            .content(e.getMessage())
                             .createdAt(LocalDateTime.now())
-                            .type(LogType.INFO)
+                            .type(LogType.ERROR)
                             .userId(0L)
-                            .userIpAddress("")
+                            .userIpAddress(null)
                             .target(LogTarget.APP)
                             .build();
 
-                        logServiceImpl.saveLog(successLog);                                 
-                    } catch (Exception e) {
-                        if (e != null) {
-                            Log log2 = Log
-                                    .builder()
-                                    .libelle("Echec mail notification création compte")
-                                    .content(e.getMessage())
-                                    .createdAt(LocalDateTime.now())
-                                    .type(LogType.ERROR)
-                                    .userId(0L)
-                                    .userIpAddress(null)
-                                    .target(LogTarget.APP)
-                                    .build();
-    
-                            logServiceImpl.saveLog(log2);
-                        }
-                    }
-                });
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
 
         return userOld;
     }
@@ -1327,12 +1370,96 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public void deleteUser(User user) throws Exception {
+        final User userForMail = user; 
+
         if (!user.getPoste().getHabilitations().contains("H12")) {
             try {
+                if (user.isRattached() && user.isDeleted()) {
+                    // Envoi du mail de rejet
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            String messageUserRejete = "" +
+                                "Hello " + userForMail.getFirstandlastname() + ",\n\n" +
+                                "Nous vous informons que votre compte sur **GPR** a été **rejeté** et n'a pas été validé. \n\n" +
+                                "Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter notre équipe de support.\n\n" +
+                                "Ce message est confidentiel. Merci de ne pas le divulguer.\n\n" +
+                                "Cordialement,\n";
+                            Utils.sendmail(userForMail.getEmail(), "Rejet de compte sur GPR", messageUserRejete, null, " ", settingServiceImpl);
+                            Log successLog = Log.builder()
+                                .libelle("Mail notification Rejet compte")
+                                .content("Success mail notification rejet compte")
+                                .createdAt(LocalDateTime.now())
+                                .type(LogType.INFO)
+                                .userId(0L)
+                                .userIpAddress("")
+                                .target(LogTarget.APP)
+                                .build();
+
+                            logServiceImpl.saveLog(successLog);                            
+                        } catch (Exception e) {
+                                if (e != null) {
+                                    Log log2 = Log
+                                        .builder()
+                                        .libelle("Echec mail notification création compte")
+                                        .content(e.getMessage())
+                                        .createdAt(LocalDateTime.now())
+                                        .type(LogType.ERROR)
+                                        .userId(0L)
+                                        .userIpAddress(null)
+                                        .target(LogTarget.APP)
+                                        .build();
+            
+                                    logServiceImpl.saveLog(log2);
+                                }
+                            }
+                    });
+                } else {
+                    // Envoi du mail
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            String message = "" +
+                            "Hello " + userForMail.getFirstandlastname() + ",\n\n" +
+                            "Nous vous informons que votre compte sur **GPR** a été supprimé avec succès. \n\n" +
+                            "Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter notre équipe de support.\n\n" +
+                            "Ce message est confidentiel. Merci de ne pas le divulguer.\n\n" +
+                            "Cordialement,\n";
+                            Utils.sendmail(user.getEmail(), "Suppression de compte sur GPR", message, null, " ", settingServiceImpl);
+                    
+                    
+                            Log successLog = Log.builder()
+                                .libelle("Mail notification suppression compte")
+                                .content("Success mail notification suppression compte")
+                                .createdAt(LocalDateTime.now())
+                                .type(LogType.INFO)
+                                .userId(0L)
+                                .userIpAddress("")
+                                .target(LogTarget.APP)
+                                .build();
+
+                            logServiceImpl.saveLog(successLog);    
+                        } catch (Exception e) {
+                            if (e != null) {
+                                Log log2 = Log
+                                    .builder()
+                                    .libelle("Echec mail notification création compte")
+                                    .content(e.getMessage())
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.ERROR)
+                                    .userId(0L)
+                                    .userIpAddress(null)
+                                    .target(LogTarget.APP)
+                                    .build();
+        
+                                logServiceImpl.saveLog(log2);
+                            }
+                        }
+                    });
+                }             
+
                 userRepository.delete(user);
             } catch (Exception e) {
                 throw new Exception(
-                        "Impossible de supprimer cet utilisateur car il intervient dans plusieurs opérations.");
+                "Impossible de supprimer cet utilisateur car il intervient dans plusieurs opérations.");
             }
         } else {
             List<User> users = userRepository.findAll();
@@ -1346,6 +1473,88 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
             if (existAnotherAdmin) {
                 try {
+                    if (user.isRattached() && user.isDeleted()) {
+                        // Envoi du mail de rejet
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                String messageUserRejete = "" +
+                                    "Hello " + userForMail.getFirstandlastname() + ",\n\n" +
+                                    "Nous vous informons que votre compte sur **GPR** a été **rejeté** et n'a pas été validé. \n\n" +
+                                    "Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter notre équipe de support.\n\n" +
+                                    "Ce message est confidentiel. Merci de ne pas le divulguer.\n\n" +
+                                    "Cordialement,\n";
+                                Utils.sendmail(userForMail.getEmail(), "Rejet de compte sur GPR", messageUserRejete, null, " ", settingServiceImpl);
+                                Log successLog = Log.builder()
+                                    .libelle("Mail notification Rejet compte")
+                                    .content("Success mail notification rejet compte")
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.INFO)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+
+                                logServiceImpl.saveLog(successLog);                            
+                            } catch (Exception e) {
+                                    if (e != null) {
+                                        Log log2 = Log
+                                            .builder()
+                                            .libelle("Echec mail notification création compte")
+                                            .content(e.getMessage())
+                                            .createdAt(LocalDateTime.now())
+                                            .type(LogType.ERROR)
+                                            .userId(0L)
+                                            .userIpAddress(null)
+                                            .target(LogTarget.APP)
+                                            .build();
+                
+                                        logServiceImpl.saveLog(log2);
+                                    }
+                                }
+                        });
+                    } else {
+                        // Envoi du mail
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                String message = "" +
+                                "Hello " + userForMail.getFirstandlastname() + ",\n\n" +
+                                "Nous vous informons que votre compte sur **GPR** a été supprimé avec succès. \n\n" +
+                                "Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter notre équipe de support.\n\n" +
+                                "Ce message est confidentiel. Merci de ne pas le divulguer.\n\n" +
+                                "Cordialement,\n";
+                                Utils.sendmail(user.getEmail(), "Suppression de compte sur GPR", message, null, " ", settingServiceImpl);
+                        
+                        
+                                Log successLog = Log.builder()
+                                    .libelle("Mail notification suppression compte")
+                                    .content("Success mail notification suppression compte")
+                                    .createdAt(LocalDateTime.now())
+                                    .type(LogType.INFO)
+                                    .userId(0L)
+                                    .userIpAddress("")
+                                    .target(LogTarget.APP)
+                                    .build();
+
+                                logServiceImpl.saveLog(successLog);    
+                            } catch (Exception e) {
+                                if (e != null) {
+                                    Log log2 = Log
+                                        .builder()
+                                        .libelle("Echec mail notification création compte")
+                                        .content(e.getMessage())
+                                        .createdAt(LocalDateTime.now())
+                                        .type(LogType.ERROR)
+                                        .userId(0L)
+                                        .userIpAddress(null)
+                                        .target(LogTarget.APP)
+                                        .build();
+            
+                                    logServiceImpl.saveLog(log2);
+                                }
+                            }
+                        });
+                    }             
+
                     userRepository.delete(user);
                 } catch (Exception e) {
                     throw new Exception(

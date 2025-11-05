@@ -461,8 +461,9 @@ public class ClaimController {
                     List<Claim> allClaimsTmp = service.getClaimByStatus(ClaimType.CLAIM, status);
                    
                     for (Claim claim : allClaimsTmp) {
-                       if (claim.getCode().startsWith("bot")) {
-                           allClaims.add(claim);
+                       if (claim.getCode().startsWith("bot") && 
+                            allClaims.stream().noneMatch(c -> c.getId().equals(claim.getId()))) {
+                            allClaims.add(claim);
                        }
                     }
                 }
@@ -828,7 +829,7 @@ public class ClaimController {
                 User treator = new User();
                 // System.out.println("Here 0 ");
                 try {
-                    claim = service.getById(request.getClaimId());
+                    claim = service.getById(request.getClaimId()); 
                 } catch (Exception e) {
                     apiResponseDto = ApiResponseDto
                             .builder()

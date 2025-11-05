@@ -399,28 +399,31 @@ public class ClaimServiceImpl implements ClaimService {
         extraContent.setUpdatedAt(LocalDateTime.now());
 
         ExtraContent extraContentSave = extraContentServiceImpl.saveExtraContent(extraContent);
+        // Ajout du contenu au Claim
+        claim.getExtraContents().add(extraContentSave);
+
         if (extraContentSave.isFile()) { 
             if (files != null && files.length != 0) {
                 List<Media> medias = mediaServiceImpl.store(files, claim, extraContentSave);
-                claim.setUpdatedAt(LocalDateTime.now());
+                // claim.setUpdatedAt(LocalDateTime.now());
                 
-                return repository.save(claim);
+                // return repository.save(claim);
             }
             if (audios != null && audios.length != 0) {
                 List<ClaimAudio> audio = claimAudioServiceImpl.store(audios, claim, extraContentSave);
-                claim.setUpdatedAt(LocalDateTime.now());
+                // claim.setUpdatedAt(LocalDateTime.now());
                 
-                return repository.save(claim);
+                // return repository.save(claim);
             }
         }
+
+        claim.setUpdatedAt(LocalDateTime.now());
         
-        return claim;
+        return repository.save(claim);
     }
 
     @Override
     public Claim saveTempClaim(SaveRequest claimPart, ClaimType type) throws Exception {
-        System.out.println("claim id00: " + claimPart.getClaimRequest());
-
         ClaimRequest claimToSave = claimPart.getClaimRequest();
         Log log = Log
                 .builder().build();
@@ -442,9 +445,7 @@ public class ClaimServiceImpl implements ClaimService {
         }
         log.setTarget(targetLog);
 
-        System.out.println("claim id: " + claimToSave.getId());
         if (claimToSave.getId() != null) {
-            System.out.println("claim id: " + claimToSave.getId());
             Claim oldClaim = repository.findById(claimToSave.getId())
                     .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
             claim = oldClaim;
@@ -453,7 +454,6 @@ public class ClaimServiceImpl implements ClaimService {
             } else {
                 libelleLog = "Modification d'une dénonciation Temporairement sauvegardée";
             }
-
         } else {
             if (claimToSave.getCode() != null && !claimToSave.getCode().isEmpty()) {
                 claim.setCode(claimToSave.getCode());
@@ -470,9 +470,7 @@ public class ClaimServiceImpl implements ClaimService {
                 } else {
                     libelleLog = "Nouvelle dénonciation Temporairement sauvegardée";
                 }
-
             }
-
         }
 
         log.setLibelle(libelleLog);

@@ -133,7 +133,8 @@ public class SuggestionController {
                     List<Suggestion> allSuggestions = service.getAllByStatusIn(Arrays.asList(status));
                     //    suggestions = allSuggestions;
                     for (Suggestion suggestion : allSuggestions) {
-                        if (suggestion.getCode().startsWith("bot")) {
+                        if (suggestion.getCode().startsWith("bot") &&
+                            suggestions.stream().noneMatch(s -> s.getId().equals(suggestion.getId()))) {
                             suggestions.add(suggestion);
                         }
                     }
