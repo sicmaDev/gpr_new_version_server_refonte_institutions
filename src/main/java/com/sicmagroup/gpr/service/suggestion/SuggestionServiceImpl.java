@@ -425,15 +425,16 @@ public class SuggestionServiceImpl implements SuggestionService {
             try {
                 Double apercuContent = finalSuggestion.getContent().length() * 0.5;
                 String message = "" +
-                        "Bonjour " + finalTransmittedTo.getFirstandlastname() + ",\n\n" +
-                        "Nous vous informons qu'un utilisateur vient de traiter une suggestion.\n"
-                        +
-                        "* Code de la suggestion : " + finalSuggestion.getCode() + "\n" +
-                        "* Aperçu de la suggestion : " + finalSuggestion.getContent().substring(0, apercuContent.intValue())
-                        + "...\n\n" +
+                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote.\n\n" +
+                        "L'utilisateur " + treator.getFirstandlastname()
+                        + " a examiné la suggestion " +  " portant le code : "
+                        + finalSuggestion.getCodeClient()
+                        + " et l'a traitée." + "\n\n" +
+                        "Détails de la suggestion "  + " :" + "\n\n" +
+                        "* Code de la suggestion : " + finalSuggestion.getCodeClient() + "\n" +
                         "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(finalSuggestion.getReceiptDateTime())
                         + "\n" +
-                        "Cordialement,\n" ;
+                        "* Aperçu du contenu : " + finalSuggestion.getContent().substring(0, apercuContent.intValue()) + "...\n\n";
                         // "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
                         // "Poste : " + claim.getCollector().getPoste().getLibelle();
                 Utils.sendmail(destis, "TRAITEMENT SUGGESTION", message, null, "", settingServiceImpl);
@@ -444,7 +445,7 @@ public class SuggestionServiceImpl implements SuggestionService {
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
-                    .userIpAddress("")
+                    .userIpAddress("") 
                     .target(LogTarget.APP)
                     .build();
 

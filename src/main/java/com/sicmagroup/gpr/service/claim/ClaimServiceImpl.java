@@ -848,7 +848,7 @@ public class ClaimServiceImpl implements ClaimService {
             String message = "" +
                     "Cher(e) " + claim.getTreatmentAffectedBy().getFirstandlastname() + ",\n\n" +
                     "L'utilisateur " + treator.getFirstandlastname() + " a examiné la " + type + " portant le code : "
-                    + claim.getCode()
+                    + claim.getCodeClient()
                     + " qui lui a été affectée et a proposé une solution pour résoudre cette " + type + "." + "\n\n" +
                     "Détails de la " + type + " :" + "\n\n" +
                     "* Code de " + type + " : " + claim.getCodeClient() + "\n" +

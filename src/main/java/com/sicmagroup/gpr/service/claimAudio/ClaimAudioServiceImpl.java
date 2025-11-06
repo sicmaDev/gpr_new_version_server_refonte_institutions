@@ -183,10 +183,16 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
         for (ClaimAudio audio : list) {
             ClaimAudioResponse claimAudioResponse;
             try {
+                ExtraContentResponse extra = null;
+                if(audio.getExtraContent() instanceof ExtraContent){
+                    extra = modelMapper.map(audio.getExtraContent(),ExtraContentResponse.class);
+                }
                 claimAudioResponse = ClaimAudioResponse
                         .builder()
                         .id(audio.getId())
                         .name(audio.getName())
+                        .is_extra(audio.is_extra())
+                        .extra(extra)
                         .path(audio.getPath())
                         .size(audio.getSize())
                         .data(loadAsResource(audio).getContentAsByteArray())

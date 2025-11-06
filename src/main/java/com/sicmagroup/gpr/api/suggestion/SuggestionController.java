@@ -284,7 +284,7 @@ public class SuggestionController {
         }
     }
 
-        @GetMapping("/getAudiosBy/{suggestionId}")
+    @GetMapping("/getAudiosBy/{suggestionId}")
     public ResponseEntity<List<ClaimAudioResponse>> getAllSuggestionAudioForASuggestion(
             @PathVariable(name = "suggestionId") Long suggestionId) {
         ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();
