@@ -1216,6 +1216,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             user.setCode(userOld.getCode());
         }
 
+        // juste avant la sauvegarde
+        if (user.isRa()) {
+            Optional<User> existingRa = userRepository
+                .findByServicePointAndIsRaTrue(user.getServicePoint());
+            
+            if (existingRa.isPresent() && !existingRa.get().getId().equals(user.getId())) {
+                throw new IllegalArgumentException("Un RA existe déjà pour ce point de service.");
+            }
+        }
+
         user = userRepository.save(user);
         return user;
     }
@@ -1367,6 +1377,35 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             return false;
         }
     }
+
+    // public void checkSingleRaPerServicePoint(Long userId, Long servicePointId) throws IllegalArgumentException {
+    //     ServicePoint sp = servicePointRepository.findById(servicePointId)
+    //         .orElseThrow(() -> new IllegalArgumentException("ServicePoint non trouvé"));
+
+    //     Optional<User> existingRa = userRepository.findByServicePointAndIsRaTrue(sp);
+
+    //     if (existingRa.isPresent() && !existingRa.get().getId().equals(userId)) {
+    //         throw new IllegalArgumentException("Un RA existe déjà pour ce point de service");
+    //     }
+    // }
+
+    public void checkSingleRaPerServicePoint(Long userId, Long servicePointId) {
+        // Récupération du point de service
+        ServicePoint sp = servicePointRepository.findById(servicePointId)
+            .orElseThrow(() -> new IllegalArgumentException("Point de service non trouvé"));
+
+        // Recherche d'un RA existant pour ce point de service
+        Optional<User> existingRa = userRepository.findByServicePointAndIsRaTrue(sp);
+
+        // Si un RA existe déjà
+        if (existingRa.isPresent()) {
+            // Cas mise à jour : on ignore l'utilisateur lui-même
+            if (userId == null || !existingRa.get().getId().equals(userId)) {
+                throw new IllegalArgumentException("Un RA existe déjà pour ce point de service");
+            }
+        }
+    }
+
 
     @Override
     public void deleteUser(User user) throws Exception {

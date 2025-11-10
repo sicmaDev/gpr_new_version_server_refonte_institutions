@@ -168,9 +168,10 @@ public class UserController {
             request.setAdditionalRole(Role.MOLDUE.name());
         }
 
-        // if (request.getIsRa() == "") {
-        //     request.setAdditionalRole(Role.MOLDUE.name());
-        // }
+        if (request.isRa()) {
+            authenticationServiceImpl.checkSingleRaPerServicePoint(null, request.getServicePointId());
+        }
+
         try {
             return ResponseEntity.ok(authenticationServiceImpl.register(request));
         } catch (AuthenticationException e) {
@@ -229,9 +230,18 @@ public class UserController {
 
                 if (!poste.getHabilitations().contains(Habilitation.H12.name())) {
                     if (authenticationServiceImpl.isTheLastH12(id)) {
-                        throw new Exception("Vous ne pouvez pas modifier ce utilisateur à cause de son habilitation");
+                        throw new Exception("Vous ne pouvez pas modifier cet utilisateur à cause de son habilitation");
                     }
                 }
+
+
+                // --- Vérification RA ---
+                // Avant d'appeler updateUser
+                // authenticationServiceImpl.checkSingleRaPerServicePoint(id, request.getServicePointId());
+                if (request.isRa()) {
+                    authenticationServiceImpl.checkSingleRaPerServicePoint(id, request.getServicePointId());
+                }
+
                 user = authenticationServiceImpl.updateUser(id, request);
                 apiResponseDto = ApiResponseDto
                         .builder()
