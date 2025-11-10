@@ -1379,6 +1379,13 @@ public class ClaimServiceImpl implements ClaimService {
         List<Claim> tmp = resultat;
 
         tmp = resultat.stream().filter(claim -> {
+            // 1️⃣ Exclusion : l'utilisateur ne voit pas sa propre réclamation
+            //    si celle-ci n'est pas rattachée à son point de service
+            if (claim.getCollector().equals(affectedTo)
+                    && !claim.getServicePoint().equals(affectedTo.getServicePoint())) {
+                return false;
+            }
+            
             if (!affectedTo.canTreatHighRiskClaim() && claim.getObjet().getRisqueLevel() == GravityLevel.GRAVE) {
                 return false;
             } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MOYEN
