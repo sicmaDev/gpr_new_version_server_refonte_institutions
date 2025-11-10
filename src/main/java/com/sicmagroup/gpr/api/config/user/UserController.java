@@ -195,6 +195,9 @@ public class UserController {
         if (request.getAdditionalRole() == null || request.getAdditionalRole().equals("")) {
             request.setAdditionalRole(Role.MOLDUE.name());
         }
+        if (request.isRa()) {
+            authenticationServiceImpl.checkSingleRaPerServicePoint(null, request.getServicePointId());
+        }
 
         try {
             return ResponseEntity.ok(authenticationServiceImpl.publicRegister(request));

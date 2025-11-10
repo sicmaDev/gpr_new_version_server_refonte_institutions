@@ -2,9 +2,9 @@
   "createdAt" : "2025-04-16T14:42:14.000000",
   "serial" : "59a98f61-a029-41af-83ac-725d548b22ba",
   "company" : "SICMA ET ASSOCIES",
-  "activationRequest" : "c99ab65f-1477-4603-9216-1bcca0bd43ee,365:10",
+  "activationRequest" : "c99ab65f-1477-4603-9216-1bcca0bd43ee,365:9",
   "id" : "398",
   "fullname" : "SICMA ET ASSOCIES",
   "email" : "info@sicmagroup.com",
-  "updatedAt" : "2025-11-10T18:17:13.000000"
+  "updatedAt" : "2025-11-10T18:45:07.000000"
 }
