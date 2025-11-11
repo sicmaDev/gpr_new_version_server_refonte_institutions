@@ -1378,33 +1378,39 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
 
-    // public void checkSingleRaPerServicePoint(Long userId, Long servicePointId) throws IllegalArgumentException {
-    //     ServicePoint sp = servicePointRepository.findById(servicePointId)
-    //         .orElseThrow(() -> new IllegalArgumentException("ServicePoint non trouvé"));
+    public void checkSingleRaPerServicePoint(Long userId, RegisterRequest request) {
+        System.out.println("requets : "+request.isRa()+ " lol ="+request.getAdditionalRole());
+        // Vérification du rôle additionnel et du flag isRa
+        if (request.isRa() && request.getAdditionalRole() != null && !request.getAdditionalRole().isEmpty()) {
+            Role role = null;
+            try {
+                role = Role.valueOf(request.getAdditionalRole());
+            } catch (IllegalArgumentException e) {
+                // Si la valeur du rôle n’existe pas dans l’enum, on ignore simplement
+            }
 
-    //     Optional<User> existingRa = userRepository.findByServicePointAndIsRaTrue(sp);
+            if (role != null && (role == Role.PILOTE || role == Role.DE)) {
+                throw new IllegalArgumentException("Un utilisateur RA ne peut pas avoir le rôle additionnel PILOTE ou DE.");
+            }
+        }
 
-    //     if (existingRa.isPresent() && !existingRa.get().getId().equals(userId)) {
-    //         throw new IllegalArgumentException("Un RA existe déjà pour ce point de service");
-    //     }
-    // }
 
-    public void checkSingleRaPerServicePoint(Long userId, Long servicePointId) {
-        // Récupération du point de service
-        ServicePoint sp = servicePointRepository.findById(servicePointId)
-            .orElseThrow(() -> new IllegalArgumentException("Point de service non trouvé"));
+        // Vérification de l'unicité du RA pour le point de service
+        if (request.isRa() && request.getServicePointId() != null) {
+            ServicePoint sp = servicePointRepository.findById(request.getServicePointId())
+                    .orElseThrow(() -> new IllegalArgumentException("Point de service non trouvé"));
 
-        // Recherche d'un RA existant pour ce point de service
-        Optional<User> existingRa = userRepository.findByServicePointAndIsRaTrue(sp);
+            Optional<User> existingRa = userRepository.findByServicePointAndIsRaTrue(sp);
 
-        // Si un RA existe déjà
-        if (existingRa.isPresent()) {
-            // Cas mise à jour : on ignore l'utilisateur lui-même
-            if (userId == null || !existingRa.get().getId().equals(userId)) {
-                throw new IllegalArgumentException("Un RA existe déjà pour ce point de service");
+            if (existingRa.isPresent()) {
+                // Si on met à jour un utilisateur différent du RA existant → erreur
+                if (userId == null || !existingRa.get().getId().equals(userId)) {
+                    throw new IllegalArgumentException("Un RA existe déjà pour ce point de service.");
+                }
             }
         }
     }
+
 
 
     @Override

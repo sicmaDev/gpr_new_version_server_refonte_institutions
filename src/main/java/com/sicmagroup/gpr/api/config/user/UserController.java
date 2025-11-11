@@ -169,7 +169,7 @@ public class UserController {
         }
 
         if (request.isRa()) {
-            authenticationServiceImpl.checkSingleRaPerServicePoint(null, request.getServicePointId());
+            authenticationServiceImpl.checkSingleRaPerServicePoint(null, request);
         }
 
         try {
@@ -196,7 +196,7 @@ public class UserController {
             request.setAdditionalRole(Role.MOLDUE.name());
         }
         if (request.isRa()) {
-            authenticationServiceImpl.checkSingleRaPerServicePoint(null, request.getServicePointId());
+            authenticationServiceImpl.checkSingleRaPerServicePoint(null, request);
         }
 
         try {
@@ -240,9 +240,8 @@ public class UserController {
 
                 // --- Vérification RA ---
                 // Avant d'appeler updateUser
-                // authenticationServiceImpl.checkSingleRaPerServicePoint(id, request.getServicePointId());
                 if (request.isRa()) {
-                    authenticationServiceImpl.checkSingleRaPerServicePoint(id, request.getServicePointId());
+                    authenticationServiceImpl.checkSingleRaPerServicePoint(id, request);
                 }
 
                 user = authenticationServiceImpl.updateUser(id, request);
