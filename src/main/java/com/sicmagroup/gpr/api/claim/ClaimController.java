@@ -724,7 +724,7 @@ public class ClaimController {
                 User affectedBy = new User();
                 try {
                     affectedBy = authService.getById(request.getAffectorId());
-                    if (!affectedBy.canAffectTreatment() && !affectedBy.getAdditionalrole().equals(Role.PILOTE)) {
+                    if (!affectedBy.canAffectTreatment() && !affectedBy.getAdditionalrole().equals(Role.PILOTE) && !affectedBy.isRa()) {
                         throw new Exception("L'utilisateur n'est pas habilité à effectuer cette action");
                     }
                 } catch (Exception e) {
