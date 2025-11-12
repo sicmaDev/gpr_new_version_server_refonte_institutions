@@ -113,7 +113,9 @@ public class PosteController {
     public ResponseEntity<ApiResponseDto> updatePoste(@PathVariable(name = "id") Long id,
             @RequestBody PosteDto posteDto) {
         ApiResponseDto apiResponseDto;
-        if (id != posteDto.getId()) {
+        Long idParsed = id.longValue();
+        Long posteId = posteDto.getId().longValue();
+        if (!idParsed.equals(posteId)) {
             throw new IllegalArgumentException("Les ID ne correspondent pas");
         } else {
             Poste poste;

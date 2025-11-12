@@ -114,7 +114,9 @@ public class ExternalRecourseController {
     public ResponseEntity<ApiResponseDto> updateExternalRecourse(@PathVariable(name = "id") Long id,
             @RequestBody ExternalRecourseDto externalRecourseDto) {
         ApiResponseDto apiResponseDto;
-        if (id != externalRecourseDto.getId()) {
+        Long idParsed = id.longValue();
+        Long recoursId = externalRecourseDto.getId().longValue();
+        if (!idParsed.equals(recoursId)) {
             throw new IllegalArgumentException("Les ID ne correspondent pas");
         } else {
             ExternalRecourse externalRecourse;

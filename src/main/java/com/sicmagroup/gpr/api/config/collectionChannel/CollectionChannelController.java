@@ -112,7 +112,9 @@ public class CollectionChannelController {
     public ResponseEntity<ApiResponseDto> updateCollectionChannel(@PathVariable(name = "id") Long id,
             @RequestBody CollectionChannelDto collectionChannelDto) {
         ApiResponseDto apiResponseDto;
-        if (id != collectionChannelDto.getId()) {
+        Long idParsed = id.longValue();
+        Long canalId = collectionChannelDto.getId().longValue();
+        if (!idParsed.equals(canalId)) {
             throw new IllegalArgumentException("Les ID ne correspondent pas");
         } else {
             CollectionChannel collectionChannel;
