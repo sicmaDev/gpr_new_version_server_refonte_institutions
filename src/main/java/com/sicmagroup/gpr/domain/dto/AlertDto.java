@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AlertDto {
     private Long claimId;
+    private String claimCodeClient;
     private String claimCode;
     private String claimClient;
     private LocalDateTime receiptDateTime;

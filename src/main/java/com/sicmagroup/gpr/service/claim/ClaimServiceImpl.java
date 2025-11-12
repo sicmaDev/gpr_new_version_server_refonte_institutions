@@ -1675,6 +1675,7 @@ public class ClaimServiceImpl implements ClaimService {
                     alertDto = AlertDto
                             .builder()
                             .claimClient(claim.getClientFirstAndLastName())
+                            .claimCodeClient(claim.getCodeClient())
                             .claimCode(claim.getCode())
                             .claimId(claim.getId())
                             .retardDay(days + " jr(s) " + hours + " heure(s)")
