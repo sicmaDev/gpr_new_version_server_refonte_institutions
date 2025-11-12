@@ -114,7 +114,9 @@ public class LanguageController {
     public ResponseEntity<ApiResponseDto> updateLanguage(@PathVariable(name = "id") Long id,
             @RequestBody LanguageDto languageDto) {
         ApiResponseDto apiResponseDto;
-        if (id != languageDto.getId()) {
+        Long idParsed = id.longValue();
+        Long languageId = languageDto.getId().longValue();
+        if (!idParsed.equals(languageId)) {
             throw new IllegalArgumentException("Les ID ne correspondent pas");
         } else {
             Language language;

@@ -113,7 +113,9 @@ public class ProductController {
     public ResponseEntity<ApiResponseDto> updateProduct(@PathVariable(name = "id") Long id,
             @RequestBody ProductDto productDto) {
         ApiResponseDto apiResponseDto;
-        if (id != productDto.getId()) {
+        Long idParsed = id.longValue();
+        Long productId = productDto.getId().longValue();
+        if (!idParsed.equals(productId)){
             throw new IllegalArgumentException("Les ID ne correspondent pas");
         } else {
             Product product;

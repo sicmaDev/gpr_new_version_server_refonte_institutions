@@ -132,7 +132,9 @@ public class ObjetController {
     public ResponseEntity<ApiResponseDto> updateObjet(@PathVariable(name = "id") Long id,
             @RequestBody ObjetDto objetDto) {
         ApiResponseDto apiResponseDto;
-        if (id != objetDto.getId()) {
+        Long idParsed = id.longValue();
+        Long objetId = objetDto.getId().longValue();
+        if (!idParsed.equals(objetId)) {
             throw new IllegalArgumentException("Les ID ne correspondent pas");
         } else {
             Objet objet;
