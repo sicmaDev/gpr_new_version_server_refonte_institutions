@@ -38,6 +38,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByChatsMemberIn(List<Chat> chats);
     List<User> findByChatsGuestIn(List<Chat> chats);
 
+    Optional<User> findByServicePointAndIsRaTrue(ServicePoint servicePoint);
+
     List<User> findByServicePoint(ServicePoint servicePoint);
     @Query("SELECT u FROM User u WHERE u.servicePoint.id = :servicePointId AND u.isRa = true")
     Optional<User> findRaByServicePointId(@Param("servicePointId") Long servicePointId);

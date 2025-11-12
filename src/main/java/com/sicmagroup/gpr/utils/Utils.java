@@ -45,6 +45,8 @@ import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 public class Utils {
 
     // public static generateCode(String initial, )
@@ -599,68 +601,6 @@ public class Utils {
         return null;
     }
 
-    // public static Boolean testSmsConfig(String number, String message,
-    // SettingServiceImpl settingServiceImpl)
-    // throws Exception {
-
-    // try {
-    // ObjectMapper objectMapper = new ObjectMapper();
-    // Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
-    // if (sms != null) {
-    // SmsRequest smsRequest = objectMapper.readValue(sms.getValue(),
-    // SmsRequest.class);
-    // String baseUrl = smsRequest.getUrl();//
-    // "http://www.wassasms.com/wassasms/api/web/v3/sends?";
-    // String token = smsRequest.getValMdp();// "SZhs_fSrSqDn8eITgs77ym17ttv1G8ig";
-    // String sender = smsRequest.getValEmetteur();// "gps";
-    // String dlrUrl = "";
-    // message = UriEncoder.encode(message);
-    // HttpURLConnection con;
-
-    // baseUrl += smsRequest.getLibMdp() + "=" + token + "&" +
-    // smsRequest.getLibEmetteur() + "=" + sender + "&"
-    // + smsRequest.getLibDestinataire() + "=" + number + "&" +
-    // smsRequest.getLibMessage() + "="
-    // + message;
-    // URL url = new URL(baseUrl);
-    // con = (HttpURLConnection) url.openConnection();
-    // con.setRequestMethod("GET");
-    // int status = con.getResponseCode();
-    // if (status >= 200 && status <= 299) {
-    // BufferedReader in = new BufferedReader(
-    // new InputStreamReader(con.getInputStream()));
-    // String inputLine;
-    // StringBuffer content = new StringBuffer();
-    // while ((inputLine = in.readLine()) != null) {
-    // content.append(inputLine);
-    // }
-    // in.close();
-
-    // return true;
-
-    // } else {
-    // BufferedReader in = new BufferedReader(
-    // new InputStreamReader(con.getErrorStream()));
-    // String inputLine;
-    // StringBuffer content = new StringBuffer();
-    // while ((inputLine = in.readLine()) != null) {
-    // content.append(inputLine);
-    // }
-    // in.close();
-    // return false;
-
-    // }
-    // }
-    // return false;
-
-    // } catch (IOException e) {
-
-    // return false;
-    // } catch (Exception ex) {
-    // return false;
-    // }
-    // }
-
     public static Double percentCalculator(Long value, Long total) {
         if (total != 0) {
             return (((Double) value.doubleValue() / total) * 100);
@@ -685,30 +625,6 @@ public class Utils {
         }
         return listColor;
     }
-    // public static List<RgbColor> generateRandomColor(int total) {
-    //     List<RgbColor> listColor = new ArrayList<>();
-    //     Random random = new Random();
-        
-    //     for (int i = 0; i < total; i++) {
-    //         int red, green, blue;
-    //         int threshold = 100; // Seuil pour éviter les couleurs qui tendent vers le noir
-    
-    //         do {
-    //             red = random.nextInt(256);   // 0 à 255 inclus
-    //             green = random.nextInt(256); // 0 à 255 inclus
-    //             blue = random.nextInt(256);  // 0 à 255 inclus
-    //         } while ((red + green + blue) < threshold || (red == 255 && green == 255 && blue == 255)); // Re-générer si la couleur tend vers le noir ou est blanche
-    
-    //         listColor.add(new RgbColor(0, 0, 0));
-    //     }
-        
-    //     return listColor;
-    // }
-    
-    
-    
-
-   
 
     public static String generateRandomString(int count) {
         String SALTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
@@ -839,5 +755,36 @@ public class Utils {
         }
 
         return apiResponseDto;
+    }
+
+     public static String getClientIpAddress(HttpServletRequest request) {
+        if (request == null) {
+            return "UNKNOWN";
+        }
+
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+            // X-Forwarded-For peut contenir plusieurs IPs -> on prend la première
+            return ip.split(",")[0].trim();
+        }
+
+        ip = request.getHeader("Proxy-Client-IP");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("HTTP_CLIENT_IP");
+        }
+
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("HTTP_X_FORWARDED_FOR");
+        }
+
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+
+        return ip != null ? ip : "UNKNOWN";
     }
 }
