@@ -81,6 +81,9 @@ import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.utils.Utils;
+
+import jakarta.servlet.http.HttpServletRequest;
+
 import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.SuggestionRepository;
@@ -121,6 +124,8 @@ public class ClaimServiceImpl implements ClaimService {
     private final HistoriqueAffectationServiceImpl historiqueAffectationServiceImpl;
     private final CurrentUserUtils userAuth;
     private final SuggestionRepository suggestionRepository;
+    @Autowired
+    private HttpServletRequest httpServletRequest;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -1320,6 +1325,18 @@ public class ClaimServiceImpl implements ClaimService {
         claim.setUpdatedAt(LocalDateTime.now());
         claim.setClassedBy(classer);
         claim = repository.save(claim);
+
+        Log log = Log
+            .builder()
+            .libelle("Classification de réclamation")
+            .content("La réclamation portant le code " + claim.getCode() + " a été classée"+
+                         " par " + classer.getFirstandlastname()+".")
+            .type(LogType.INFO)
+            .userId(classer.getId())
+            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+            .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+            .build();
+        logServiceImpl.saveLog(log);
         return claim;
     }
 
@@ -1379,6 +1396,13 @@ public class ClaimServiceImpl implements ClaimService {
         List<Claim> tmp = resultat;
 
         tmp = resultat.stream().filter(claim -> {
+            // 1️⃣ Exclusion : l'utilisateur ne voit pas sa propre réclamation
+            //    si celle-ci n'est pas rattachée à son point de service
+            if (claim.getCollector().equals(affectedTo)
+                    && !claim.getServicePoint().equals(affectedTo.getServicePoint())) {
+                return false;
+            }
+            
             if (!affectedTo.canTreatHighRiskClaim() && claim.getObjet().getRisqueLevel() == GravityLevel.GRAVE) {
                 return false;
             } else if (claim.getObjet().getRisqueLevel() == GravityLevel.MOYEN
