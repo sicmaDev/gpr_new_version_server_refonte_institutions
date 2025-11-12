@@ -72,6 +72,7 @@ public class ClaimDto {
 
     private boolean isTransmitted;
     private UserResponse transmittedTo;
+    private UserResponse transmittedBy;
 
     private ChatDto session;
     private String declenchedDate;

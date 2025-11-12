@@ -215,8 +215,7 @@ public class Utils {
 
     public static Boolean sendSmsToClient(String number, String message, SettingServiceImpl settingServiceImpl) throws Exception {
         try {
-            System.out.println("sendSmsToClient22 called with request: " + number + ", " + message);
-
+          
             ObjectMapper objectMapper = new ObjectMapper();
             Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
             if (sms != null) {
@@ -488,22 +487,27 @@ public class Utils {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
+            // System.out.println("SMS config: " + sms.getValue());
+            // System.out.println("SMS config2: " + usersTo.size());
+
             if (sms != null) {
                 SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
-                String baseUrl = smsRequest.getUrl();// "http://www.wassasms.com/wassasms/api/web/v3/sends?";
-                String token = smsRequest.getValMdp();// "SZhs_fSrSqDn8eITgs77ym17ttv1G8ig";
-                String sender = smsRequest.getValEmetteur();// "gps";
-                String dlrUrl = "";
+                String baseUrl = smsRequest.getUrl();
+                String token = smsRequest.getValMdp();
+                String sender = smsRequest.getValEmetteur();
+                String account = smsRequest.getValId();
+                 
                 message = UriEncoder.encode(message);
                 HttpURLConnection con;
                 for (User to : usersTo) {
+                    String urlStr = baseUrl + smsRequest.getLibId() + "=" + account 
+                            + "&" + smsRequest.getLibMdp() + "=" + token
+                            + "&" + smsRequest.getLibEmetteur() + "=" + sender
+                            + "&" + smsRequest.getLibDestinataire() + "=" + to.getTel()
+                            + "&" + smsRequest.getLibMessage() + "=" + message;
 
-                    baseUrl += smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender
-                            + "&"
-                            + smsRequest.getLibDestinataire() + "=" + to.getTel() + "&" + smsRequest.getLibMessage()
-                            + "="
-                            + message;
-                    URL url = new URL(baseUrl);
+                    URL url = new URL(urlStr);
+                   
                     con = (HttpURLConnection) url.openConnection();
                     con.setRequestMethod("GET");
                     int status = con.getResponseCode();
@@ -552,17 +556,20 @@ public class Utils {
             Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
             if (sms != null) {
                 SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
-                String baseUrl = smsRequest.getUrl();// "http://www.wassasms.com/wassasms/api/web/v3/sends?";
-                String token = smsRequest.getValMdp();// "SZhs_fSrSqDn8eITgs77ym17ttv1G8ig";
-                String sender = smsRequest.getValEmetteur();// "gps";
-                String dlrUrl = "";
+                String baseUrl = smsRequest.getUrl();
+                String token = smsRequest.getValMdp();
+                String sender = smsRequest.getValEmetteur();
+                String account = smsRequest.getValId();
+              
                 message = UriEncoder.encode(message);
                 HttpURLConnection con;
-
-                baseUrl += smsRequest.getLibMdp() + "=" + token + "&" + smsRequest.getLibEmetteur() + "=" + sender + "&"
-                        + smsRequest.getLibDestinataire() + "=" + number + "&" + smsRequest.getLibMessage() + "="
-                        + message;
-                URL url = new URL(baseUrl);
+                String urlStr = baseUrl + smsRequest.getLibId() + "=" + account 
+                            + "&" + smsRequest.getLibMdp() + "=" + token
+                            + "&" + smsRequest.getLibEmetteur() + "=" + sender
+                            + "&" + smsRequest.getLibDestinataire() + "=" + number
+                            + "&" + smsRequest.getLibMessage() + "=" + message;
+              
+                URL url = new URL(urlStr);
                 con = (HttpURLConnection) url.openConnection();
                 con.setRequestMethod("GET");
                 int status = con.getResponseCode();

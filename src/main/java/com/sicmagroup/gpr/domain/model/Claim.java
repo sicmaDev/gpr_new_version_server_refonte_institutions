@@ -119,6 +119,8 @@ public class Claim {
     private boolean isTransmitted;
     @ManyToOne
     private User transmittedTo;
+    @ManyToOne
+    private User transmittedBy;
 
     @OneToOne()
     private Chat session;

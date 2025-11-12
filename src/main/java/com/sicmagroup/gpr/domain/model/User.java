@@ -101,6 +101,9 @@ public class User implements UserDetails {
 	@OneToMany(mappedBy = "transmittedTo")
 	private List<Claim> transmittedTo;
 
+	@OneToMany(mappedBy = "transmittedBy")
+	private List<Claim> transmittedBy;
+
 	@OneToMany(mappedBy = "approuver")
 	private List<Solution> approuvedSolutions;
 

@@ -368,24 +368,24 @@ public class ClaimServiceImpl implements ClaimService {
             }
         });
 
-        // try {
-        //     Utils.sendSms(usersToContact,
-        //             "Nouvelle réclamation enregistrée de niveau de gravité "
-        //                     + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
-        // } catch (Exception e) {
-        //     Log log2 = Log
-        //             .builder()
-        //             .libelle("Echec sms notification")
-        //             .content(e.getMessage())
-        //             .createdAt(LocalDateTime.now())
-        //             .type(LogType.ERROR)
-        //             .userId(0L)
-        //             .userIpAddress(claimPart.getRemoteAddress())
-        //             .target(LogTarget.APP)
-        //             .build();
+        try {
+            Utils.sendSms(usersToContact,
+                    "Nouvelle réclamation enregistrée de niveau de gravité "
+                            + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
+        } catch (Exception e) {
+            Log log2 = Log
+                    .builder()
+                    .libelle("Echec sms notification")
+                    .content(e.getMessage())
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.ERROR)
+                    .userId(0L)
+                    .userIpAddress(claimPart.getRemoteAddress())
+                    .target(LogTarget.APP)
+                    .build();
 
-        //     logServiceImpl.saveLog(log2);
-        // }
+            logServiceImpl.saveLog(log2);
+        }
 
         return claim;
 
@@ -764,8 +764,8 @@ public class ClaimServiceImpl implements ClaimService {
         });
 
         try {
-            Utils.sendSms(Arrays.asList(affectedTo), "Une nouvelle réclamation de niveau de gravité "
-                    + claim.getObjet().getRisqueLevel().name() + " vous a été affectée", settingServiceImpl);
+            Utils.sendSms(Arrays.asList(affectedTo), "Le traitement de la réclamation portant le code "+claim.getCodeClient()+" de niveau de gravité "
+                    + claim.getObjet().getRisqueLevel().name() + " vous a été affecté.", settingServiceImpl);
         } catch (Exception e) {
             Log log2 = Log
                     .builder()
@@ -2291,7 +2291,7 @@ public class ClaimServiceImpl implements ClaimService {
 
             // Transmettre la réclamation à l'utilisateur trouvé
             claim.setTransmittedTo(transmittedTo);
-
+            claim.setTransmittedBy(connectedUser);
             // Sauvegarder la réclamation mise à jour
             claim = repository.save(claim);
             final Claim finalClaim = claim;
@@ -2310,12 +2310,14 @@ public class ClaimServiceImpl implements ClaimService {
 
             // if (!pilote.isEmpty()) {                           
                 // Envoi de mail en parallèle
+                String type = finalClaim.getType() == ClaimType.CLAIM ? "réclamation" : "dénonciation";
                 CompletableFuture.runAsync(() -> {
                     try {
+                      
                         Double apercuContent = finalClaim.getContent().length() * 0.5;
                         String message = "" +
                                 "Bonjour " + finalTransmittedTo.getFirstandlastname() + ",\n\n" +
-                                "Nous vous informons qu'un utilisateur a transmis la gestion d'une réclamation/dénonciation à votre attention, car il est dans l'incapacité de la traiter.\n"
+                                "Nous vous informons qu'un utilisateur a transmis la gestion d'une "+type+" à votre attention, car il est dans l'incapacité de la traiter.\n"
                                 +
                                 "* Code de la Réclamation : " + finalClaim.getCodeClient() + "\n" +
                                 "* Aperçu de la réclamation : " + finalClaim.getContent().substring(0, apercuContent.intValue())
@@ -2358,8 +2360,8 @@ public class ClaimServiceImpl implements ClaimService {
                     }
 
                     try {
-                        String message = "La réclamation " + finalClaim.getCode()
-                                + " vous a été transmis pour prise en charge. Merci de la prendre en charge.";
+                        String message = "La "+ type +" portant le code "+ finalClaim.getCodeClient()
+                                + " vous a été transmise pour prise en charge.";
                         Utils.sendSms(destis, message, settingServiceImpl);
                     } catch (Exception e) {
                         e.printStackTrace();

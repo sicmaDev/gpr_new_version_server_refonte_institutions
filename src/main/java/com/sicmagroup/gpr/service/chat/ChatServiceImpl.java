@@ -276,7 +276,7 @@ public class ChatServiceImpl implements ChatService {
         CompletableFuture.runAsync(() -> {
             try {
                 String message = "Cher(e) " + guest.getFirstandlastname() + ", \n\n" +
-                        "Vous avez exclus de la discussion sur le traitement de la réclamation : "
+                        "Vous avez été exclus de la discussion sur le traitement de la réclamation : "
                         + finalChat.getClaim().getCodeClient() + " \n\n" +
                         "Contactez le collaborateur ayant initié la session s'il s'agit d'une erreur.";
 
@@ -293,7 +293,7 @@ public class ChatServiceImpl implements ChatService {
                     .build();
 
                 logServiceImpl.saveLog(successLog); 
-                // Utils.sendSms(Arrays.asList(guest), message);
+                Utils.sendSms(Arrays.asList(guest), message,settingServiceImpl);
             } catch (Exception e) {
                 // e.printStackTrace();
                 // TODO: save in log

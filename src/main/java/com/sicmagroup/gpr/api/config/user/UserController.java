@@ -404,20 +404,6 @@ public class UserController {
         }
     }
 
-    // @GetMapping(value = "/path")
-    // public String getMethodName() {
-    // User user;
-    // try {
-    // user = authenticationServiceImpl.getById(2L);
-    // Utils.sendSms(Arrays.asList(user),"Essaie sms backend", settingServiceImpl);
-
-    // } catch (Exception ex) {
-    // // TODO Auto-generated catch block
-    // ex.printStackTrace();
-    // }
-
-    // return new String();
-    // }
 
     private UserDto convertToDto(User user) {
         UserDto userDto = modelMapper.map(user, UserDto.class);

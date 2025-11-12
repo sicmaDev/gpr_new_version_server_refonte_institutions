@@ -360,10 +360,10 @@ public class ClaimController {
             ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
             
-            List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.CLAIM,
-                    Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
-                            ClaimStatus.CLASSED));
-            allClaims.addAll(moreClaim);
+            // List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.CLAIM,
+            //         Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+            //                 ClaimStatus.CLASSED));
+            // allClaims.addAll(moreClaim);
             // Récupérer le point de service de l'utilisateur
             ServicePoint servicePoint = connectedUser.getServicePoint();
             
@@ -1537,17 +1537,7 @@ public class ClaimController {
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
-                // if (claim.getCollector() != connectedUser) {
-                //     apiResponseDto = ApiResponseDto
-                //             .builder()
-                //             .status(false)
-                //             .content(ErrorResponse.builder()
-                //                     .message("Vous n'êtes pas le collecteur de cette réclamation.")
-                //                     .title("Opération invalide")
-                //                     .build())
-                //             .build();
-                //     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                // }
+               
                 try {
                     claim = service.transmitClaim(claim);
                     apiResponseDto = ApiResponseDto
