@@ -321,27 +321,60 @@ public class ClaimServiceImpl implements ClaimService {
         claim = repository.save(claim);
        
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
-
+        List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+        usersToContact.addAll(pilote);
         Double apercuContent = claim.getContent().length() * 0.5;
-        String message = "" +
-                "Cher(e) utilisateur, "+
-                "une nouvelle réclamation a été enregistrée avec succès dans votre système. Vous recevez ce mail en tant qu'utilisateur habilité à recevoir une notification lors d'enregistrement de nouvelles réclamations."
-                + "\n\n" +
-                "Détails de la réclamation :" + "\n\n" +
-                "* Code de réclamation : " + claim.getCodeClient() + "\n" +
-                "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
-                "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
+        String previewContent = claim.getContent().substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
+        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+        String message = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Nouvelle réclamation enregistrée - GPR</h2>
+
+            <p>Bonjour,</p>
+
+            <p>
+                Une nouvelle réclamation a été enregistrée avec succès dans votre système. 
+                Vous recevez ce mail en tant qu'utilisateur habilité à recevoir les notifications de nouvelles réclamations.
+            </p>
+
+            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; 
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la réclamation :</strong></p>
+                <p style="margin: 5px 0;">📌 <strong>Code de réclamation :</strong> %s</p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+                Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour la traiter. 
+                Votre expertise est essentielle pour assurer une résolution rapide et satisfaisante pour les clients.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent);
 
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
+                Utils.sendmail(usersToContact, "Nouvelle réclamation enregistrée - GPR", message, null,
                         " ", settingServiceImpl);
                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'enregistrement de réclamation")
-                    .content("Success mail notification réclamation affectée")
+                    .content("Success mail notification réclamation enregistrée")
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
@@ -678,11 +711,7 @@ public class ClaimServiceImpl implements ClaimService {
     public Claim affectTreatmentToUser(Claim claim, User affectedTo, User affectedBy, Boolean anonymous,
             String remoteAddress, AffectTreatmentRequest affectTreatmentRequest)
             throws Exception {
-        // Claim claim = repository.findById(claimId).orElseThrow(() -> new
-        // ClaimException("Claim choosed not found"));
-        // User affectedTo = authServiceImpl.getById(userId);
-        // User affectedBy = authServiceImpl.getById(affectorId);
-
+      
         if (!Arrays.asList(ClaimStatus.SAVED,ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.UNSATISFIED,ClaimStatus.CLASSED,ClaimStatus.AFFECTED).contains(claim.getStatus())) {
             throw new ClaimException("Invalid request! You can't affect treatment to not saved claim");
         }
@@ -707,35 +736,82 @@ public class ClaimServiceImpl implements ClaimService {
                 .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
                 .build();
         logServiceImpl.saveLog(log);
-
-        Double apercuContent = claim.getContent().length() * 0.3;
-        String message = "" +
-                "Cher(e) " + affectedTo.getFirstandlastname() + ",\n\n" +
-                "Le traitement d'une nouvelle réclamation vous a été affecté(e). Cette réclamation nécessite votre attention et votre expertise pour garantir une résolution rapide et satisfaisante."
-                + "\n\n" +
-                "Détails de la réclamation :" + "\n\n" +
-                "* Code de réclamation : " + claim.getCodeClient() + "\n" +
-                "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
-                "* Délai de traitement : " + affectTreatmentRequest.getDelai() + " jours \n" +
-                "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                "Veuillez prendre les mesures nécessaires pour examiner et traiter cette réclamation dans les plus brefs délais";
-
-        if (!affectTreatmentRequest.getMessage().isEmpty()) {
-            message = affectTreatmentRequest.getMessage();
+        String type = "Réclamation";
+        if (claim.getType().equals(ClaimType.DENUNCIACION)) {
+            type = "Dénonciation";
         }
+
+        final String finalType = type;
+        Double apercuContent = claim.getContent().length() * 0.3;
+       
+        // Préparer l'aperçu du contenu en échappant les caractères HTML spéciaux
+        String previewContent = claim.getContent()
+        .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
+        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+        // Utiliser le message personnalisé s'il existe, sinon texte standard
+        String mainMessage = (affectTreatmentRequest.getMessage() != null && !affectTreatmentRequest.getMessage().isEmpty())
+                ? affectTreatmentRequest.getMessage()
+                : "Le traitement d'une nouvelle "+finalType+" vous a été affecté(e). Cette "+finalType+" nécessite votre attention et votre expertise pour garantir une résolution rapide et satisfaisante.";
+
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Nouvelle %s affectée - GPR</h2>
+
+            <p>Bonjour <strong>%s</strong>,</p>
+
+            <p>%s</p>
+
+            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; 
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                <p style="margin: 5px 0;">📌 <strong>Code de %s :</strong> %s</p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">⏱ <strong>Délai de traitement :</strong> %s jours</p>
+                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+                Veuillez prendre les mesures nécessaires pour examiner et traiter cette %s dans les plus brefs délais.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(finalType,
+            affectedTo.getFirstandlastname(),
+            mainMessage,
+            finalType,
+            finalType,
+            claim.getCodeClient(),
+            Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),
+            affectTreatmentRequest.getDelai(),
+            previewContent,
+            finalType
+        );
 
         historiqueAffectationServiceImpl.storeHistorique(affectTreatmentRequest);
         
-        final String finalMessage = message;
+        final String finalMessage = messageHtml;
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                Utils.sendmail(affectedTo.getEmail(), "Affectation de réclamation", finalMessage, null,
+                Utils.sendmail(affectedTo.getEmail(), "Nouvelle "+finalType+" affectée - GPR", finalMessage, null,
                         " ", settingServiceImpl);
                 
                 Log successLog = Log.builder()
-                    .libelle("Mail notification d'affectation de réclamation")
-                    .content("Success mail notification réclamation affectée")
+                    .libelle("Mail notification d'affectation de "+finalType)
+                    .content("Success mail notification "+finalType+" affectée")
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
@@ -836,37 +912,69 @@ public class ClaimServiceImpl implements ClaimService {
         // Is Affected claim ?
         claim.setStatus(ClaimStatus.TREAT);
         solution2.setStatus(SolutionStatus.APPROVED);
-        String type = "réclamation";
+        String type = "Réclamation";
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
-            type = "dénonciation";
+            type = "Dénonciation";
         }
 
         final Claim finalClaim = claim;
         final String finalType = type;
         if (claim.hasAffectedTreatment() && treator.getCode() == claim.getTreatmentAffectedTo().getCode()) {
             // Is treator is user who receiverd affectation
-            // claim.setStatus(ClaimStatus.TO_APPROUVED);
-            // solution2.setStatus(SolutionStatus.UNAPPROVED);
-
+            
             Double apercuContent = claim.getContent().length() * 0.3;
 
-            String message = "" +
-                    "Cher(e) " + claim.getTreatmentAffectedBy().getFirstandlastname() + ",\n\n" +
-                    "L'utilisateur " + treator.getFirstandlastname() + " a examiné la " + type + " portant le code : "
-                    + claim.getCodeClient()
-                    + " qui lui a été affectée et a proposé une solution pour résoudre cette " + type + "." + "\n\n" +
-                    "Détails de la " + type + " :" + "\n\n" +
-                    "* Code de " + type + " : " + claim.getCodeClient() + "\n" +
-                    "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
-                    "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                    "La solution proposée par " + treator.getFirstandlastname() + " est la suivante : " + "\n" +
-                    request.getSolution() + "\n\n" +
-                    "Nous vous invitons à examiner attentivement cette solution.";
-            
+            String previewContent = claim.getContent()
+                    .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
+                    .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+            String message = """
+            <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+                <h2 style="color: #004080; text-align: center;">%s traitée - GPR</h2>
+
+                <p>Bonjour <strong>%s</strong>,</p>
+
+                <p>
+                    La %s portant le code <strong>%s</strong> que vous avez affectée a été examinée par <strong>%s</strong> et une solution a été proposée.
+                </p>
+
+                <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080;
+                            padding: 10px 15px;">
+                    <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                    <p style="margin: 5px 0;">📌 <strong>Code :</strong> %s</p>
+                    <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                    <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                </div>
+
+                <div style="margin-top: 20px; background-color: #e6ffe6; border-left: 4px solid #008000;
+                            padding: 10px 15px;">
+                    <p style="margin: 0;"><strong>Solution proposée :</strong></p>
+                    <p style="margin: 5px 0;">%s</p>
+                </div>
+
+                <p style="margin-top: 20px;">
+                    Nous vous invitons à examiner cette solution puis à la communiquer au plaignant au besoin.
+                </p>
+
+                <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                    Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                </p>
+
+                </div>
+            </body>
+            </html>
+            """.formatted(finalType,claim.getTreatmentAffectedBy().getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType, claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,request.getSolution());
+
             // Envoi de mail en parallèle
             CompletableFuture.runAsync(() -> {
                 try {
-                    Utils.sendmail(finalClaim.getTreatmentAffectedBy().getEmail(), "Proposition de solution à une " + finalType + "",
+                    Utils.sendmail(finalClaim.getTreatmentAffectedBy().getEmail(), finalType+ " traitée - GPR ",
                             message, null, " ", settingServiceImpl);
                 
                     Log successLog = Log.builder()
@@ -904,21 +1012,52 @@ public class ClaimServiceImpl implements ClaimService {
             Double apercuContent = claim.getContent().length() * 0.3;
             List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
             if (pilote != null && !pilote.isEmpty()) {                            
-                String message = "" +
-                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote de la plateforme GPR, \n\n" +
-                        "l'utilisateur " + treator.getFirstandlastname()
-                        + " a examiné la " + type + " portant le code : "
-                        + claim.getCodeClient()
-                        + " et l'a traitée." + "\n\n" +
-                        "Détails de la " + type + " :" + "\n\n" +
-                        "* Code de " + type + " : " + claim.getCodeClient() + "\n" +
-                        "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
-                        + "\n" +
-                        "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n"
-                        +
-                        "La solution proposée par " + treator.getFirstandlastname() + " est la suivante : " + "\n" +
-                        request.getSolution() + "\n\n" +
-                        "Nous vous invitons à communiquer la solution au plaignant pour mesurer sa satisfaction. ";
+                String previewContent = claim.getContent()
+                    .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
+                    .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+                String message = """
+                <html>
+                <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                    <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+                    <h2 style="color: #004080; text-align: center;">%s traitée - GPR</h2>
+
+                    <p>Bonjour <strong>%s</strong>, Pilote de la plateforme <strong>GPR</strong></p>
+
+                    <p>
+                        La %s portant le code <strong>%s</strong> a été examinée par <strong>%s</strong> et une solution a été proposée.
+                    </p>
+
+                    <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080;
+                                padding: 10px 15px;">
+                        <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                        <p style="margin: 5px 0;">📌 <strong>Code :</strong> %s</p>
+                        <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                        <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                    </div>
+
+                    <div style="margin-top: 20px; background-color: #e6ffe6; border-left: 4px solid #008000;
+                                padding: 10px 15px;">
+                        <p style="margin: 0;"><strong>Solution proposée :</strong></p>
+                        <p style="margin: 5px 0;">%s</p>
+                    </div>
+
+                    <p style="margin-top: 20px;">
+                        Nous vous invitons à examiner cette solution puis à la communiquer au plaignant au besoin.
+                    </p>
+
+                    <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                    <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                        Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                    </p>
+
+                    </div>
+                </body>
+                </html>
+                """.formatted(finalType, pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,request.getSolution());
 
                 // Envoi de mail en parallèle
                 CompletableFuture.runAsync(() -> {
@@ -992,187 +1131,90 @@ public class ClaimServiceImpl implements ClaimService {
 
         satisfactionMeasure.setSolution(solution);
 
+        List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+        // Définir le texte principal en fonction du statut
+        String mainMessage;
+        String statusText;
+
         if (status == SatisfactionStatus.SATISFIED) {
             claim.setStatus(ClaimStatus.SATISFIED);
+            statusText = "est satisfait(e)";
+            mainMessage = "Le client ayant fait la réclamation portant le code <strong>" + claim.getCodeClient() + "</strong> est satisfait de la solution proposée par <strong>" + claim.getTreatBy().getFirstandlastname() + "</strong>.";
         } else if (status == SatisfactionStatus.UNSATISFIED) {
             claim.setStatus(ClaimStatus.UNSATISFIED);
-            // send mail to
-
-            if (claim.getSession() == null) { // To CGR if it is direct treat
-                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCodeClient()
-                        + " n'est pas satisfait de la solution proposée par "
-                        + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
-                        "Veuillez vous connectez à la plateforme GPR afin de prendre des mesures adéquates par rapport à cette réclamation.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-
-                            
-                // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null, " ", settingServiceImpl);
-                                                
-                        Log successLog = Log.builder()
-                            .libelle("Mail notification réclamation non satisfaite")
-                            .content("Success mail notification réclamation non satisfaite")
-                            .createdAt(LocalDateTime.now())
-                            .type(LogType.INFO)
-                            .userId(0L)
-                            .userIpAddress("")
-                            .target(LogTarget.APP)
-                            .build();
-
-                        logServiceImpl.saveLog(successLog);
-                    } catch (Exception e) {                    
-                        if (e != null) {
-                            Log log2 = Log
-                                    .builder()
-                                    .libelle("Echec mail notification réclamation non satisfaite")
-                                    .content(e.getMessage())
-                                    .createdAt(LocalDateTime.now())
-                                    .type(LogType.ERROR)
-                                    .userId(0L)
-                                    .userIpAddress("")
-                                    .target(LogTarget.APP)
-                                    .build();
-    
-                            logServiceImpl.saveLog(log2);
-                        }
-                    }
-                });
-            } else {// TODE and CA if it's come from CGR
-                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
-                        + claim.getCodeClient()
-                        + " est non-satisfait de la solution qui lui a été proposée. \n\n" +
-                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
-
-                            
-                // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
-                    try { 
-                        Utils.sendmail(cgrs, "RECLAMATION NON SATISFAITE", message, null,
-                                " ", settingServiceImpl);
-                                                
-                        Log successLog = Log.builder()
-                            .libelle("Mail notification réclamation non satisfaite")
-                            .content("Success mail notification réclamation non satisfaite")
-                            .createdAt(LocalDateTime.now())
-                            .type(LogType.INFO)
-                            .userId(0L)
-                            .userIpAddress("")
-                            .target(LogTarget.APP)
-                            .build();
-
-                        logServiceImpl.saveLog(successLog);                                
-                    } catch (Exception e) {                        
-                        if (e != null) {
-                            Log log2 = Log
-                                    .builder()
-                                    .libelle("Echec mail notification réclamation non satisfaite")
-                                    .content(e.getMessage())
-                                    .createdAt(LocalDateTime.now())
-                                    .type(LogType.ERROR)
-                                    .userId(0L)
-                                    .userIpAddress("")
-                                    .target(LogTarget.APP)
-                                    .build();
-
-                            logServiceImpl.saveLog(log2);
-                        }
-                    }
-                });
-            }
-
+            statusText = "n'est pas satisfait(e)";
+            mainMessage = "Le client ayant fait la réclamation portant le code <strong>" + claim.getCodeClient() + "</strong> n'est pas satisfait de la solution proposée par <strong>" + claim.getTreatBy().getFirstandlastname() + "</strong>.";
+        
         } else {
             claim.setStatus(ClaimStatus.PARTIAL_SATISFIED);
-
-            if (claim.getSession() == null) { // To CGR if it is direct treat
-                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : " + claim.getCodeClient()
-                        + " est partiellement satisfait de la solution proposée par "
-                        + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
-                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-
-                                            
-                // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
-                                " ", settingServiceImpl);
-                                                
-                        Log successLog = Log.builder()
-                            .libelle("Mail notification réclamation partiellement satisfaite")
-                            .content("Success mail notification réclamation partiellement satisfaite")
-                            .createdAt(LocalDateTime.now())
-                            .type(LogType.INFO)
-                            .userId(0L)
-                            .userIpAddress("")
-                            .target(LogTarget.APP)
-                            .build();
-
-                        logServiceImpl.saveLog(successLog);                                
-                    } catch (Exception e) {                    
-                        if (e != null) {
-                            Log log2 = Log
-                                    .builder()
-                                    .libelle("Echec mail notification réclamation partiellement satisfaite")
-                                    .content(e.getMessage())
-                                    .createdAt(LocalDateTime.now())
-                                    .type(LogType.ERROR)
-                                    .userId(0L)
-                                    .userIpAddress("")
-                                    .target(LogTarget.APP)
-                                    .build();
-    
-                            logServiceImpl.saveLog(log2);
-                        }
-                    }
-                }); 
-            } else {// TODE and CA if it's come from CGR
-                String message = "Cher(e) utilisateur, le client ayant fait la réclamation : "
-                        + claim.getCodeClient()
-                        + " est partiellement satisfait de la solution proposée par " 
-                        + claim.getTreatBy().getFirstandlastname() + ". \n\n " +
-                        
-                        "Veuillez vous connectez à la plateforme GPR afin de prendre les mesures adéquates.";
-                List<User> cgrs = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE, Role.DE));
-                                            
-                // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        Utils.sendmail(cgrs, "RECLAMATION PARTIELLEMENT-SATISFAITE", message, null,
-                                " ", settingServiceImpl);
-                                                
-                        Log successLog = Log.builder()
-                            .libelle("Mail notification réclamation partiellement satisfaite")
-                            .content("Success mail notification réclamation partiellement satisfaite")
-                            .createdAt(LocalDateTime.now())
-                            .type(LogType.INFO)
-                            .userId(0L)
-                            .userIpAddress("")
-                            .target(LogTarget.APP)
-                            .build();
-
-                        logServiceImpl.saveLog(successLog);                                
-                    } catch (Exception e) {                    
-                        if (e != null) {
-                            Log log2 = Log
-                                    .builder()
-                                    .libelle("Echec mail notification réclamation partiellement satisfaite")
-                                    .content(e.getMessage())
-                                    .createdAt(LocalDateTime.now())
-                                    .type(LogType.ERROR)
-                                    .userId(0L)
-                                    .userIpAddress("")
-                                    .target(LogTarget.APP)
-                                    .build();
-    
-                            logServiceImpl.saveLog(log2);
-                        }
-                    }
-                });
-            }
+            statusText = "est partiellement satisfait(e)";
+            mainMessage = "Le client ayant fait la réclamation portant le code <strong>" + claim.getCodeClient() + "</strong> est partiellement satisfait de la solution proposée par <strong>" + claim.getTreatBy().getFirstandlastname() + "</strong>.";
         }
+
+
+        // HTML du mail
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Notification de satisfaction client - GPR</h2>
+
+            <p>Bonjour %s, Pilote de la plateforme <strong>GPR</strong></p>
+
+            <p>%s</p>
+
+            <p style="margin-top: 20px;">
+                Veuillez vous connecter à la plateforme <strong>GPR</strong> afin de prendre les mesures adéquates concernant cette réclamation si nécessaire.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(pilotes.get(0).getFirstandlastname(),mainMessage);
+                            
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(pilotes.get(0).getEmail(), "Notification de satisfaction client - GPR", messageHtml, null,
+                        " ", settingServiceImpl);
+                                        
+                Log successLog = Log.builder()
+                    .libelle("Mail notification mesure de satisfaction réclamation")
+                    .content("Success mail notification mesure de satisfaction réclamation")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress("")
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog);                                
+            } catch (Exception e) {                    
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification mesure de satisfaction réclamation")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
+    
 
         claim.setUpdatedAt(LocalDateTime.now());
 
@@ -1202,29 +1244,61 @@ public class ClaimServiceImpl implements ClaimService {
         }
         claim = repository.save(claim);
         // TODO send mail to CGR User
-        Double apercuContent = claim.getContent().length() * 0.5;
-        List<User> cgrMembers = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-        System.out.println("here 6");
-        String type = "réclamation";
+      
+        List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+       
+        String type = "Réclamation";
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
-            type = "dénonciation";
+            type = "Dénonciation";
         }
-        String message = "" +
-                "Cher(e) utilisateur ,\n\n" +
-                "le DE " + unApprouver.getFirstandlastname()
-                + " a examiné et désapprouvé la solution que vous avez proposé pour la " + type + " portant le code : "
-                + claim.getCodeClient() + "\n\n" +
-                "Détails de la " + type + " :" + "\n\n" +
-                "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
-                "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                "* Motif de désapprobation : " + commentaire + "\n\n" +
-                "Nous vous invitons à examiner attentivement le commentaire laissé puis à proposer une nouvelle solution.";
-                                    
+
+        Double apercuContent = claim.getContent().length() * 0.3;
+        String previewContent = claim.getContent()
+                .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
+                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Solution désapprouvée - GPR</h2>
+
+            <p>Bonjour <strong>%s</strong>,</p>
+
+            <p>
+                La solution que vous avez proposée pour la %s portant le code <strong>%s</strong> a été examinée et désapprouvée par <strong>%s</strong>.
+            </p>
+
+            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080;
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">❌ <strong>Motif de désapprobation :</strong> %s</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+                Nous vous invitons à examiner attentivement le commentaire laissé et à proposer une nouvelle solution au besoin.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(claim.getTreatBy().getFirstandlastname(),type,claim.getCodeClient(),unApprouver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,commentaire);
+        final Claim finalClaim = claim;
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                Utils.sendmail(cgrMembers, "Solution désapprouvée",
-                        message, null, " ", settingServiceImpl);
+                Utils.sendmail(finalClaim.getTreatBy().getEmail(), "Solution désapprouvée - GPR",
+                        messageHtml, null, " ", settingServiceImpl);
                                                 
                     Log successLog = Log.builder()
                         .libelle("Mail notification solution désapprouvée")
@@ -1271,21 +1345,56 @@ public class ClaimServiceImpl implements ClaimService {
         claim.setUpdatedAt(LocalDateTime.now());
         claim = repository.save(claim);
         final Claim finalClaim = claim;
-        String type = "réclamation";
+        String type = "Réclamation";
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
-            type = "dénonciation";
+            type = "Dénonciation";
         }
-        String message = "" +
-                "Cher(e) " + finalClaim.getTreatmentAffectedTo().getFirstandlastname() + ",\n\n" +
-                "L'utilisateur " + approuver.getFirstandlastname()
-                + " a examiné et approuvé la solution que vous avez proposée pour la " + type + " portant le code : "
-                + finalClaim.getCodeClient() + "\n\n";
+        Double apercuContent = finalClaim.getContent().length() * 0.3;
+        String previewContent = finalClaim.getContent()
+                .substring(0, Math.min(apercuContent.intValue(), finalClaim.getContent().length()))
+                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Solution approuvée - GPR</h2>
+
+            <p>Bonjour <strong>%s</strong>,</p>
+
+            <p>
+                La solution que vous avez proposée pour la %s portant le code <strong>%s</strong> a été examinée et approuvée par <strong>%s</strong>.
+            </p>
+
+            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080;
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+                Félicitations ! Votre solution a été validée et peut être mise en œuvre pour finaliser le traitement de cette réclamation.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(finalClaim.getTreatmentAffectedTo().getFirstandlastname(),type,finalClaim.getCodeClient(),approuver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),previewContent);
                             
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                Utils.sendmail(finalClaim.getTreatmentAffectedTo().getEmail(), "Solution approuvée",
-                        message, null, " ", settingServiceImpl);
+                Utils.sendmail(finalClaim.getTreatmentAffectedTo().getEmail(), "Solution approuvée - GPR",
+                        messageHtml, null, " ", settingServiceImpl);
                                                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification solution approuvée")
@@ -1326,17 +1435,79 @@ public class ClaimServiceImpl implements ClaimService {
         claim.setClassedBy(classer);
         claim = repository.save(claim);
 
-        Log log = Log
-            .builder()
-            .libelle("Classification de réclamation")
-            .content("La réclamation portant le code " + claim.getCode() + " a été classée"+
-                         " par " + classer.getFirstandlastname()+".")
-            .type(LogType.INFO)
-            .userId(classer.getId())
-            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
-            .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
-            .build();
-        logServiceImpl.saveLog(log);
+        // Liste des pilotes
+        List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Réclamation classée - GPR</h2>
+
+            <p>Bonjour %s, Pilote de la plateforme <strong>GPR</strong></p>
+
+            <p>
+                La réclamation portant le code <strong>%s</strong> a été classée dans le système.
+            </p>
+
+            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080;
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la réclamation :</strong></p>
+                <p style="margin: 5px 0;">📌 <strong>Code réclamation :</strong> %s</p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">✅ <strong>Statut :</strong> Classée</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+                Vous pouvez consulter cette réclamation dans la plateforme <strong>GPR</strong> pour tout suivi nécessaire.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(pilotes.get(0).getFirstandlastname(),claim.getCodeClient(),claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()));
+        final Claim finalClaim = claim;
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Envoi du mail à tous les pilotes
+                Utils.sendmail(pilotes.get(0).getEmail(),"Réclamation classée - GPR",messageHtml,null," ",settingServiceImpl);
+
+                Log log = Log
+                    .builder()
+                    .libelle("Classification de réclamation")
+                    .content("La réclamation portant le code " + finalClaim.getCode() + " a été classée"+
+                                " par " + classer.getFirstandlastname()+".")
+                    .type(LogType.INFO)
+                    .userId(classer.getId())
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                    .target(finalClaim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+                    .build();
+                logServiceImpl.saveLog(log);
+            } catch (Exception e) {                        
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification création session")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
         return claim;
     }
 
@@ -1363,6 +1534,79 @@ public class ClaimServiceImpl implements ClaimService {
             externalRecourseServiceImpl.saveExternalRecourse(externalRecourse);
         }
 
+        // Liste des pilotes / responsables à notifier
+        List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #b00020; text-align: center;">Réclamation au statut Contentieux - GPR</h2>
+
+            <p>Bonjour %s, Pilote de la plateforme <strong>GPR</strong></p>
+
+            <p>
+                La réclamation portant le code <strong>%s</strong> a été passée au statut <strong>Contentieux</strong>.
+            </p>
+
+            <div style="margin-top: 20px; background-color: #fff0f0; border-left: 4px solid #b00020;
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la réclamation :</strong></p>
+                <p style="margin: 5px 0;">📌 <strong>Code réclamation :</strong> %s</p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">⚠️ <strong>Statut :</strong> Contentieux</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+                Veuillez examiner cette réclamation sur la plateforme <strong>GPR</strong> au besoin.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(pilotes.get(0).getFirstandlastname(),claim.getCodeClient(),claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()));
+        final Claim finalClaim = claim;
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Envoi du mail à tous les responsables/pilotes
+                Utils.sendmail(pilotes.get(0).getEmail(),"Réclamation au statut Contentieux - GPR",messageHtml,null, " ",settingServiceImpl);
+
+                Log log = Log
+                    .builder()
+                    .libelle("Classification de réclamation")
+                    .content("La réclamation portant le code " + finalClaim.getCode() + " a été passée au statut contentieux"+
+                                " par " + litigator.getFirstandlastname()+".")
+                    .type(LogType.INFO)
+                    .userId(litigator.getId())
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                    .target(finalClaim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+                    .build();
+                logServiceImpl.saveLog(log);
+            } catch (Exception e) {                        
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification réclamation contentieux")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress("")
+                            .target(LogTarget.APP)
+                            .build();
+
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
         return claim;
     }
 
@@ -1463,14 +1707,6 @@ public class ClaimServiceImpl implements ClaimService {
         } catch (Exception e) {
             throw new Exception("Collector " + claimToSave.getCollectorId() + " of the claim not found");
         }
-        // if(claimToSave.getCode() != null && claimToSave.getId() != null){
-        // Claim oldClaim = repository.findByCode(claimToSave.getCode()).orElseThrow(()
-        // -> new ClaimException("Claim with this code not exist"));
-        // } else {
-
-        // }
-
-       
 
         Claim claim = Claim
                 .builder()
@@ -1587,27 +1823,65 @@ public class ClaimServiceImpl implements ClaimService {
             }
         }
 
+        String finalType = "Réclamation";
+        if (finalClaim.getType().equals(ClaimType.DENUNCIACION)) {
+            finalType = "Dénonciation";
+        }
+
         Double apercuContent = claim.getContent().length() * 0.3;
-        String message = "" +
-                "Cher(e) utilisteur" +
-                "Une nouvelle réclamation a été enregistrée avec succès dans notre système. Vous recevez cette notification en tant qu'utilisateur habilité à recevoir des notification lorsqu'une nouvelle réclamation est enregistrée."
-                + "\n\n" +
-                "Détails de la réclamation :" + "\n\n" +
-                "* Code de réclamation : " + claim.getCodeClient() + "\n" +
-                "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()) + "\n" +
-                "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n" +
-                "Nous vous encourageons à examiner cette réclamation dès que possible et à prendre les mesures nécessaires pour son traitement. Votre expertise et vos compétences sont essentielles pour assurer une résolution rapide et satisfaisante pour les clients.";
-                                    
+        String previewContent = claim.getContent()
+                .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
+                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Nouvelle dénonciation enregistrée - GPR</h2>
+
+            <p>Bonjour,</p>
+
+            <p>
+                Une nouvelle %s a été enregistrée avec succès dans le système. Vous recevez ce mail en tant qu'utilisateur habilité à être notifié des nouvelles réclamations.
+            </p>
+
+            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080;
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                <p style="margin: 5px 0;">📌 <strong>Code %s :</strong> %s</p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+                Nous vous encourageons à examiner cette %s dès que possible et à prendre les mesures nécessaires pour son traitement.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(finalType,finalType,finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalType);
+        List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
+        List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+        usersToContact.addAll(pilote); 
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                Utils.sendmail(authServiceImpl.getEmailReceiversForNotif(finalClaim.getServicePoint()),
-                        " Notification d'enregistrement de réclamation", message, null,
+                Utils.sendmail(usersToContact,
+                        "Nouvelle Dénonciation enregistrée - GPR", messageHtml, null,
                         " ", settingServiceImpl);
                                                 
                 Log successLog = Log.builder()
-                    .libelle("Mail notification nouvelle réclamation")
-                    .content("Success mail notification nouvelle réclamation")
+                    .libelle("Mail notification nouvelle dénonciation")
+                    .content("Success mail notification nouvelle dénonciation")
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
@@ -2315,26 +2589,54 @@ public class ClaimServiceImpl implements ClaimService {
                 CompletableFuture.runAsync(() -> {
                     try {
                       
-                        Double apercuContent = finalClaim.getContent().length() * 0.5;
-                        String message = "" +
-                                "Bonjour " + finalTransmittedTo.getFirstandlastname() + ",\n\n" +
-                                "Nous vous informons qu'un utilisateur a transmis la gestion d'une "+type+" à votre attention, car il est dans l'incapacité de la traiter.\n"
-                                +
-                                "* Code de la Réclamation : " + finalClaim.getCodeClient() + "\n" +
-                                "* Aperçu de la réclamation : " + finalClaim.getContent().substring(0, apercuContent.intValue())
-                                + "...\n\n" +
-                                "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime())
-                                + "\n" +
-                                "Veuillez prendre les mesures nécessaires pour permettre le traitement de cette réclamation dans les meilleurs délais.\n\n"
-                                +
-                                "Cordialement,\n" ;
-                                // "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
-                                // "Poste : " + claim.getCollector().getPoste().getLibelle();
-                        Utils.sendmail(destis, "TRANSMISSION DE TRAITEMENT", message, null, "", settingServiceImpl);
+                       Double apercuContent = finalClaim.getContent().length() * 0.5;
+                        String previewContent = finalClaim.getContent()
+                                .substring(0, Math.min(apercuContent.intValue(), finalClaim.getContent().length()))
+                                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+                        String messageHtml = """
+                        <html>
+                        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+                            <h2 style="color: #004080; text-align: center;">Transmission de traitement - GPR</h2>
+
+                            <p>Bonjour <strong>%s</strong>,</p>
+
+                            <p>
+                                Un utilisateur a transmis la gestion d'une <strong>%s</strong> à votre attention, car il est dans l'incapacité de la traiter.
+                            </p>
+
+                            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080;
+                                        padding: 10px 15px;">
+                                <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                                <p style="margin: 5px 0;">📌 <strong>Code de la %s :</strong> %s</p>
+                                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                                <p style="margin: 5px 0;">📝 <strong>Aperçu :</strong> %s...</p>
+                               
+                            </div>
+
+                            <p style="margin-top: 20px;">
+                                Veuillez prendre les mesures nécessaires pour permettre le traitement de cette %s dans les meilleurs délais.
+                            </p>
+
+                            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                            </p>
+
+                            </div>
+                        </body>
+                        </html>
+                        """.formatted(finalTransmittedTo.getFirstandlastname(),type,type,type,finalClaim.getCodeClient(),Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),previewContent,type);
+
+                        Utils.sendmail(destis, "Transmission de traitement - GPR", messageHtml, null, "", settingServiceImpl);
                                                         
                         Log successLog = Log.builder()
-                            .libelle("Mail notification création session")
-                            .content("Success mail notification création session")
+                            .libelle("Mail notification transmission de réclamation")
+                            .content("Success mail notification transmission de réclamation")
                             .createdAt(LocalDateTime.now())
                             .type(LogType.INFO)
                             .userId(0L)
@@ -2347,7 +2649,7 @@ public class ClaimServiceImpl implements ClaimService {
                         if (e != null) {
                             Log log2 = Log
                                     .builder()
-                                    .libelle("Echec mail notification création session")
+                                    .libelle("Echec mail notification transmission de réclamation")
                                     .content(e.getMessage())
                                     .createdAt(LocalDateTime.now())
                                     .type(LogType.ERROR)
@@ -2421,17 +2723,6 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public Claim saveBotClaim(SaveRequest claimPart, ClaimType type) throws Exception {
         ClaimRequest claimToSave = claimPart.getClaimRequest();
-        // User collector;
-        // try {
-        //     collector = authServiceImpl.getById(claimToSave.getCollectorId());
-        // } catch (Exception e) {
-        //     throw new Exception("Collector " + claimToSave.getCollectorId() + " of the claim not found");
-        // }
-
-        String message = "" +
-        "Cher(e) utilisteur, " +
-        "une nouvelle réclamation collectée avec GPR BOT. Cette réclamation  nécessite votre attention."
-        + "\n\n";
        
         Claim claim = Claim
                 .builder()
@@ -2489,44 +2780,6 @@ public class ClaimServiceImpl implements ClaimService {
                     claim.setCreatedAt(LocalDateTime.now());
                     claim.setReceiptDateTime(LocalDateTime.now());
                 }
-
-
-        // if (claimToSave.getStatus() != null) {
-        //     claim.setStatus(claimToSave.getStatus());
-        // } else {
-        //     claim.setStatus(ClaimStatus.SAVED);
-        // }
-
-        //TODO: FInd id for the claim based on the claim
-        
-
-
-        // if (claimToSave.getId() != null) {
-        //     claim.setId(claimToSave.getId());
-        //     claim.setCode(claimToSave.getCode());
-        //     // Only TEMP_SAVED can be saved
-        //     Claim oldClaim = repository.findById(claimToSave.getId())
-        //             .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
-
-        //     // if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
-        //     // throw new ClaimException(
-        //     // "Invalid operation! this claim is not temporarly saved, you can't change it
-        //     // again");
-        //     // }
-
-        // } else {
-        //     if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
-        //         String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
-        //         claim.setCode(code);
-        //     } else {
-        //         claim.setCode(claimToSave.getCode());
-        //     }
-        // }
-        // if(claimToSave.getCode() == null || claimToSave.getCode()== "") {
-        // String code = generateCode(collector.getServicePoint().getUuid(),
-        // collector.getCode(), type);
-        // claim.setCode(code);
-        // }
        
         claim = repository.save(claim);
         Log log = Log
@@ -2547,31 +2800,42 @@ public class ClaimServiceImpl implements ClaimService {
 
         logServiceImpl.saveLog(log);
 
-        // if (claimPart.getFiles() != null && claimPart.getFiles().length != 0) {
-        //     List<Media> medias = mediaServiceImpl.store(claimPart.getFiles(), claim);
-        //     claim.setUpdatedAt(LocalDateTime.now());
-        //     // claim.setMedias(medias);
-        // }
-        // if (claimPart.getAudios() != null && claimPart.getAudios().length != 0) {
-        //     List<ClaimAudio> audios = claimAudioServiceImpl.store(claimPart.getAudios(), claim);
-        //     claim.setUpdatedAt(LocalDateTime.now());
-        //     // for (ClaimAudio audio : audios) {
-        //     // audio.setClaim(null);
-        //     // }
-        //     // claim.setAudios(audios);
-        // }
-
         claim = repository.save(claim);
         final Claim finalClaim = claim;
+        List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         
-        List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
-
         Double apercuContent = claim.getContent().length() * 0.5;
+
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Nouvelle réclamation collectée - GPR BOT</h2>
+
+            <p>Bonjour,</p>
+
+            <p>
+                Une nouvelle réclamation a été collectée via <strong>GPR BOT</strong>.
+                Cette réclamation nécessite votre attention rapide.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """;
                                           
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                Utils.sendmail(usersToContact, " Notification d'enregistrement de réclamation", message, null,
+                Utils.sendmail(pilotes.get(0).getEmail(), "Nouvelle réclamation collectée - GPR BOT", messageHtml, null,
                         " ", settingServiceImpl);
                                         
                 Log successLog = Log.builder()
@@ -2600,25 +2864,6 @@ public class ClaimServiceImpl implements ClaimService {
     
                     logServiceImpl.saveLog(log2);
                 }
-            }
-
-            try {
-                Utils.sendSms(usersToContact,
-                        "Nouvelle réclamation enregistrée de niveau de gravité "
-                                + finalClaim.getObjet().getRisqueLevel().name(), settingServiceImpl);
-            } catch (Exception e) {
-                Log log2 = Log
-                        .builder()
-                        .libelle("Echec sms notification")
-                        .content(e.getMessage())
-                        .createdAt(LocalDateTime.now())
-                        .type(LogType.ERROR)
-                        .userId(0L)
-                        .userIpAddress(claimPart.getRemoteAddress())
-                        .target(LogTarget.APP)
-                        .build();
-    
-                logServiceImpl.saveLog(log2);
             }
         });    
 

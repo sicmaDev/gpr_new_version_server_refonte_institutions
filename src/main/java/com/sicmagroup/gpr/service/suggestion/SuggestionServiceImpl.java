@@ -110,7 +110,7 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         if (suggestionRequest.getId() != null) {
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
-                    .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
+                    .orElseThrow(() -> new Exception("Aucune suggestion ne porte ce code"));
             suggestion = oldSuggestion;
             suggestion.setCodeClient(oldSuggestion.getCodeClient());           
         } else {
@@ -124,14 +124,7 @@ public class SuggestionServiceImpl implements SuggestionService {
             }
         }
 
-        // if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
-        //     Suggestion oldSuggestion = repository.findByCode(suggestionRequest.getCode())
-        //             .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
-        //     suggestion = oldSuggestion;
-        // } else {
-        //     String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
-        //     suggestion.setCode(code);
-        // }
+      
         CollectionChannel collectionChannel;
         if (suggestionRequest.getCollectionChannelId() != null) {
             try {
@@ -224,11 +217,6 @@ public class SuggestionServiceImpl implements SuggestionService {
             List<ClaimAudio> audios = claimAudioServiceImpl.store(request.getAudios(),suggestion);
             suggestion.setUpdatedAt(LocalDateTime.now());
             suggestion = repository.save(suggestion);
-            
-            // for (ClaimAudio audio : audios) {
-            // audio.setClaim(null);
-            // }
-            // claim.setAudios(audios);
         }
 
         //Whatsapp
@@ -244,6 +232,104 @@ public class SuggestionServiceImpl implements SuggestionService {
             }
         }
 
+        List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+       
+        Double apercuContent = suggestion.getContent().length() * 0.5;
+        String previewContent = suggestion.getContent().substring(0, Math.min(apercuContent.intValue(), suggestion.getContent().length()))
+        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+
+        String message = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+            <h2 style="color: #004080; text-align: center;">Nouvelle suggestion enregistrée - GPR</h2>
+
+            <p>Bonjour %s,Pilote de la plateforme <strong>GPR</strong></p>
+
+            <p>
+                Une nouvelle suggestion a été enregistrée avec succès dans votre système.
+            </p>
+
+            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; 
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la suggestion :</strong></p>
+                <p style="margin: 5px 0;">📌 <strong>Code de suggestion :</strong> %s</p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+            </div>
+
+            <p style="margin-top: 20px;">
+                Nous vous encourageons à examiner cette suggestion dès que possible et à prendre les mesures nécessaires pour la traiter. 
+                Votre expertise est essentielle pour assurer une résolution rapide et satisfaisante pour les clients.
+            </p>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(pilotes.get(0).getFirstandlastname(),suggestion.getCodeClient(),Utils.convertLocalDateTimeToStr(suggestion.getReceiptDateTime()),previewContent);
+
+        // Envoi de mail en parallèle
+        CompletableFuture.runAsync(() -> {
+            try {
+                Utils.sendmail(pilotes.get(0).getEmail(), "Nouvelle suggestion enregistrée - GPR", message, null,
+                        " ", settingServiceImpl);
+                
+                Log successLog = Log.builder()
+                    .libelle("Mail notification d'enregistrement de suggestion")
+                    .content("Success mail notification suggestion enregistrée")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(0L)
+                    .userIpAddress(null)
+                    .target(LogTarget.APP)
+                    .build();
+
+                logServiceImpl.saveLog(successLog);
+            } catch (Exception e) {
+                if (e != null) {
+                    Log log2 = Log
+                            .builder()
+                            .libelle("Echec mail notification suggestion enregistrée")
+                            .content(e.getMessage())
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.ERROR)
+                            .userId(0L)
+                            .userIpAddress(null)
+                            .target(LogTarget.APP)
+                            .build();
+
+                    logServiceImpl.saveLog(log2);
+                }
+            }
+        });
+
+        try {
+            Utils.sendSms(pilotes.get(0).getTel(),
+                    "Nouvelle suggestion enregistrée sur la plateforme GPR.", settingServiceImpl);
+        } catch (Exception e) {
+            Log log2 = Log
+                    .builder()
+                    .libelle("Echec sms notification")
+                    .content(e.getMessage())
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.ERROR)
+                    .userId(0L)
+                    .userIpAddress(null)
+                    .target(LogTarget.APP)
+                    .build();
+
+            logServiceImpl.saveLog(log2);
+        }
+
+        
         return suggestion;
     }
    
@@ -257,7 +343,7 @@ public class SuggestionServiceImpl implements SuggestionService {
       
         if (suggestionRequest.getId() != null) {
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
-                    .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
+                    .orElseThrow(() -> new Exception("Aucune suggestion ne porte ce code"));
             if (!suggestion.getCode().startsWith("bot")) {
                 throw new Exception("Vous n'avez pas l'autorisation");
             }
@@ -283,36 +369,6 @@ public class SuggestionServiceImpl implements SuggestionService {
                 throw new Exception("Collection channelle choosed not found");
             }
         }
-
-        // ServicePoint servicePoint;
-        // if (suggestionRequest.getServicePointUuid()!= null) {
-        //     try {
-        //         servicePoint = servicePointServiceImpl.findPointDeServiceByUuid(suggestionRequest.getServicePointUuid());
-        //         suggestion.setServiceIndexe(servicePoint);
-        //     } catch (Exception e) {
-        //         // throw new Exception("Service Point choosed not found");
-        //     }
-        // }
-
-        // Product product;
-        // if (suggestionRequest.getProductUuid() != null) {
-        //     try {
-        //         product = productServiceImpl.findProductByUuid(suggestionRequest.getProductUuid());
-        //         suggestion.setProduit(product);
-        //     } catch (Exception e) {
-        //         // throw new Exception("Product choosed not found");
-        //     }
-        // }
-
-        // Language language;
-        // if (suggestionRequest.getLanguageUuid() != null) {
-        //     try {
-        //         language = languageServiceImpl.findByUuid(suggestionRequest.getLanguageUuid());
-        //         suggestion.setLangue(language);
-        //     } catch (Exception e) {
-        //         throw new Exception("Objet choosed not found");
-        //     }
-        // }
 
         if (suggestionRequest.getClientFirstAndLastName() != null) {
             suggestion.setClientFirstAndLastName(suggestionRequest.getClientFirstAndLastName());
@@ -394,50 +450,52 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         suggestion = repository.save(suggestion);
 
-        User transmittedTo = null;
-        List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-
-        if (transmittedTo == null) {
-            transmittedTo = pilote.get(0);
-        
-            // Si aucun PILOTE n'a été trouvé, lever une exception
-            if (transmittedTo == null) {
-                throw new Exception("Aucun PILOTE trouvé pour le point de service.");
-            }
-        }
-
-        // Sauvegarder la réclamation mise à jour
         final Suggestion finalSuggestion = suggestion;
-        final User finalTransmittedTo = transmittedTo;
+        List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
+        Double apercuContent = finalSuggestion.getContent().length() * 0.5;
+        String previewContent = finalSuggestion.getContent()
+                .substring(0, Math.min(apercuContent.intValue(), finalSuggestion.getContent().length()))
+                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        String priseEnCompte = suggestion.isAccepted() ? "Prise en compte" : "Non prise en compte";
 
-        // Initialisation de la liste
-        List<User> destis = new ArrayList<>();
+        String messageHtml = """
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
 
-        // Ajouter transmittedTo à la liste destis
-        if (transmittedTo != null) {
-            destis.add(transmittedTo);
-        } else {
-            throw new Exception("Le destinataire (transmittedTo) est null, impossible de l'ajouter à la liste.");
-        }
+            <h2 style="color: #004080; text-align: center;">Traitement de suggestion - GPR</h2>
+
+            <p>Bonjour <strong>%s</strong>, Pilote de la plateforme <strong>GPR</strong>,</p>
+
+            <p>
+                La suggestion portant le code <strong>%s</strong> a été analysée et marquée comme traitée par %s.
+            </p>
+
+            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080;
+                        padding: 10px 15px;">
+                <p style="margin: 0;"><strong>Détails de la suggestion :</strong></p>
+                <p style="margin: 5px 0;">📌 <strong>Code :</strong> %s</p>
+                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📌 <strong>Décision :</strong> %s</p>
+            </div>
+
+            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+            </p>
+
+            </div>
+        </body>
+        </html>
+        """.formatted(treator.getFirstandlastname(),finalSuggestion.getCodeClient(),pilotes.get(0).getFirstandlastname(),finalSuggestion.getCodeClient(),Utils.convertLocalDateTimeToStr(finalSuggestion.getReceiptDateTime()),previewContent,priseEnCompte);
 
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                Double apercuContent = finalSuggestion.getContent().length() * 0.5;
-                String message = "" +
-                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote.\n\n" +
-                        "L'utilisateur " + treator.getFirstandlastname()
-                        + " a examiné la suggestion " +  " portant le code : "
-                        + finalSuggestion.getCodeClient()
-                        + " et l'a traitée." + "\n\n" +
-                        "Détails de la suggestion "  + " :" + "\n\n" +
-                        "* Code de la suggestion : " + finalSuggestion.getCodeClient() + "\n" +
-                        "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(finalSuggestion.getReceiptDateTime())
-                        + "\n" +
-                        "* Aperçu du contenu : " + finalSuggestion.getContent().substring(0, apercuContent.intValue()) + "...\n\n";
-                        // "Transmis par : " + claim.getCollector().getFirstandlastname() + "\n" +
-                        // "Poste : " + claim.getCollector().getPoste().getLibelle();
-                Utils.sendmail(destis, "TRAITEMENT SUGGESTION", message, null, "", settingServiceImpl);
+                Utils.sendmail(pilotes.get(0).getEmail(), "Traitement de suggestion - GPR", messageHtml, null, "", settingServiceImpl);
                                                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification suggestion traité")
@@ -523,7 +581,7 @@ public class SuggestionServiceImpl implements SuggestionService {
         if (suggestionRequest.getId() != null) {
             suggestion.setId(suggestionRequest.getId());
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
-                    .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
+                    .orElseThrow(() -> new Exception("Aucune suggestion ne porte ce code"));
             suggestion = oldSuggestion;
             suggestion.setCodeClient(oldSuggestion.getCodeClient());
         } else {
@@ -537,14 +595,6 @@ public class SuggestionServiceImpl implements SuggestionService {
             }
         }
 
-        // if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
-        //     Suggestion oldSuggestion = repository.findByCode(suggestionRequest.getCode())
-        //             .orElseThrow(() -> new Exception("Aucune réclamation ne porte ce code"));
-        //     suggestion = oldSuggestion;
-        // } else {
-        //     String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
-        //     suggestion.setCode(code);
-        // }
         CollectionChannel collectionChannel;
         if (suggestionRequest.getCollectionChannelId() != null) {
             try {

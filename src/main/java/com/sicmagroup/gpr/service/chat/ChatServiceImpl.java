@@ -16,6 +16,7 @@ import com.sicmagroup.gpr.api.chat.message.SessionJoinRequest;
 import com.sicmagroup.gpr.api.chat.message.SessionJoinResponse;
 import com.sicmagroup.gpr.domain.enumeration.ChatStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
+import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.LogTarget;
 import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
@@ -76,27 +77,56 @@ public class ChatServiceImpl implements ChatService {
                     u.getChatsMember().add(chat);
                     userRepository.save(u);
                 }
+                String type = "Réclamation";
+                if (claim.getType().equals(ClaimType.DENUNCIACION)) {
+                    type = "Dénonciation";
+                }
 
+                final String finalType = type;
                 Double apercuContent = claim.getContent().length() * 0.5;
             
                 // Envoi de mail en parallèle
                 CompletableFuture.runAsync(() -> {
                     try {
-                        String message = "Bonjour cher(e) utilisateur, le collaborateur " +
-                                user.getFirstandlastname()
-                                + " a démarré une session. \n\n" +
-                                "\t * Code réclamation : " + claim.getCodeClient() + " \n" +
-                                "Détails de la réclamation :" + "\n\n" +
-                                "* Date d'enregistrement : " +
-                                Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
-                                + "\n" +
-                                "* Aperçu du contenu : " + claim.getContent().substring(0,
-                                        apercuContent.intValue())
-                                + "...\n\n" +
-                                "Nous vous invitons à rejoindre cette session afin de procéder à son traitement.";
-                        
-                        Utils.sendmail(members, "Démarrage d'une session", message, null,
-                                " ", settingServiceImpl);
+                        String message = """
+                        <html>
+                        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+                                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+                            <h2 style="color: #004080; text-align: center;">Démarrage de session - GPR</h2>
+
+                            <p>Bonjour <strong>%s</strong>,</p>
+
+                            <p>
+                                Votre session a été démarrée avec succès sur la plateforme de gestion des plaintes et réclamations (<strong>GPR</strong>).
+                            </p>
+
+                            <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; 
+                                        padding: 10px 15px;">
+                                <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                                <p style="margin: 5px 0;">📌 <strong>Code %s :</strong> %s</p>
+                                <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                            </div>
+
+                            <p style="margin-top: 20px;">
+                                Vous pouvez désormais rejoint la session pour inviter d'autres utilisateurs et traiter la %s.
+                            </p>
+
+                            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                            </p>
+
+                            </div>
+                        </body>
+                        </html>
+                        """.formatted(user.getFirstandlastname(),finalType,finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getContent().substring(0, apercuContent.intValue()),finalType);
+
+                        Utils.sendmail(members, "Démarrage de session - GPR",message,null," ",settingServiceImpl);
+
                                                 
                         Log successLog = Log.builder()
                             .libelle("Mail notification création session")
@@ -194,17 +224,51 @@ public class ChatServiceImpl implements ChatService {
         final Chat finalChat = chat;
         
         userRepository.save(guest);
-            
+        String type = "Réclamation";
+        if (claim.getType().equals(ClaimType.DENUNCIACION)) {
+            type = "Dénonciation";
+        }
+        final String finalType = type;
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                String message = "Cher(e) " + guest.getFirstandlastname() + ", \n\n" +
-                    "Vous êtes invité à intervenir dans les discussions à propos de la réclamation : "
-                    + finalChat.getClaim().getCodeClient() + " \n\n" +
-                    "Connectez vous sur la plateforme GPR.";
+               String message = """
+                <html>
+                <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                    <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
 
-                Utils.sendmail(guest.getEmail(), "Invitation chat", message, null, "", settingServiceImpl);
-                                                
+                    <h2 style="color: #004080; text-align: center;">Invitation à participer à une session - GPR</h2>
+
+                    <p>Bonjour <strong>%s</strong>,</p>
+
+                    <p>
+                        Vous avez été invité(e) à intervenir dans la session concernant la %s suivante :
+                    </p>
+
+                    <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; 
+                                padding: 10px 15px;">
+                        <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                        <p style="margin: 5px 0;">📌 <strong>Code %s :</strong> %s</p>
+                    </div>
+
+                    <p style="margin-top: 20px;">
+                        Connectez-vous à la plateforme <strong>GPR</strong> pour participer à la discussion et apporter vos interventions.
+                    </p>
+
+                    <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                    <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                        Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                    </p>
+
+                    </div>
+                </body>
+                </html>
+                """.formatted(guest.getFirstandlastname(),finalType,finalType,finalType,finalChat.getClaim().getCodeClient());
+
+                Utils.sendmail(guest.getEmail(), "Invitation à une session - GPR",message,null," ",settingServiceImpl);
+                                  
                 Log successLog = Log.builder()
                     .libelle("Mail notification invitation chat")
                     .content("Success mail notification invitation chat")
@@ -271,17 +335,51 @@ public class ChatServiceImpl implements ChatService {
             guest.setUpdatedAt(LocalDateTime.now());
             userRepository.save(guest);
         }
-            
+        String type = "Réclamation";
+        if (claim.getType().equals(ClaimType.DENUNCIACION)) {
+            type = "Dénonciation";
+        }
+
+        final String finalType = type;
         // Envoi de mail en parallèle
         CompletableFuture.runAsync(() -> {
             try {
-                String message = "Cher(e) " + guest.getFirstandlastname() + ", \n\n" +
-                        "Vous avez été exclus de la discussion sur le traitement de la réclamation : "
-                        + finalChat.getClaim().getCodeClient() + " \n\n" +
-                        "Contactez le collaborateur ayant initié la session s'il s'agit d'une erreur.";
+                String message = """
+                <html>
+                <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                    <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
 
-                Utils.sendmail(guest.getEmail(), "Ejection du chat", message, null, "", settingServiceImpl);
-                                                                
+                    <h2 style="color: #cc0000; text-align: center;">Ejection d'une session - GPR</h2>
+
+                    <p>Bonjour <strong>%s</strong>,</p>
+
+                    <p>
+                        Vous avez été <strong>exclu(e)</strong> de la discussion concernant la %s :
+                    </p>
+
+                    <div style="margin-top: 20px; background-color: #ffe6e6; border-left: 4px solid #cc0000; 
+                                padding: 10px 15px;">
+                        <p style="margin: 0;">📌 <strong>Code %s :</strong> %s</p>
+                    </div>
+
+                    <p style="margin-top: 20px;">
+                        Si vous pensez que cette exclusion est une erreur, veuillez contacter le collaborateur ayant initié la session.
+                    </p>
+
+                    <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                    <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                        Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                    </p>
+
+                    </div>
+                </body>
+                </html>
+                """.formatted(guest.getFirstandlastname(),finalType,finalType,finalChat.getClaim().getCodeClient());
+
+                Utils.sendmail(guest.getEmail(),"Ejection d'une session - GPR",message,null," ",settingServiceImpl);
+                                                          
                 Log successLog = Log.builder()
                     .libelle("Mail notification éjection chat")
                     .content("Success mail notification éjection chat")

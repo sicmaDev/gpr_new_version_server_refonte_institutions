@@ -28,6 +28,7 @@ import com.sicmagroup.gpr.domain.dto.chat.VoteDto;
 import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ChatStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
+import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.LogTarget;
 import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
@@ -323,34 +324,68 @@ public class MessageServiceImp implements MessageService {
                 vote.setChoosed(true);
                 vote = voteRepository.save(vote);
             }
+            String type = "Réclamation";
+            if (claim.getType().equals(ClaimType.DENUNCIACION)) {
+                type = "Dénonciation";
+            }
+
+            final String finalType = type;
 
             Double apercuContent = claim.getContent().length() * 0.3;
             List<User> pilote = userRepository.findByAdditionalroleIn(Arrays.asList(Role.PILOTE));
             if (pilote != null && !pilote.isEmpty()) {
-                String messageStr = "" +
-                        "Cher(e) " + pilote.get(0).getFirstandlastname() + ", Pilote de la plateforme GPR,\n\n" +
-                        "la réclamation portant le code : "
-                        + claim.getCodeClient()
-                        + " a été traitée." + "\n\n" +
-                        "Détails de la réclamation :" + "\n\n" +
-                        "* Code de réclamation : " + claim.getCodeClient() + "\n" +
-                        "* Date d'enregistrement : " + Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime())
-                        + "\n" +
-                        "* Aperçu du contenu : " + claim.getContent().substring(0, apercuContent.intValue()) + "...\n\n"
-                        +
-                        "La solution proposée est la suivante : " + "\n" +
-                        solution2.getContent() + "\n\n" +
-                        "Nous vous invitons à communiquer la solution au plaignant pour mesurer sa satisfaction.";
-            
+               String messageStr = """
+                <html>
+                <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                    <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+                                box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+                    <h2 style="color: #004080; text-align: center;">%s traitée - GPR</h2>
+
+                    <p>Bonjour <strong>%s</strong>, Pilote de la plateforme <strong>GPR</strong>,</p>
+
+                    <p>
+                        La %s portant le code <strong>%s</strong> a été traitée avec succès.
+                    </p>
+
+                    <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; 
+                                padding: 10px 15px;">
+                        <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
+                        <p style="margin: 5px 0;">📌 <strong>Code de %s :</strong> %s</p>
+                        <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
+                        <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                    </div>
+
+                    <div style="margin-top: 20px; background-color: #e6ffe6; border-left: 4px solid #008000; 
+                                padding: 10px 15px;">
+                        <p style="margin: 0;"><strong>Solution proposée :</strong></p>
+                        <p style="margin: 5px 0;">%s</p>
+                    </div>
+
+                    <p style="margin-top: 20px;">
+                        Nous vous invitons à communiquer cette solution au plaignant afin de mesurer sa satisfaction au besoin.
+                    </p>
+
+                    <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                    <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                        Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                    </p>
+
+                    </div>
+                </body>
+                </html>
+                """.formatted(finalType,pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),finalType, finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getContent().substring(0, apercuContent.intValue()),solution2.getContent());
+
                 // Envoi de mail en parallèle
                 CompletableFuture.runAsync(() -> {
                     try {
-                        Utils.sendmail(pilote.get(0).getEmail(), "Réclamation traitée",
+                        Utils.sendmail(pilote.get(0).getEmail(), finalType+" traitée - GPR",
                                 messageStr, null, " ", settingServiceImpl);
                                                 
                         Log successLog = Log.builder()
-                            .libelle("Mail notification réclamation traitée")
-                            .content("Success mail notification réclamation traitée")
+                            .libelle("Mail notification "+finalType+" traitée")
+                            .content("Success mail notification "+finalType+" traitée")
                             .createdAt(LocalDateTime.now())
                             .type(LogType.INFO)
                             .userId(0L)

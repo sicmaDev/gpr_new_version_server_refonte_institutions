@@ -228,16 +228,42 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 CompletableFuture.runAsync(() -> {
                     try {
                         //envoi de mail au user
-                        String message = "" +
-                        "Cher(e) " + userForMail.getFirstandlastname() + ",\n\n" +
-                        "Votre compte vient d'être créé sur la plateforme de gestion des plaintes ou réclamations GPR."
-                        + "\n\n" +
-                        "Identifiants d'accès :" + "\n\n" +
-                        "* Email : " + userForMail.getEmail() + "\n" +
-                        "* Mot de passe : " + request.getPassword() + "\n";
                        
-                        Utils.sendmail(userForMail.getEmail(), "Création de compte", message, null,
-                                " ", settingServiceImpl);
+                        String message = """
+                        <html>
+                        <body style="font-family: Arial, sans-serif; background-color: #f7f9fc; padding: 20px;">
+                            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 25px;">
+                            
+                            <h2 style="color: #004aad; text-align: center;">Création de votre compte GPR</h2>
+
+                            <p>Bonjour <strong>%s</strong>,</p>
+
+                            <p>Votre compte a été créé avec succès sur la plateforme <strong>GPR</strong> (Gestion des Plaintes et Réclamations).</p>
+
+                            <p style="margin-bottom: 10px;"><strong>Vos identifiants de connexion :</strong></p>
+                            <div style="background-color: #f0f4ff; border-left: 4px solid #004aad; padding: 10px 15px; border-radius: 4px;">
+                                <p style="margin: 0;"><strong>Email :</strong> %s</p>
+                                <p style="margin: 0;"><strong>Mot de passe :</strong> %s</p>
+                            </div>
+
+                            <p style="margin-top: 20px;">
+                                Nous vous recommandons de modifier votre mot de passe dès votre première connexion afin de garantir la sécurité de votre compte.
+                            </p>
+
+                            <p style="margin-top: 30px;">Cordialement,<br>
+                            <strong>L’équipe GPR</strong></p>
+
+                            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                            </p>
+                            </div>
+                        </body>
+                        </html>
+                        """.formatted(userForMail.getFirstandlastname(), userForMail.getEmail(), request.getPassword());
+
+                        
+                        Utils.sendmail(userForMail.getEmail(), "Création de compte", message, null, " ", settingServiceImpl);
+
                                                 
                         Log successLog = Log.builder()
                             .libelle("Mail notification création compte")
@@ -374,17 +400,33 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 CompletableFuture.runAsync(() -> {
                     try {
                         //envoi de mail au user
-                        String message = "" +
-                        "Cher(e) " + user.getFirstandlastname() + ",\n\n" +
-                        "Votre compte a bien été créé sur la plateforme de gestion des plaintes et réclamations (GPR).\n" + 
-                        "Veuillez noter que l’activation est en attente de validation par l’administrateur. Vous serez notifié dès que votre compte sera validé."
-                        + "\n\n" +
-                        "Identifiants d'accès :" + "\n\n" +
-                        "* Email : " + user.getEmail() + "\n" +
-                        "* Mot de passe : " + request.getPassword() + "\n";                   
-                        
-                        Utils.sendmail(user.getEmail(), "Création de compte", message, null,
-                        " ", settingServiceImpl);
+                       String message = """
+                        <html>
+                            <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                                <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                    <h2 style="color: #004080; text-align: center;">Création de votre compte GPR</h2>
+                                    <p>Bonjour <strong>%s</strong>,</p>
+                                    <p>
+                                        Votre compte a bien été créé sur la plateforme de gestion des plaintes et réclamations (<strong>GPR</strong>).
+                                        <br>Veuillez noter que l’activation est en attente de validation par l’administrateur.
+                                        <br>Vous serez notifié dès que votre compte sera validé.
+                                    </p>
+                                    <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; padding: 10px 15px;">
+                                        <p style="margin: 0;"><strong>Identifiants d'accès :</strong></p>
+                                        <p style="margin: 5px 0;">✉️ <strong>Email :</strong> %s</p>
+                                        <p style="margin: 5px 0;">🔑 <strong>Mot de passe :</strong> %s</p>
+                                    </div>
+                                    <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+                                    <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                        Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                                    </p>
+                                </div>
+                            </body>
+                        </html>
+                    """.formatted(user.getFirstandlastname(),user.getEmail(),request.getPassword());
+
+                        Utils.sendmail(user.getEmail(),"Création de compte",message,null," ",settingServiceImpl);
+
                                                 
                         Log successLog = Log.builder()
                             .libelle("Mail notification création compte")
@@ -780,17 +822,40 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             // Envoi de mail en parallèle
             CompletableFuture.runAsync(() -> {
                 try {
-                    String message = "" +
-                        "Hello \n" +
-                        "Bravo , votre mot de passe a été reinitialisé sur GPR."
-                        + "\n\n" +
-                        "Voici vos informations de connexion:" + "\n\n" +
-                        "* Email: " + user.getEmail() + "\n" +
-                        "* Mot de passe : " + new String(password) + "\n" +
-                        "Ce mail ne doit pas etre divulguer.";
+                    String message = """
+                        <html>
+                            <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                                <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                    <h2 style="color: #004080; text-align: center;">Réinitialisation de mot de passe - GPR</h2>
+                                    
+                                    <p>Bonjour <strong>%s</strong>,</p>
+                                    <p>
+                                        Votre mot de passe a été <strong>réinitialisé avec succès</strong> sur la plateforme
+                                        de gestion des plaintes et réclamations (<strong>GPR</strong>).
+                                    </p>
+                                    
+                                    <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; padding: 10px 15px;">
+                                        <p style="margin: 0;"><strong>Vos informations de connexion :</strong></p>
+                                        <p style="margin: 5px 0;">✉️ <strong>Email :</strong> %s</p>
+                                        <p style="margin: 5px 0;">🔑 <strong>Mot de passe :</strong> %s</p>
+                                    </div>
 
-                    Utils.sendmail(userMailTo, "Modification plateforme de GPR", message, null, " ", settingServiceImpl);
-                                                
+                                    <p style="margin-top: 25px; color: #cc0000; font-size: 0.9em;">
+                                        ⚠️ Ce message contient des informations sensibles. Ne le partagez avec personne.
+                                    </p>
+
+                                    <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                                    <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                        Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                                    </p>
+                                </div>
+                            </body>
+                        </html>
+                    """.formatted(user.getFirstandlastname(),user.getEmail(),new String(password));
+
+
+                        Utils.sendmail(userMailTo,"Réinitialisation de mot de passe - GPR",message,null," ",settingServiceImpl);
                         Log successLog = Log.builder()
                             .libelle("Mail notification mot de passe oublié")
                             .content("Success mail notification mot de passe oublié")
@@ -1246,13 +1311,36 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         CompletableFuture.runAsync(() -> {
             try {
                 //envoi de mail au user
-                String message = "" +
-                "Cher(e) " + userForMail.getFirstandlastname() + ",\n\n" +
-                "Votre compte a été désactivé avec succès sur la plateforme de gestion des plaintes et réclamations GPR.\n" +
-                "Vous pouvez désormais vous connecter et accéder à toutes les fonctionnalités disponibles.";
+                String message = """
+                    <html>
+                        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                            
+                            <h2 style="color: #004080; text-align: center;">Désactivation de votre compte - GPR</h2>
+                            
+                            <p>Bonjour <strong>%s</strong>,</p>
+                            
+                            <p>
+                                Votre compte sur la plateforme de gestion des plaintes et réclamations (<strong>GPR</strong>) a été désactivé avec succès.
+                            </p>
+                            
+                            <p>
+                                Vous n’avez désormais plus accès aux fonctionnalités de la plateforme. 
+                                Si vous pensez qu’il s’agit d’une erreur ou souhaitez réactiver votre compte, veuillez contacter l’administrateur.
+                            </p>
+                            
+                            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
 
-                Utils.sendmail(userForMail.getEmail(), "Désactivation de compte", message, null,
-                        " ", settingServiceImpl);
+                            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                            </p>
+                            </div>
+                        </body>
+                    </html>
+                    """.formatted(userForMail.getFirstandlastname());
+
+                Utils.sendmail(userForMail.getEmail(),"Désactivation de compte",message,null," ",settingServiceImpl);
+
                                         
                 Log successLog = Log.builder()
                     .libelle("Mail notification désactivation compte")
@@ -1298,13 +1386,35 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         CompletableFuture.runAsync(() -> {
             try {
                 //envoi de mail au user
-                String message = "" +
-                "Cher(e) " + userForMail.getFirstandlastname() + ",\n\n" +
-                "Votre compte a été validé avec succès sur la plateforme de gestion des plaintes et réclamations GPR.\n" +
-                "Vous pouvez désormais vous connecter et accéder à toutes les fonctionnalités disponibles.";
+                String message = """
+                    <html>
+                        <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                            
+                            <h2 style="color: #004080; text-align: center;">Validation de votre compte - GPR</h2>
+                            
+                            <p>Bonjour <strong>%s</strong>,</p>
+                            
+                            <p>
+                                Votre compte sur la plateforme de gestion des plaintes et réclamations (<strong>GPR</strong>) a été validé avec succès.
+                            </p>
+                            
+                            <p>
+                                Vous pouvez désormais vous connecter et accéder à toutes les fonctionnalités disponibles.
+                            </p>
+                            
+                            <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
 
-                Utils.sendmail(userForMail.getEmail(), "Validation de compte", message, null,
-                        " ", settingServiceImpl);
+                            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                            </p>
+                            </div>
+                        </body>
+                    </html>
+                    """.formatted(userForMail.getFirstandlastname());
+
+                Utils.sendmail(userForMail.getEmail(),"Validation de compte",message,null," ",settingServiceImpl);
+
                                         
                 Log successLog = Log.builder()
                     .libelle("Mail notification validation compte")
@@ -1423,13 +1533,40 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     // Envoi du mail de rejet
                     CompletableFuture.runAsync(() -> {
                         try {
-                            String messageUserRejete = "" +
-                                "Hello " + userForMail.getFirstandlastname() + ",\n\n" +
-                                "Nous vous informons que votre compte sur **GPR** a été **rejeté** et n'a pas été validé. \n\n" +
-                                "Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter notre équipe de support.\n\n" +
-                                "Ce message est confidentiel. Merci de ne pas le divulguer.\n\n" +
-                                "Cordialement,\n";
-                            Utils.sendmail(userForMail.getEmail(), "Rejet de compte sur GPR", messageUserRejete, null, " ", settingServiceImpl);
+                            String messageUserRejete = """
+                            <html>
+                            <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                                <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                
+                                <h2 style="color: #004080; text-align: center;">Rejet de votre compte - GPR</h2>
+                                
+                                <p>Bonjour <strong>%s</strong>,</p>
+                                
+                                <p>
+                                    Nous vous informons que votre compte sur <strong>GPR</strong> a été <strong>rejeté</strong> et n'a pas été validé.
+                                </p>
+                                
+                                <p>
+                                    Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter votre administrateur.
+                                </p>
+                                
+                                <p style="margin-top: 25px; color: #cc0000; font-size: 0.9em;">
+                                    ⚠️ Ce message est confidentiel. Merci de ne pas le divulguer.
+                                </p>
+                                
+                                <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                                <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                    Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                                </p>
+
+                                </div>
+                            </body>
+                            </html>
+                            """.formatted(userForMail.getFirstandlastname());
+
+                            Utils.sendmail(userForMail.getEmail(),"Rejet de compte sur GPR",messageUserRejete,null," ",settingServiceImpl);
+
                             Log successLog = Log.builder()
                                 .libelle("Mail notification Rejet compte")
                                 .content("Success mail notification rejet compte")
@@ -1462,14 +1599,40 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     // Envoi du mail
                     CompletableFuture.runAsync(() -> {
                         try {
-                            String message = "" +
-                            "Hello " + userForMail.getFirstandlastname() + ",\n\n" +
-                            "Nous vous informons que votre compte sur **GPR** a été supprimé avec succès. \n\n" +
-                            "Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter notre équipe de support.\n\n" +
-                            "Ce message est confidentiel. Merci de ne pas le divulguer.\n\n" +
-                            "Cordialement,\n";
-                            Utils.sendmail(user.getEmail(), "Suppression de compte sur GPR", message, null, " ", settingServiceImpl);
-                    
+                            String messageCompteSupprime = """
+                            <html>
+                            <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                                <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+                                <h2 style="color: #004080; text-align: center;">Suppression de votre compte - GPR</h2>
+
+                                <p>Bonjour <strong>%s</strong>,</p>
+
+                                <p>
+                                    Nous vous informons que votre compte sur <strong>GPR</strong> a été supprimé.
+                                </p>
+
+                                <p>
+                                    Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter votre administrateur.
+                                </p>
+
+                                <p style="margin-top: 25px; color: #cc0000; font-size: 0.9em;">
+                                    ⚠️ Ce message est confidentiel. Merci de ne pas le divulguer.
+                                </p>
+
+                                <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                                <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                    Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                                </p>
+
+                                </div>
+                            </body>
+                            </html>
+                            """.formatted(userForMail.getFirstandlastname());
+
+                            Utils.sendmail(user.getEmail(),"Suppression de compte sur GPR",messageCompteSupprime,null," ",settingServiceImpl);
+
                     
                             Log successLog = Log.builder()
                                 .libelle("Mail notification suppression compte")
@@ -1522,13 +1685,40 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         // Envoi du mail de rejet
                         CompletableFuture.runAsync(() -> {
                             try {
-                                String messageUserRejete = "" +
-                                    "Hello " + userForMail.getFirstandlastname() + ",\n\n" +
-                                    "Nous vous informons que votre compte sur **GPR** a été **rejeté** et n'a pas été validé. \n\n" +
-                                    "Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter notre équipe de support.\n\n" +
-                                    "Ce message est confidentiel. Merci de ne pas le divulguer.\n\n" +
-                                    "Cordialement,\n";
-                                Utils.sendmail(userForMail.getEmail(), "Rejet de compte sur GPR", messageUserRejete, null, " ", settingServiceImpl);
+                               String messageUserRejete = """
+                                <html>
+                                <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                                    <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+                                    <h2 style="color: #004080; text-align: center;">Rejet de votre compte - GPR</h2>
+
+                                    <p>Bonjour <strong>%s</strong>,</p>
+
+                                    <p>
+                                        Nous vous informons que votre compte sur <strong>GPR</strong> a été <strong style="color: #cc0000;">rejeté</strong> et n'a pas été validé.
+                                    </p>
+
+                                    <p>
+                                        Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter votre administrateur.
+                                    </p>
+
+                                    <p style="margin-top: 25px; color: #cc0000; font-size: 0.9em;">
+                                        ⚠️ Ce message est confidentiel. Merci de ne pas le divulguer.
+                                    </p>
+
+                                    <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                                    <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                        Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                                    </p>
+
+                                    </div>
+                                </body>
+                                </html>
+                                """.formatted(userForMail.getFirstandlastname());
+
+                                Utils.sendmail(userForMail.getEmail(),"Rejet de compte sur GPR",messageUserRejete,null," ",settingServiceImpl);
+
                                 Log successLog = Log.builder()
                                     .libelle("Mail notification Rejet compte")
                                     .content("Success mail notification rejet compte")
@@ -1561,14 +1751,41 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         // Envoi du mail
                         CompletableFuture.runAsync(() -> {
                             try {
-                                String message = "" +
-                                "Hello " + userForMail.getFirstandlastname() + ",\n\n" +
-                                "Nous vous informons que votre compte sur **GPR** a été supprimé avec succès. \n\n" +
-                                "Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter notre équipe de support.\n\n" +
-                                "Ce message est confidentiel. Merci de ne pas le divulguer.\n\n" +
-                                "Cordialement,\n";
-                                Utils.sendmail(user.getEmail(), "Suppression de compte sur GPR", message, null, " ", settingServiceImpl);
-                        
+                                String message = """
+                                <html>
+                                <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                                    <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+
+                                    <h2 style="color: #004080; text-align: center;">Suppression de votre compte - GPR</h2>
+
+                                    <p>Bonjour <strong>%s</strong>,</p>
+
+                                    <p>
+                                        Nous vous informons que votre compte sur <strong>GPR</strong> a été supprimé.
+                                    </p>
+
+                                    <p>
+                                        Si vous pensez que cette action a été effectuée par erreur ou si vous avez des questions, n'hésitez pas à contacter votre administrateur.
+                                    </p>
+
+                                    <p style="margin-top: 25px; color: #cc0000; font-size: 0.9em;">
+                                        ⚠️ Ce message est confidentiel. Merci de ne pas le divulguer.
+                                    </p>
+
+                                    <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
+
+                                    <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                        Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                                    </p>
+
+                                    </div>
+                                </body>
+                                </html>
+                                """.formatted(userForMail.getFirstandlastname());
+
+                                Utils.sendmail(user.getEmail(),"Suppression de compte sur GPR",message,null," ",settingServiceImpl);
+
+                    
                         
                                 Log successLog = Log.builder()
                                     .libelle("Mail notification suppression compte")

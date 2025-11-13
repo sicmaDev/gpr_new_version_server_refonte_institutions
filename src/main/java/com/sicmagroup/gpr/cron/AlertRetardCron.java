@@ -39,6 +39,8 @@ public class AlertRetardCron {
     private SettingServiceImpl settingService;
 
     // Exécution une fois par jour à 8h du matin
+   
+    // @Scheduled(cron = "0 45 15 * * *")
     @Scheduled(cron = "0 0 8 * * *")
     public void sendRelanceMail() {
         try {
@@ -114,6 +116,82 @@ public class AlertRetardCron {
         }
     }
 
+    // private String buildAgentMail(List<HistoriqueAffectation> affectations) {
+    //     // En-tête du mail avec le nombre de plaintes
+    //     String body = """
+    //         <html>
+    //         <body style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px;">
+    //         <div style="max-width: 750px; margin: auto; background: #ffffff; border-radius: 10px;
+    //                     box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 25px;">
+    //             <h2 style="color: #004080; text-align: center; margin-bottom: 10px;">
+    //             Suivi des plaintes affectées - GPR
+    //             </h2>
+    //             <p style="text-align:center; color:#666; margin-bottom:25px;">
+    //             Bonjour,<br>
+    //             Vous avez <strong>%d plainte(s)</strong> en retard ou proches de l’échéance :
+    //             </p>
+    //             <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:10px;">
+    //             <thead>
+    //                 <tr style="background:#f2f2f2; text-align:left;">
+    //                 <th style="padding:8px; border:1px solid #ddd;">Code</th>
+    //                 <th style="padding:8px; border:1px solid #ddd;">Type</th>
+    //                 <th style="padding:8px; border:1px solid #ddd;">Affectée le</th>
+    //                 <th style="padding:8px; border:1px solid #ddd;">Délai (jours)</th>
+    //                 <th style="padding:8px; border:1px solid #ddd;">Statut</th>
+    //                 </tr>
+    //             </thead>
+    //             <tbody>
+    //         """.formatted(affectations.size());
+
+    //     // Boucle pour ajouter les lignes de plaintes
+    //     for (HistoriqueAffectation affectation : affectations) {
+    //         LocalDateTime dateLimite = affectation.getDateAffectation().plusDays(affectation.getDelaiJours());
+    //         long joursRetard = java.time.temporal.ChronoUnit.DAYS.between(dateLimite, LocalDateTime.now());
+
+    //         String statut = (joursRetard > 0)
+    //                 ? "<span style='color:#d9534f;'>⏰ Retard de " + joursRetard + " jour(s)</span>"
+    //                 : "<span style='color:#5bc0de;'>🕒 Échéance dans " + (-joursRetard) + " jour(s)</span>";
+
+    //         body += """
+    //             <tr>
+    //             <td style='padding:8px; border:1px solid #ddd;'>%s</td>
+    //             <td style='padding:8px; border:1px solid #ddd;'>%s</td>
+    //             <td style='padding:8px; border:1px solid #ddd;'>%s</td>
+    //             <td style='padding:8px; border:1px solid #ddd; text-align:center;'>%d</td>
+    //             <td style='padding:8px; border:1px solid #ddd;'>%s</td>
+    //             </tr>
+    //         """.formatted(
+    //                 affectation.getCodePlainte(),
+    //                 affectation.getTypePlainte(),
+    //                 affectation.getDateAffectation().toLocalDate(),
+    //                 affectation.getDelaiJours(),
+    //                 statut
+    //         );
+    //     }
+
+    //     // Footer du mail
+    //     body += """
+    //             </tbody>
+    //             </table>
+    //             <p style="margin-top:25px; line-height:1.6;">
+    //             Merci de traiter ces plaintes dans les plus brefs délais afin d’assurer un suivi efficace.
+    //             </p>
+    //             <p style="margin-top:20px;">Cordialement,<br>
+    //             <strong>L’équipe GPR - WEB</strong>
+    //             </p>
+    //             <p style="font-size:12px; color:gray; text-align:center; margin-top:30px;">
+    //             Cet email a été généré automatiquement par la plateforme GPR.<br>
+    //             Merci de ne pas y répondre.
+    //             </p>
+    //         </div>
+    //         </body>
+    //         </html>
+    //     """;
+
+    //     return body;
+    // }
+
+
     // ==== Builders de mail identiques à ta version ====
     private String buildAgentMail(List<HistoriqueAffectation> affectations) {
         StringBuilder body = new StringBuilder();
@@ -142,6 +220,106 @@ public class AlertRetardCron {
 
         return body.toString();
     }
+
+    // private String buildPiloteMail(List<HistoriqueAffectation> affectations, List<Claim> claimsNonAffectees) {
+    //     StringBuilder body = new StringBuilder();
+
+    //     body.append("""
+    //         <html>
+    //         <body style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px;">
+    //         <div style="max-width: 800px; margin: auto; background: #ffffff; border-radius: 8px;
+    //                     box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 25px;">
+
+    //             <h2 style="color: #004080; text-align: center;">Rapport de suivi des plaintes en retard - GPR</h2>
+
+    //             <p>Bonjour,</p>
+    //             <p>Veuillez trouver ci-dessous un résumé des <strong>plaintes en retard de traitement</strong>.</p>
+    //     """);
+
+    //     // === PLAINTES AFFECTÉES EN RETARD ===
+    //     if (!affectations.isEmpty()) {
+    //         body.append("<h3 style='color: #d9534f;'>📋 Plaintes affectées en retard (")
+    //             .append(affectations.size()).append(")</h3>");
+
+    //         Map<String, List<HistoriqueAffectation>> parAgent = affectations.stream()
+    //                 .collect(Collectors.groupingBy(HistoriqueAffectation::getEmailAgent));
+
+    //         for (Map.Entry<String, List<HistoriqueAffectation>> entry : parAgent.entrySet()) {
+    //             body.append("<div style='margin-bottom: 20px;'>")
+    //                 .append("<h4 style='color: #004080; margin-bottom: 5px;'>Agent : ")
+    //                 .append(entry.getKey()).append(" (")
+    //                 .append(entry.getValue().size()).append(" plainte(s))</h4>")
+    //                 .append("<ul style='background:#f9f9f9; padding:10px 15px; border-radius:6px;'>");
+
+    //             for (HistoriqueAffectation affectation : entry.getValue()) {
+    //                 LocalDateTime dateLimite = affectation.getDateAffectation().plusDays(affectation.getDelaiJours());
+    //                 long joursRetard = java.time.temporal.ChronoUnit.DAYS.between(dateLimite, LocalDateTime.now());
+
+    //                 body.append("<li style='margin-bottom:8px;'>")
+    //                     .append("<strong>").append(affectation.getCodePlainte()).append("</strong> - ")
+    //                     .append(affectation.getTypePlainte()).append("<br>");
+
+    //                 if (joursRetard > 0) {
+    //                     body.append("<span style='color:#d9534f;'>⏰ Retard : ").append(joursRetard).append(" jour(s)</span>");
+    //                 } else {
+    //                     body.append("<span style='color:#5bc0de;'>🕒 Échéance dans : ").append(-joursRetard).append(" jour(s)</span>");
+    //                 }
+
+    //                 body.append("</li>");
+    //             }
+
+    //             body.append("</ul></div>");
+    //         }
+    //     }
+
+    //     // === PLAINTES NON AFFECTÉES EN RETARD ===
+    //     if (!claimsNonAffectees.isEmpty()) {
+    //         body.append("<h3 style='color: #f0ad4e;'>⚠️ Plaintes non affectées en retard (")
+    //             .append(claimsNonAffectees.size()).append(")</h3>")
+    //             .append("<ul style='background:#fff7e6; padding:10px 15px; border-radius:6px;'>");
+
+    //         for (Claim claim : claimsNonAffectees) {
+    //             LocalDateTime dateLimite = claim.getCreatedAt().plusDays(claim.getObjet().getProcessingTime());
+    //             long joursRetard = java.time.temporal.ChronoUnit.DAYS.between(dateLimite, LocalDateTime.now());
+
+    //             body.append("<li style='margin-bottom:8px;'>")
+    //                 .append("<strong>").append(claim.getCode()).append("</strong> - ")
+    //                 .append(claim.getType()).append("<br>")
+    //                 .append("Objet : ").append(claim.getObjet().getLibelle())
+    //                 .append(" | Créée le : ").append(claim.getCreatedAt().toLocalDate()).append("<br>");
+
+    //             if (joursRetard > 0) {
+    //                 body.append("<span style='color:#d9534f;'>⏰ Retard : ").append(joursRetard).append(" jour(s)</span>");
+    //             } else {
+    //                 body.append("<span style='color:#5bc0de;'>🕒 Échéance dans : ").append(-joursRetard).append(" jour(s)</span>");
+    //             }
+
+    //             body.append("</li>");
+    //         }
+
+    //         body.append("</ul>");
+    //     }
+
+    //     // === CONCLUSION ===
+    //     body.append("""
+    //             <p style="margin-top:30px;">
+    //             Merci de prendre les dispositions nécessaires pour le traitement de ces plaintes dans les plus brefs délais.
+    //             </p>
+
+    //             <p style="margin-top:20px;">Cordialement,<br><strong>L’équipe GPR</strong></p>
+
+    //             <p style="font-size:12px; color:gray; text-align:center; margin-top:30px;">
+    //             Cet email a été généré automatiquement par la plateforme GPR.
+    //             </p>
+
+    //         </div>
+    //         </body>
+    //         </html>
+    //         """);
+
+    //     return body.toString();
+    // }
+
 
     private String buildPiloteMail(List<HistoriqueAffectation> affectations, List<Claim> claimsNonAffectees) {
         StringBuilder body = new StringBuilder();
@@ -183,8 +361,8 @@ public class AlertRetardCron {
                 LocalDateTime dateLimite = claim.getCreatedAt().plusDays(claim.getObjet().getProcessingTime());
                 long joursRetard = java.time.temporal.ChronoUnit.DAYS.between(dateLimite, LocalDateTime.now());
 
-                body.append("- Code: ").append(claim.getCode())
-                        .append(" | Type: ").append(claim.getType())
+                body.append("- Code: ").append(claim.getCodeClient())
+                        .append(" | Type: ").append(claim.getType().equals("CLAIM")?"Réclamation":"Dénonciation")
                         .append(" | Objet: ").append(claim.getObjet().getLibelle())
                         .append(" | Créée le: ").append(claim.getCreatedAt().toLocalDate());
 

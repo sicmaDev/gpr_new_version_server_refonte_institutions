@@ -26,6 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.yaml.snakeyaml.util.UriEncoder;
 
@@ -45,6 +46,7 @@ import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 
+import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.HttpServletRequest;
 
 public class Utils {
@@ -108,53 +110,6 @@ public class Utils {
         }
         return type;
     }
-
-    // @Async
-    // public static Future<String> sendmail(String to, String subject, String body, String cc, String from,
-    //                                     SettingServiceImpl settingServiceImpl) {
-    //     SimpleMailMessage message = new SimpleMailMessage();
-    //     JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
-    //     ObjectMapper objectMapper = new ObjectMapper();
-
-    //     try {
-    //         // ⚡ Ici : on ne filtre pas par institution → une seule config globale
-    //         Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
-
-    //         if (mail != null) {
-    //             MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
-
-    //             mailSender.setHost(mailRequest.getHost());
-    //             mailSender.setPort(Integer.parseInt(mailRequest.getPort()));
-    //             mailSender.setUsername(mailRequest.getUser());
-    //             mailSender.setPassword(mailRequest.getPwd());
-
-    //             Properties props = mailSender.getJavaMailProperties();
-    //             props.put("mail.transport.protocol", "smtp");
-    //             props.put("mail.smtp.auth", "true");
-    //             props.put("mail.smtp.ssl.enable", "true");
-    //             props.put("mail.smtp.starttls.enable", "true");
-    //             props.put("mail.debug", "true");
-
-    //             // Ajout des CC si présents
-    //             if (cc != null && !cc.isEmpty()) {
-    //                 String[] listCc = cc.split(",");
-    //                 message.setCc(listCc);
-    //             }
-
-    //             message.setTo(to);
-    //             message.setSubject(subject);
-    //             message.setText(body);
-    //             message.setFrom(mailRequest.getUser());
-
-    //             mailSender.send(message);
-    //         }
-
-    //     } catch (Exception e) {
-    //         e.printStackTrace();
-    //     }
-
-    //     return null;
-    // }
 
     public static Boolean testSmsConfig(String number, String message, SettingServiceImpl settingServiceImpl)
             throws Exception {
@@ -320,98 +275,101 @@ public class Utils {
 
     @Async
     public static Future<String> sendmail(String to, String subject, String body, String cc, String from,
-            SettingServiceImpl settingServiceImpl) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
+        SettingServiceImpl settingServiceImpl) {
+
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
         ObjectMapper objectMapper = new ObjectMapper();
 
         try {
             Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
             if (mail != null) {
                 MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
-                // System.out.println("try b");
-                mailSenderr.setHost(mailRequest.getHost());
-                mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
-                mailSenderr.setUsername(mailRequest.getUser());
-                mailSenderr.setPassword(mailRequest.getPwd());
 
-                Properties props = mailSenderr.getJavaMailProperties();
+                mailSender.setHost(mailRequest.getHost());
+                mailSender.setPort(Integer.parseInt(mailRequest.getPort()));
+                mailSender.setUsername(mailRequest.getUser());
+                mailSender.setPassword(mailRequest.getPwd());
+
+                Properties props = mailSender.getJavaMailProperties();
                 props.put("mail.transport.protocol", "smtp");
                 props.put("mail.smtp.auth", "true");
                 props.put("mail.smtp.ssl.enable", "true");
                 props.put("mail.smtp.starttls.enable", "true");
                 props.put("mail.debug", "true");
 
+                // Création du message MIME (supporte HTML)
+                MimeMessage mimeMessage = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+                helper.setTo(to);
+                helper.setSubject(subject);
+                helper.setText(body, true); // <<=== HTML activé ici
+                helper.setFrom(mailRequest.getUser());
+
                 if (cc != null && !cc.isEmpty()) {
                     String[] listCc = cc.split(",");
-                    message.setCc(listCc);
+                    helper.setCc(listCc);
                 }
 
-                message.setTo(to);
-                message.setSubject(subject);
-                message.setText(body);
-                message.setFrom(mailRequest.getUser());
-
-                mailSenderr.send(message);
+                mailSender.send(mimeMessage);
+                System.out.println("✅ Mail HTML envoyé à " + to);
             }
 
         } catch (Exception e) {
-
             e.printStackTrace();
+            System.out.println("❌ Erreur d’envoi de mail à " + to + " : " + e.getMessage());
         }
 
         return null;
-
     }
-
 
     @Async
     public static Future<String> sendmail(List<User> usersTo, String subject, String body, String cc, String from,
             SettingServiceImpl settingServiceImpl) throws Exception {
-        SimpleMailMessage message = new SimpleMailMessage();
-        JavaMailSenderImpl mailSenderr = new JavaMailSenderImpl();
-        ObjectMapper objectMapper = new ObjectMapper();
-        try {
 
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        try {
             Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
             if (mail != null) {
-
                 MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
-                // System.out.println("try b");
-                mailSenderr.setHost(mailRequest.getHost());
+
+                mailSender.setHost(mailRequest.getHost());
                 if (!mailRequest.getPort().isEmpty()) {
-                    mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
-
+                    mailSender.setPort(Integer.parseInt(mailRequest.getPort()));
                 }
-                mailSenderr.setUsername(mailRequest.getUser());
-                mailSenderr.setPassword(mailRequest.getPwd());
+                mailSender.setUsername(mailRequest.getUser());
+                mailSender.setPassword(mailRequest.getPwd());
 
-                Properties props = mailSenderr.getJavaMailProperties();
+                Properties props = mailSender.getJavaMailProperties();
                 props.put("mail.transport.protocol", "smtp");
                 props.put("mail.smtp.auth", "true");
                 props.put("mail.smtp.ssl.enable", "true");
                 props.put("mail.smtp.starttls.enable", "true");
                 props.put("mail.debug", "true");
-                mailSenderr.setJavaMailProperties(props);
+                mailSender.setJavaMailProperties(props);
 
-                if (cc != "" && cc != null) {
-                    String[] listCc = cc.split(",");
-                    message.setCc(listCc);
+                // Récupérer les emails des utilisateurs
+                List<String> emails = usersTo.stream().map(User::getEmail).collect(Collectors.toList());
+
+                // Créer le MimeMessage pour HTML
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+                helper.setTo(emails.toArray(new String[0]));
+                helper.setSubject(subject);
+                helper.setText(body, true); // <-- true pour indiquer que c'est du HTML
+                helper.setFrom(mailRequest.getUser());
+
+                if (cc != null && !cc.isEmpty()) {
+                    helper.setCc(cc.split(","));
                 }
-                List<String> emails = usersTo.stream().map(user -> user.getEmail()).collect(Collectors.toList());
 
-                String[] recipients = emails.toArray(new String[0]);
-
-                message.setTo(recipients);
-                message.setSubject(subject);
-                message.setText(body);
-                message.setFrom(mailRequest.getUser());
-                mailSenderr.send(message);
+                mailSender.send(message);
             }
         } catch (Exception e) {
             throw e;
-            // e.printStackTrace();
-
         }
 
         return null;
