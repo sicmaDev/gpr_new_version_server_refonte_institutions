@@ -46,7 +46,7 @@ public class HistoriqueAffectationServiceImpl implements HistoriqueAffectationSe
         // Créer la nouvelle affectation
         HistoriqueAffectation nouvelleAffectation = HistoriqueAffectation.builder()
             .reclamationId(affectTreatmentRequest.getClaimId())
-            .codePlainte(claim.getCode())
+            .codePlainte(claim.getCodeClient())
             .typePlainte(claim.getType())
             .nomAgent(user.getFirstandlastname() )
             .emailAgent(user.getEmail())

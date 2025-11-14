@@ -40,7 +40,9 @@ public class AlertRetardCron {
 
     // Exécution une fois par jour à 8h du matin
    
-    // @Scheduled(cron = "0 45 15 * * *")
+    
+    // @Scheduled(cron = "0 0 8 * * *")
+    // @Scheduled(cron = "0 01 18 * * *")
     @Scheduled(cron = "0 0 8 * * *")
     public void sendRelanceMail() {
         try {
