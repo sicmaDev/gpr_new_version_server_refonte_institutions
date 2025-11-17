@@ -443,25 +443,18 @@ public class SuggestionController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
             }
 
-            if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
-                try {
-                    service.deleteById(id);
-                    return ResponseEntity.ok(
-                        ApiResponseDto.builder().status(true).content("Suggestion supprimée avec succès.").build()
-                        );
-                } catch (NotFoundException e) {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                        ApiResponseDto.builder().status(false).content("Suggestion non trouvée.").build()
+           
+            try {
+                service.deleteById(id);
+                return ResponseEntity.ok(
+                    ApiResponseDto.builder().status(true).content("Suggestion supprimée avec succès.").build()
                     );
-                }
-            } else {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                    ApiResponseDto.builder()
-                        .status(false)
-                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
-                        .build()
+            } catch (NotFoundException e) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponseDto.builder().status(false).content("Suggestion non trouvée.").build()
                 );
             }
+           
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ApiResponseDto.builder()
