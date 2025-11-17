@@ -42,9 +42,7 @@ public class AlertRetardCron {
 
     // Exécution une fois par jour à 8h du matin
    
-    // @Scheduled(cron = "0 0 8 * * *")
-    // @Scheduled(cron = "0 01 18 * * *")
-    @Scheduled(cron = "0 45 14 * * *")
+    @Scheduled(cron = "0 0 8 * * *")
     public void sendRelanceMail() {
         try {
             LocalDateTime now = LocalDateTime.now();
@@ -77,13 +75,13 @@ public class AlertRetardCron {
     private void sendToAgents(List<HistoriqueAffectation> affectations) {
         Map<String, List<HistoriqueAffectation>> affectationsParAgent =
                 affectations.stream().collect(Collectors.groupingBy(HistoriqueAffectation::getEmailAgent));
-
+        System.out.println("cc");
         for (Map.Entry<String, List<HistoriqueAffectation>> entry : affectationsParAgent.entrySet()) {
             String emailAgent = entry.getKey();
             List<HistoriqueAffectation> affectationsAgent = entry.getValue();
 
             try {
-                String subject = "Alerte - Réclamations en retard (" + affectationsAgent.size() + ")";
+                String subject = "Alerte - Réclamations en retard";
                 String body = buildAgentMail(affectationsAgent);
 
                 User user = userRepository.findByEmailAndIsDeleted(emailAgent, false)
@@ -126,79 +124,90 @@ public class AlertRetardCron {
     }
 
     private String buildAgentMail(List<HistoriqueAffectation> affectations) {
-        // En-tête du mail avec le nombre de plaintes
-        String body = """
-            <html>
-            <body style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px;">
-            <div style="max-width: 750px; margin: auto; background: #ffffff; border-radius: 10px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 25px;">
-                <h2 style="color: #004080; text-align: center; margin-bottom: 10px;">
-                Suivi des plaintes affectées - GPR
-                </h2>
-                <p style="text-align:center; color:#666; margin-bottom:25px;">
-                Bonjour,<br>
-                Vous avez <strong>%d plainte(s)</strong> en retard ou proches de l’échéance :
-                </p>
-                <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:10px;">
-                <thead>
-                    <tr style="background:#f2f2f2; text-align:left;">
-                    <th style="padding:8px; border:1px solid #ddd;">Code</th>
-                    <th style="padding:8px; border:1px solid #ddd;">Type</th>
-                    <th style="padding:8px; border:1px solid #ddd;">Affectée le</th>
-                    <th style="padding:8px; border:1px solid #ddd;">Délai (jours)</th>
-                    <th style="padding:8px; border:1px solid #ddd;">Statut</th>
-                    </tr>
-                </thead>
-                <tbody>
-            """.formatted(affectations.size());
 
-        // Boucle pour ajouter les lignes de plaintes
-        for (HistoriqueAffectation affectation : affectations) {
-            LocalDateTime dateLimite = affectation.getDateAffectation().plusDays(affectation.getDelaiJours());
-            long joursRetard = java.time.temporal.ChronoUnit.DAYS.between(dateLimite, LocalDateTime.now());
+        StringBuilder body = new StringBuilder();
+
+        body.append("<html>");
+        body.append("<body style='font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px;'>");
+        body.append("<div style='max-width: 750px; margin: auto; background: #ffffff; border-radius: 10px;");
+        body.append("box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 25px;'>");
+
+        // ---- TITRE ----
+        body.append("<h2 style='color: #004080; text-align: center; margin-bottom: 10px;'>");
+        body.append("Suivi des plaintes affectées - GPR</h2>");
+
+        // ---- INTRO ----
+        body.append("<p style='margin-bottom:25px;'>");
+        body.append("Bonjour ").append(affectations.get(0).getNomAgent())
+                .append(",<br>") ;
+        body.append("Vous avez <strong>")
+                .append(affectations.size())
+                .append(" plainte(s)</strong> en retard ou proches de l’échéance :");
+        body.append("</p>");
+
+        // ---- TABLEAU ----
+        body.append("<table style='width:100%; border-collapse:collapse; font-size:14px; margin-top:10px;'>");
+        body.append("<thead>");
+        body.append("<tr style='background:#f2f2f2; text-align:left;'>");
+        body.append("<th style='padding:8px; border:1px solid #ddd;'>Code</th>");
+        body.append("<th style='padding:8px; border:1px solid #ddd;'>Type</th>");
+        body.append("<th style='padding:8px; border:1px solid #ddd;'>Affectée le</th>");
+        body.append("<th style='padding:8px; border:1px solid #ddd;'>Délai (jours)</th>");
+        body.append("<th style='padding:8px; border:1px solid #ddd;'>Statut</th>");
+        body.append("</tr>");
+        body.append("</thead>");
+        body.append("<tbody>");
+
+        // ---- LIGNES ----
+        for (HistoriqueAffectation aff : affectations) {
+
+            LocalDateTime dateLimite = aff.getDateAffectation()
+                    .plusDays(aff.getDelaiJours());
+
+            long joursRetard = ChronoUnit.DAYS.between(dateLimite, LocalDateTime.now());
 
             String statut = (joursRetard > 0)
-                    ? "<span style='color:#d9534f;'>⏰ Retard de " + joursRetard + " jour(s)</span>"
-                    : "<span style='color:#5bc0de;'>🕒 Échéance dans " + (-joursRetard) + " jour(s)</span>";
+                    ? "<span style='color:#d9534f;'>Retard de " + joursRetard + " jour(s)</span>"
+                    : "<span style='color:#5bc0de;'>Échéance dans " + (-joursRetard) + " jour(s)</span>";
 
-            body += """
-                <tr>
-                <td style='padding:8px; border:1px solid #ddd;'>%s</td>
-                <td style='padding:8px; border:1px solid #ddd;'>%s</td>
-                <td style='padding:8px; border:1px solid #ddd;'>%s</td>
-                <td style='padding:8px; border:1px solid #ddd; text-align:center;'>%d</td>
-                <td style='padding:8px; border:1px solid #ddd;'>%s</td>
-                </tr>
-            """.formatted(
-                    affectation.getCodePlainte(),
-                    affectation.getTypePlainte().equals(ClaimType.CLAIM) ? "Réclamation":"Dénonciation",
-                    affectation.getDateAffectation().toLocalDate(),
-                    affectation.getDelaiJours(),
-                    statut
-            );
+            body.append("<tr>");
+            body.append("<td style='padding:8px; border:1px solid #ddd;'>").append(aff.getCodePlainte()).append("</td>");
+            body.append("<td style='padding:8px; border:1px solid #ddd;'>")
+                    .append(aff.getTypePlainte().equals(ClaimType.CLAIM) ? "Réclamation" : "Dénonciation")
+                    .append("</td>");
+            body.append("<td style='padding:8px; border:1px solid #ddd;'>")
+                    .append(aff.getDateAffectation().toLocalDate())
+                    .append("</td>");
+            body.append("<td style='padding:8px; border:1px solid #ddd; text-align:center;'>")
+                    .append(aff.getDelaiJours())
+                    .append("</td>");
+            body.append("<td style='padding:8px; border:1px solid #ddd;'>").append(statut).append("</td>");
+            body.append("</tr>");
         }
 
-        // Footer du mail
-        body += """
-                </tbody>
-                </table>
-                <p style="margin-top:25px; line-height:1.6;">
-                Merci de traiter ces plaintes dans les plus brefs délais afin d’assurer un suivi efficace.
-                </p>
-                <p style="margin-top:20px;">Cordialement,<br>
-                <strong>L’équipe GPR - WEB</strong>
-                </p>
-                <p style="font-size:12px; color:gray; text-align:center; margin-top:30px;">
-                Cet email a été généré automatiquement par la plateforme GPR.<br>
-                Merci de ne pas y répondre.
-                </p>
-            </div>
-            </body>
-            </html>
-        """;
+        body.append("</tbody>");
+        body.append("</table>");
 
-        return body;
+        // ---- FOOTER ----
+        body.append("<p style='margin-top:25px; line-height:1.6;'>");
+        body.append("Merci de traiter ces plaintes dans les plus brefs délais afin d’assurer un suivi efficace.");
+        body.append("</p>");
+
+        body.append("<p style='margin-top:20px;'>Cordialement,<br>");
+        body.append("<strong>L’équipe GPR</strong></p>");
+
+        body.append("<p style='font-size:12px; color:gray; text-align:center; margin-top:30px;'>");
+        body.append("Cet email a été généré automatiquement par la plateforme GPR.<br>");
+        body.append("Merci de ne pas y répondre.");
+        body.append("</p>");
+
+        body.append("</div>");
+        body.append("</body>");
+        body.append("</html>");
+
+        return body.toString();
     }
+
 
     private String buildPiloteMail(List<HistoriqueAffectation> affectations, List<Claim> claimsNonAffectees) {
 
