@@ -912,6 +912,17 @@ public class ClaimServiceImpl implements ClaimService {
         // Is Affected claim ?
         claim.setStatus(ClaimStatus.TREAT);
         solution2.setStatus(SolutionStatus.APPROVED);
+        solution2 = solutionServiceImpl.saveSolution(solution2);
+        claim.setTreatBy(treator);
+        // List<Solution> oldSolutions = claim.getSolutions();
+        // oldSolutions.add(solution2);
+        claim.getSolutions().add(solution2);
+
+        claim.setUpdatedAt(LocalDateTime.now());
+        System.out.println("Here 8 ");
+        claim = repository.save(claim);
+        System.out.println("Here 9 ");
+
         String type = "Réclamation";
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
             type = "Dénonciation";
@@ -919,6 +930,8 @@ public class ClaimServiceImpl implements ClaimService {
 
         final Claim finalClaim = claim;
         final String finalType = type;
+        final Solution finalSolution2 = solution2;
+
         if (claim.hasAffectedTreatment() && treator.getCode() == claim.getTreatmentAffectedTo().getCode()) {
             // Is treator is user who receiverd affectation
             
@@ -969,7 +982,7 @@ public class ClaimServiceImpl implements ClaimService {
                 </div>
             </body>
             </html>
-            """.formatted(finalType,claim.getTreatmentAffectedBy().getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType, claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,request.getSolution());
+            """.formatted(finalType,claim.getTreatmentAffectedBy().getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType, claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalSolution2.getContent());
 
             // Envoi de mail en parallèle
             CompletableFuture.runAsync(() -> {
@@ -1057,7 +1070,7 @@ public class ClaimServiceImpl implements ClaimService {
                     </div>
                 </body>
                 </html>
-                """.formatted(finalType, pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,request.getSolution());
+                """.formatted(finalType, pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalSolution2.getContent());
 
                 // Envoi de mail en parallèle
                 CompletableFuture.runAsync(() -> {
@@ -1098,16 +1111,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         }
         // System.out.println("Here 7 ");
-        solution2 = solutionServiceImpl.saveSolution(solution2);
-        claim.setTreatBy(treator);
-        // List<Solution> oldSolutions = claim.getSolutions();
-        // oldSolutions.add(solution2);
-        claim.getSolutions().add(solution2);
-
-        claim.setUpdatedAt(LocalDateTime.now());
-        System.out.println("Here 8 ");
-        claim = repository.save(claim);
-        System.out.println("Here 9 ");
+        
         return claim;
     }
 
@@ -2802,6 +2806,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         claim = repository.save(claim);
         final Claim finalClaim = claim;
+        
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         
         Double apercuContent = claim.getContent().length() * 0.5;

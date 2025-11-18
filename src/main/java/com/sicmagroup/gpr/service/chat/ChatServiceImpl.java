@@ -111,7 +111,7 @@ public class ChatServiceImpl implements ChatService {
                             </div>
 
                             <p style="margin-top: 20px;">
-                                Vous pouvez désormais rejoint la session pour inviter d'autres utilisateurs et traiter la %s.
+                                Vous pouvez désormais rejoindre la session pour inviter d'autres utilisateurs et traiter la %s.
                             </p>
 
                             <p style="margin-top: 30px;">Cordialement,<br>L’équipe GPR</p>
