@@ -375,6 +375,7 @@ public class Utils {
         return null;
     }
 
+    
     public static String convertLocalDateTimeToStr(LocalDateTime dateTime) {
         String resultat;
         // Définir un formateur de date personnalisé

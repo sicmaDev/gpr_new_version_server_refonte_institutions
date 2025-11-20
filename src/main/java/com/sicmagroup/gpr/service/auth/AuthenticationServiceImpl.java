@@ -68,6 +68,7 @@ import com.sicmagroup.gpr.domain.enumeration.Habilitation;
 import com.sicmagroup.gpr.domain.enumeration.LogTarget;
 import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
+import com.sicmagroup.gpr.domain.enumeration.SatisfactionStatus;
 import com.sicmagroup.gpr.domain.model.CategorieObjet;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
@@ -95,6 +96,7 @@ import com.sicmagroup.gpr.repository.ProductRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.SuggestionRepository;
 import com.sicmagroup.gpr.repository.UserRepository;
+import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.claim.ClaimService;
 import com.sicmagroup.gpr.service.faq.FaqServiceImpl;
 import com.sicmagroup.gpr.service.jwt.JwtServiceImpl;
@@ -128,6 +130,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final CategorieObjetRepository categorieObjetRepository;
     private final SettingServiceImpl settingServiceImpl;
     private final LogServiceImpl logServiceImpl;
+    private final MailService mailService;
 
     @Override
     public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException {
@@ -225,7 +228,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 content.put("token", jwtToken);
 
                 // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
+                // CompletableFuture.runAsync(() -> {
                     try {
                         //envoi de mail au user
                        
@@ -262,7 +265,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         """.formatted(userForMail.getFirstandlastname(), userForMail.getEmail(), request.getPassword());
 
                         
-                        Utils.sendmail(userForMail.getEmail(), "Création de compte", message, null, " ", settingServiceImpl);
+                        mailService.sendMail(userForMail.getEmail(), "Création de compte", message, null);
 
                                                 
                         Log successLog = Log.builder()
@@ -292,7 +295,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             logServiceImpl.saveLog(log2);
                         }
                     }
-                });
+                // });
 
 
 
@@ -397,7 +400,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 userRepository.save(user);
 
                 // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
+                // CompletableFuture.runAsync(() -> {
                     try {
                         //envoi de mail au user
                        String message = """
@@ -425,7 +428,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         </html>
                     """.formatted(user.getFirstandlastname(),user.getEmail(),request.getPassword());
 
-                        Utils.sendmail(user.getEmail(),"Création de compte",message,null," ",settingServiceImpl);
+                        mailService.sendMail(user.getEmail(),"Création de compte",message,null);
 
                                                 
                         Log successLog = Log.builder()
@@ -456,7 +459,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         }
     
                     }
-                });
+                // });
 
                 return AuthenticationResponse.builder()
                         .response(ApiResponseDto
@@ -820,7 +823,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             userMailTo.add(user);
             
             // Envoi de mail en parallèle
-            CompletableFuture.runAsync(() -> {
+            // CompletableFuture.runAsync(() -> {
                 try {
                     String message = """
                         <html>
@@ -855,7 +858,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     """.formatted(user.getFirstandlastname(),user.getEmail(),new String(password));
 
 
-                        Utils.sendmail(userMailTo,"Réinitialisation de mot de passe - GPR",message,null," ",settingServiceImpl);
+                        mailService.sendMail(userMailTo,"Réinitialisation de mot de passe - GPR",message,null);
                         Log successLog = Log.builder()
                             .libelle("Mail notification mot de passe oublié")
                             .content("Success mail notification mot de passe oublié")
@@ -883,7 +886,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         logServiceImpl.saveLog(log2);
                     }
                 }
-            });
+            // });
             
             user.setPassword(passwordEncoder.encode(new String(password)));
             userRepository.save(user);
@@ -1308,7 +1311,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         final User userForMail = userOld;
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+        // CompletableFuture.runAsync(() -> {
             try {
                 //envoi de mail au user
                 String message = """
@@ -1339,7 +1342,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     </html>
                     """.formatted(userForMail.getFirstandlastname());
 
-                Utils.sendmail(userForMail.getEmail(),"Désactivation de compte",message,null," ",settingServiceImpl);
+                mailService.sendMail(userForMail.getEmail(),"Désactivation de compte",message,null);
 
                                         
                 Log successLog = Log.builder()
@@ -1369,7 +1372,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+        // });
 
         return userOld;
     }
@@ -1382,8 +1385,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         userOld = userRepository.save(userOld);
 
         final User userForMail = userOld;
+        String statusText;
+
+        if (userForMail.isRattached()) {
+            statusText = "validé";
+        } else{
+            statusText = "réactivé";
+        } 
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+        // // CompletableFuture.runAsync(() -> {
             try {
                 //envoi de mail au user
                 String message = """
@@ -1396,7 +1406,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             <p>Bonjour <strong>%s</strong>,</p>
                             
                             <p>
-                                Votre compte sur la plateforme de gestion des plaintes et réclamations (<strong>GPR</strong>) a été validé avec succès.
+                                Votre compte sur la plateforme de gestion des plaintes et réclamations (<strong>GPR</strong>) a été %s avec succès.
                             </p>
                             
                             <p>
@@ -1411,9 +1421,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             </div>
                         </body>
                     </html>
-                    """.formatted(userForMail.getFirstandlastname());
+                    """.formatted(userForMail.getFirstandlastname(),statusText);
 
-                Utils.sendmail(userForMail.getEmail(),"Validation de compte",message,null," ",settingServiceImpl);
+                mailService.sendMail(userForMail.getEmail(),"Validation de compte",message,null);
 
                                         
                 Log successLog = Log.builder()
@@ -1443,7 +1453,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+        // // });
 
         return userOld;
     }
@@ -1531,7 +1541,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             try {
                 if (user.isRattached() && user.isDeleted()) {
                     // Envoi du mail de rejet
-                    CompletableFuture.runAsync(() -> {
+                    // CompletableFuture.runAsync(() -> {
                         try {
                             String messageUserRejete = """
                             <html>
@@ -1565,7 +1575,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             </html>
                             """.formatted(userForMail.getFirstandlastname());
 
-                            Utils.sendmail(userForMail.getEmail(),"Rejet de compte sur GPR",messageUserRejete,null," ",settingServiceImpl);
+                            mailService.sendMail(userForMail.getEmail(),"Rejet de compte sur GPR",messageUserRejete,null);
 
                             Log successLog = Log.builder()
                                 .libelle("Mail notification Rejet compte")
@@ -1594,10 +1604,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                     logServiceImpl.saveLog(log2);
                                 }
                             }
-                    });
+                    // });
                 } else {
                     // Envoi du mail
-                    CompletableFuture.runAsync(() -> {
+                    // CompletableFuture.runAsync(() -> {
                         try {
                             String messageCompteSupprime = """
                             <html>
@@ -1631,7 +1641,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             </html>
                             """.formatted(userForMail.getFirstandlastname());
 
-                            Utils.sendmail(user.getEmail(),"Suppression de compte sur GPR",messageCompteSupprime,null," ",settingServiceImpl);
+                            mailService.sendMail(user.getEmail(),"Suppression de compte sur GPR",messageCompteSupprime,null);
 
                     
                             Log successLog = Log.builder()
@@ -1661,7 +1671,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                 logServiceImpl.saveLog(log2);
                             }
                         }
-                    });
+                    // });
                 }             
 
                 userRepository.delete(user);
@@ -1683,7 +1693,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 try {
                     if (user.isRattached() && user.isDeleted()) {
                         // Envoi du mail de rejet
-                        CompletableFuture.runAsync(() -> {
+                        // CompletableFuture.runAsync(() -> {
                             try {
                                String messageUserRejete = """
                                 <html>
@@ -1717,7 +1727,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                 </html>
                                 """.formatted(userForMail.getFirstandlastname());
 
-                                Utils.sendmail(userForMail.getEmail(),"Rejet de compte sur GPR",messageUserRejete,null," ",settingServiceImpl);
+                                mailService.sendMail(userForMail.getEmail(),"Rejet de compte sur GPR",messageUserRejete,null);
 
                                 Log successLog = Log.builder()
                                     .libelle("Mail notification Rejet compte")
@@ -1746,10 +1756,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                         logServiceImpl.saveLog(log2);
                                     }
                                 }
-                        });
+                        // });
                     } else {
                         // Envoi du mail
-                        CompletableFuture.runAsync(() -> {
+                        // CompletableFuture.runAsync(() -> {
                             try {
                                 String message = """
                                 <html>
@@ -1783,7 +1793,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                 </html>
                                 """.formatted(userForMail.getFirstandlastname());
 
-                                Utils.sendmail(user.getEmail(),"Suppression de compte sur GPR",message,null," ",settingServiceImpl);
+                                mailService.sendMail(user.getEmail(),"Suppression de compte sur GPR",message,null);
 
                     
                         
@@ -1814,7 +1824,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                     logServiceImpl.saveLog(log2);
                                 }
                             }
-                        });
+                        // });
                     }             
 
                     userRepository.delete(user);
