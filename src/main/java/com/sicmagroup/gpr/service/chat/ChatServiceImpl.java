@@ -27,6 +27,7 @@ import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.UserRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
+import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
@@ -42,6 +43,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatRepository repository;
     private final LogServiceImpl logServiceImpl;
     private final SettingServiceImpl settingServiceImpl;
+    private final MailService mailService;
 
     @Override
     public Chat init(ChatInitRequest request) throws Exception {
@@ -86,7 +88,7 @@ public class ChatServiceImpl implements ChatService {
                 Double apercuContent = claim.getContent().length() * 0.5;
             
                 // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
+                
                     try {
                         String message = """
                         <html>
@@ -125,7 +127,7 @@ public class ChatServiceImpl implements ChatService {
                         </html>
                         """.formatted(user.getFirstandlastname(),finalType,finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getContent().substring(0, apercuContent.intValue()),finalType);
 
-                        Utils.sendmail(members, "Démarrage de session - GPR",message,null," ",settingServiceImpl);
+                        mailService.sendMail(members, "Démarrage de session - GPR",message,null);
 
                                                 
                         Log successLog = Log.builder()
@@ -155,7 +157,7 @@ public class ChatServiceImpl implements ChatService {
                             logServiceImpl.saveLog(log2);
                         }
                     }
-                });
+             
 
                 return chat;
             } else {
@@ -230,7 +232,7 @@ public class ChatServiceImpl implements ChatService {
         }
         final String finalType = type;
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+        
             try {
                String message = """
                 <html>
@@ -267,7 +269,7 @@ public class ChatServiceImpl implements ChatService {
                 </html>
                 """.formatted(guest.getFirstandlastname(),finalType,finalType,finalType,finalChat.getClaim().getCodeClient());
 
-                Utils.sendmail(guest.getEmail(), "Invitation à une session - GPR",message,null," ",settingServiceImpl);
+                mailService.sendMail(guest.getEmail(), "Invitation à une session - GPR",message,null);
                                   
                 Log successLog = Log.builder()
                     .libelle("Mail notification invitation chat")
@@ -299,7 +301,7 @@ public class ChatServiceImpl implements ChatService {
     
                 logServiceImpl.saveLog(log2);
             }
-        });
+     
 
         SessionJoinResponse sessionJoinResponse = SessionJoinResponse
             .builder()
@@ -342,7 +344,7 @@ public class ChatServiceImpl implements ChatService {
 
         final String finalType = type;
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+        
             try {
                 String message = """
                 <html>
@@ -378,7 +380,7 @@ public class ChatServiceImpl implements ChatService {
                 </html>
                 """.formatted(guest.getFirstandlastname(),finalType,finalType,finalChat.getClaim().getCodeClient());
 
-                Utils.sendmail(guest.getEmail(),"Ejection d'une session - GPR",message,null," ",settingServiceImpl);
+                mailService.sendMail(guest.getEmail(),"Ejection d'une session - GPR",message,null);
                                                           
                 Log successLog = Log.builder()
                     .libelle("Mail notification éjection chat")
@@ -409,7 +411,7 @@ public class ChatServiceImpl implements ChatService {
     
                 logServiceImpl.saveLog(log2);
             }
-        });
+     
         
         SessionJoinResponse sessionJoinResponse = SessionJoinResponse
             .builder()

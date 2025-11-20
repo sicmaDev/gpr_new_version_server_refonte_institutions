@@ -63,6 +63,7 @@ import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
+import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.collectionChannel.CollectionChannelServiceImpl;
@@ -124,6 +125,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final HistoriqueAffectationServiceImpl historiqueAffectationServiceImpl;
     private final CurrentUserUtils userAuth;
     private final SuggestionRepository suggestionRepository;
+    private final MailService mailService;
     @Autowired
     private HttpServletRequest httpServletRequest;
 
@@ -367,10 +369,9 @@ public class ClaimServiceImpl implements ClaimService {
         """.formatted(claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent);
 
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(usersToContact, "Nouvelle réclamation enregistrée - GPR", message, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(usersToContact, "Nouvelle réclamation enregistrée - GPR", message, null);
                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'enregistrement de réclamation")
@@ -399,7 +400,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
 
         try {
             Utils.sendSms(usersToContact,
@@ -804,10 +805,9 @@ public class ClaimServiceImpl implements ClaimService {
         
         final String finalMessage = messageHtml;
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(affectedTo.getEmail(), "Nouvelle "+finalType+" affectée - GPR", finalMessage, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(affectedTo.getEmail(), "Nouvelle "+finalType+" affectée - GPR", finalMessage, null);
                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'affectation de "+finalType)
@@ -837,7 +837,7 @@ public class ClaimServiceImpl implements ClaimService {
                 }
     
             }
-        });
+      
 
         try {
             Utils.sendSms(Arrays.asList(affectedTo), "Le traitement de la réclamation portant le code "+claim.getCodeClient()+" de niveau de gravité "
@@ -985,10 +985,9 @@ public class ClaimServiceImpl implements ClaimService {
             """.formatted(finalType,claim.getTreatmentAffectedBy().getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType, claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalSolution2.getContent());
 
             // Envoi de mail en parallèle
-            CompletableFuture.runAsync(() -> {
+           
                 try {
-                    Utils.sendmail(finalClaim.getTreatmentAffectedBy().getEmail(), finalType+ " traitée - GPR ",
-                            message, null, " ", settingServiceImpl);
+                    mailService.sendMail(finalClaim.getTreatmentAffectedBy().getEmail(), finalType+ " traitée - GPR ",message, null);
                 
                     Log successLog = Log.builder()
                         .libelle("Mail notification  proposition de solution")
@@ -1017,7 +1016,7 @@ public class ClaimServiceImpl implements ClaimService {
                         logServiceImpl.saveLog(log2);
                     }
                 }
-            });
+          
         } else {
             claim.setStatus(ClaimStatus.TREAT);
             solution2.setStatus(SolutionStatus.APPROVED);
@@ -1073,11 +1072,10 @@ public class ClaimServiceImpl implements ClaimService {
                 """.formatted(finalType, pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalSolution2.getContent());
 
                 // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
+               
                     try {
         
-                        Utils.sendmail(pilote.get(0).getEmail(), "" + finalType + " traitée",
-                                message, null, " ", settingServiceImpl);
+                        mailService.sendMail(pilote.get(0).getEmail(), "" + finalType + " traitée",message, null);
                                                 
                         Log successLog = Log.builder()
                             .libelle("Mail notification notification " + finalType + " traitée")
@@ -1106,7 +1104,7 @@ public class ClaimServiceImpl implements ClaimService {
                             logServiceImpl.saveLog(log2);
                         }
                     }
-                }); 
+               
             }
 
         }
@@ -1185,10 +1183,9 @@ public class ClaimServiceImpl implements ClaimService {
         """.formatted(pilotes.get(0).getFirstandlastname(),mainMessage);
                             
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(pilotes.get(0).getEmail(), "Notification de satisfaction client - GPR", messageHtml, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(), "Notification de satisfaction client - GPR", messageHtml, null);
                                         
                 Log successLog = Log.builder()
                     .libelle("Mail notification mesure de satisfaction réclamation")
@@ -1217,7 +1214,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
     
 
         claim.setUpdatedAt(LocalDateTime.now());
@@ -1299,10 +1296,9 @@ public class ClaimServiceImpl implements ClaimService {
         """.formatted(claim.getTreatBy().getFirstandlastname(),type,claim.getCodeClient(),unApprouver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,commentaire);
         final Claim finalClaim = claim;
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(finalClaim.getTreatBy().getEmail(), "Solution désapprouvée - GPR",
-                        messageHtml, null, " ", settingServiceImpl);
+                mailService.sendMail(finalClaim.getTreatBy().getEmail(), "Solution désapprouvée - GPR",messageHtml, null);
                                                 
                     Log successLog = Log.builder()
                         .libelle("Mail notification solution désapprouvée")
@@ -1331,7 +1327,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }    
             }
-        });
+      
 
         return claim;
     }
@@ -1395,10 +1391,9 @@ public class ClaimServiceImpl implements ClaimService {
         """.formatted(finalClaim.getTreatmentAffectedTo().getFirstandlastname(),type,finalClaim.getCodeClient(),approuver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),previewContent);
                             
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(finalClaim.getTreatmentAffectedTo().getEmail(), "Solution approuvée - GPR",
-                        messageHtml, null, " ", settingServiceImpl);
+                mailService.sendMail(finalClaim.getTreatmentAffectedTo().getEmail(), "Solution approuvée - GPR",messageHtml, null);
                                                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification solution approuvée")
@@ -1427,7 +1422,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }      
-        });
+      
 
         return claim;
     }
@@ -1479,10 +1474,10 @@ public class ClaimServiceImpl implements ClaimService {
         </html>
         """.formatted(pilotes.get(0).getFirstandlastname(),claim.getCodeClient(),claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()));
         final Claim finalClaim = claim;
-        CompletableFuture.runAsync(() -> {
+       
             try {
                 // Envoi du mail à tous les pilotes
-                Utils.sendmail(pilotes.get(0).getEmail(),"Réclamation classée - GPR",messageHtml,null," ",settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(),"Réclamation classée - GPR",messageHtml,null);
 
                 Log log = Log
                     .builder()
@@ -1511,7 +1506,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
         return claim;
     }
 
@@ -1578,10 +1573,10 @@ public class ClaimServiceImpl implements ClaimService {
         </html>
         """.formatted(pilotes.get(0).getFirstandlastname(),claim.getCodeClient(),claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()));
         final Claim finalClaim = claim;
-        CompletableFuture.runAsync(() -> {
+       
             try {
                 // Envoi du mail à tous les responsables/pilotes
-                Utils.sendmail(pilotes.get(0).getEmail(),"Réclamation au statut Contentieux - GPR",messageHtml,null, " ",settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(),"Réclamation au statut Contentieux - GPR",messageHtml,null);
 
                 Log log = Log
                     .builder()
@@ -1610,7 +1605,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
         return claim;
     }
 
@@ -1877,11 +1872,9 @@ public class ClaimServiceImpl implements ClaimService {
         List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         usersToContact.addAll(pilote); 
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(usersToContact,
-                        "Nouvelle Dénonciation enregistrée - GPR", messageHtml, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(usersToContact,"Nouvelle Dénonciation enregistrée - GPR", messageHtml, null);
                                                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification nouvelle dénonciation")
@@ -1910,7 +1903,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
 
         return claim;
     }
@@ -2590,7 +2583,7 @@ public class ClaimServiceImpl implements ClaimService {
             // if (!pilote.isEmpty()) {                           
                 // Envoi de mail en parallèle
                 String type = finalClaim.getType() == ClaimType.CLAIM ? "réclamation" : "dénonciation";
-                CompletableFuture.runAsync(() -> {
+               
                     try {
                       
                        Double apercuContent = finalClaim.getContent().length() * 0.5;
@@ -2636,7 +2629,7 @@ public class ClaimServiceImpl implements ClaimService {
                         </html>
                         """.formatted(finalTransmittedTo.getFirstandlastname(),type,type,type,finalClaim.getCodeClient(),Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),previewContent,type);
 
-                        Utils.sendmail(destis, "Transmission de traitement - GPR", messageHtml, null, "", settingServiceImpl);
+                        mailService.sendMail(destis, "Transmission de traitement - GPR", messageHtml, null);
                                                         
                         Log successLog = Log.builder()
                             .libelle("Mail notification transmission de réclamation")
@@ -2673,7 +2666,7 @@ public class ClaimServiceImpl implements ClaimService {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                });
+              
 
                 return claim;
             // } else {
@@ -2838,10 +2831,9 @@ public class ClaimServiceImpl implements ClaimService {
         """;
                                           
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(pilotes.get(0).getEmail(), "Nouvelle réclamation collectée - GPR BOT", messageHtml, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(), "Nouvelle réclamation collectée - GPR BOT", messageHtml, null);
                                         
                 Log successLog = Log.builder()
                     .libelle("Mail notification enregistrement réclamation")
@@ -2870,7 +2862,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });    
+          
 
 
         return claim;

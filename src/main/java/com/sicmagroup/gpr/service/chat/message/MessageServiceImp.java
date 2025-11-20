@@ -50,6 +50,7 @@ import com.sicmagroup.gpr.repository.chat.MessageRepository;
 import com.sicmagroup.gpr.repository.chat.UserVoteRepository;
 import com.sicmagroup.gpr.repository.chat.VoteRepository;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
+import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
@@ -71,6 +72,7 @@ public class MessageServiceImp implements MessageService {
     private final SolutionRepository solutionRepository;
     private final SettingServiceImpl settingServiceImpl;
     private final LogServiceImpl logServiceImpl;
+    private final MailService mailService;
 
     @Override
     public Message send(NewMessageRequest request) throws Exception {
@@ -378,10 +380,10 @@ public class MessageServiceImp implements MessageService {
                 """.formatted(finalType,pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),finalType, finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getContent().substring(0, apercuContent.intValue()),solution2.getContent());
 
                 // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
+                
                     try {
-                        Utils.sendmail(pilote.get(0).getEmail(), finalType+" traitée - GPR",
-                                messageStr, null, " ", settingServiceImpl);
+                        mailService.sendMail(pilote.get(0).getEmail(), finalType+" traitée - GPR",
+                                messageStr, null);
                                                 
                         Log successLog = Log.builder()
                             .libelle("Mail notification "+finalType+" traitée")
@@ -412,7 +414,7 @@ public class MessageServiceImp implements MessageService {
                             logServiceImpl.saveLog(log2);
                         }
                     }
-                }); 
+               
             }
         }
 

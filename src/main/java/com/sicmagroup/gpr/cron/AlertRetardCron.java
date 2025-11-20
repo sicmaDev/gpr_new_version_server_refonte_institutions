@@ -19,6 +19,7 @@ import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.HistoriqueAffectationRepository;
 import com.sicmagroup.gpr.repository.UserRepository;
+import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
@@ -39,6 +40,7 @@ public class AlertRetardCron {
 
     @Autowired
     private SettingServiceImpl settingService;
+    private final MailService mailService;
 
     // Exécution une fois par jour à 8h du matin
    
@@ -87,7 +89,7 @@ public class AlertRetardCron {
                 User user = userRepository.findByEmailAndIsDeleted(emailAgent, false)
                         .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
                 String email = emailAgent.trim();
-                Utils.sendmail(email, subject, body, null, " ", settingService);
+                mailService.sendMail(email, subject, body, null);
 
             } catch (Exception e) {
                 System.out.println("Erreur envoi agent : " + e.getMessage());
@@ -106,17 +108,16 @@ public class AlertRetardCron {
             // String subject = "Alerte - Réclamations en retard (" +
             //     (affectations.size() + claimsNonAffectees.size()) + ")"+
             //     (System.currentTimeMillis() % 100000);
-            String subject = "Alerte - Réclamations en retard " + (int)(System.currentTimeMillis() % 100000);
+            String subject = "Alerte - Réclamations en retard";
 
             String body = buildPiloteMail(affectations, claimsNonAffectees);
 
             User firstPilote = pilotes.get(0);
             
-            // String pilotesCC = pilotes.stream().map(User::getEmail).collect(Collectors.joining(","));
+            String pilotesCC = pilotes.stream().map(User::getEmail).collect(Collectors.joining(","));
 
-            // Utils.sendmail(firstPilote.getEmail(), subject, body, pilotesCC, " ", settingService);
             String email = firstPilote.getEmail().trim();
-            Utils.sendmail(email, subject, body, null, " ", settingService);
+            mailService.sendMail(email, subject, body, pilotesCC);
 
         } catch (Exception e) {
             System.out.println("Erreur envoi pilotes : " + e.getMessage());

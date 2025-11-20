@@ -38,6 +38,7 @@ import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.repository.ClaimAudioRepository;
 import com.sicmagroup.gpr.repository.ExtraContentRepository;
 import com.sicmagroup.gpr.repository.SuggestionRepository;
+import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.collectionChannel.CollectionChannelServiceImpl;
@@ -71,7 +72,7 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final MediaRepository mediaRepository;
     private final ClaimAudioRepository claimAudioRepository;
     private final ExtraContentRepository extraContentRepository;
-
+    private final MailService mailService;
     
 
 
@@ -277,10 +278,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         """.formatted(pilotes.get(0).getFirstandlastname(),suggestion.getCodeClient(),Utils.convertLocalDateTimeToStr(suggestion.getReceiptDateTime()),previewContent);
 
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+        
             try {
-                Utils.sendmail(pilotes.get(0).getEmail(), "Nouvelle suggestion enregistrée - GPR", message, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(), "Nouvelle suggestion enregistrée - GPR", message, null);
                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'enregistrement de suggestion")
@@ -309,7 +309,7 @@ public class SuggestionServiceImpl implements SuggestionService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+       
 
         try {
             Utils.sendSms(pilotes.get(0).getTel(),
@@ -493,9 +493,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         """.formatted(treator.getFirstandlastname(),finalSuggestion.getCodeClient(),pilotes.get(0).getFirstandlastname(),finalSuggestion.getCodeClient(),Utils.convertLocalDateTimeToStr(finalSuggestion.getReceiptDateTime()),previewContent,priseEnCompte);
 
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+        
             try {
-                Utils.sendmail(pilotes.get(0).getEmail(), "Traitement de suggestion - GPR", messageHtml, null, "", settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(), "Traitement de suggestion - GPR", messageHtml, null);
                                                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification suggestion traité")
@@ -524,7 +524,7 @@ public class SuggestionServiceImpl implements SuggestionService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+       
 
         return suggestion;
     }
