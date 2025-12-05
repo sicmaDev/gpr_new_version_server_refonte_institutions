@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +22,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor 
 @AllArgsConstructor
 @Entity
-@Table(name = "gps_product")
+@Table(name = "gps_product",uniqueConstraints = @UniqueConstraint(columnNames = {"libelle"}))
 public class Product {
     @Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
