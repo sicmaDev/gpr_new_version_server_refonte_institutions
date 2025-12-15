@@ -109,7 +109,7 @@ public class ChatServiceImpl implements ChatService {
                                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                                 <p style="margin: 5px 0;">📌 <strong>Code %s :</strong> %s</p>
                                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                             </div>
 
                             <p style="margin-top: 20px;">

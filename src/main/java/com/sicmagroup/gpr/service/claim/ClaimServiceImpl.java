@@ -325,10 +325,7 @@ public class ClaimServiceImpl implements ClaimService {
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
         List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         usersToContact.addAll(pilote);
-        Double apercuContent = claim.getContent().length() * 0.5;
-        String previewContent = claim.getContent().substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+       
         String message = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -349,7 +346,7 @@ public class ClaimServiceImpl implements ClaimService {
                 <p style="margin: 0;"><strong>Détails de la réclamation :</strong></p>
                 <p style="margin: 5px 0;">📌 <strong>Code de réclamation :</strong> %s</p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -366,7 +363,7 @@ public class ClaimServiceImpl implements ClaimService {
             </div>
         </body>
         </html>
-        """.formatted(claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent);
+        """.formatted(claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle());
 
         // Envoi de mail en parallèle
        
@@ -743,13 +740,7 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         final String finalType = type;
-        Double apercuContent = claim.getContent().length() * 0.3;
-       
-        // Préparer l'aperçu du contenu en échappant les caractères HTML spéciaux
-        String previewContent = claim.getContent()
-        .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+      
         // Utiliser le message personnalisé s'il existe, sinon texte standard
         String mainMessage = (affectTreatmentRequest.getMessage() != null && !affectTreatmentRequest.getMessage().isEmpty())
                 ? affectTreatmentRequest.getMessage()
@@ -773,7 +764,7 @@ public class ClaimServiceImpl implements ClaimService {
                 <p style="margin: 5px 0;">📌 <strong>Code de %s :</strong> %s</p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
                 <p style="margin: 5px 0;">⏱ <strong>Délai de traitement :</strong> %s jours</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -797,7 +788,7 @@ public class ClaimServiceImpl implements ClaimService {
             claim.getCodeClient(),
             Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),
             affectTreatmentRequest.getDelai(),
-            previewContent,
+            claim.getObjet().getLibelle(),
             finalType
         );
 
@@ -934,13 +925,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         if (claim.hasAffectedTreatment() && treator.getCode() == claim.getTreatmentAffectedTo().getCode()) {
             // Is treator is user who receiverd affectation
-            
-            Double apercuContent = claim.getContent().length() * 0.3;
-
-            String previewContent = claim.getContent()
-                    .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-                    .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+        
             String message = """
             <html>
             <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -960,7 +945,7 @@ public class ClaimServiceImpl implements ClaimService {
                     <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                     <p style="margin: 5px 0;">📌 <strong>Code :</strong> %s</p>
                     <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                    <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                    <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                 </div>
 
                 <div style="margin-top: 20px; background-color: #e6ffe6; border-left: 4px solid #008000;
@@ -982,7 +967,7 @@ public class ClaimServiceImpl implements ClaimService {
                 </div>
             </body>
             </html>
-            """.formatted(finalType,claim.getTreatmentAffectedBy().getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType, claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalSolution2.getContent());
+            """.formatted(finalType,claim.getTreatmentAffectedBy().getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType, claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle(),finalSolution2.getContent());
 
             // Envoi de mail en parallèle
            
@@ -1021,13 +1006,10 @@ public class ClaimServiceImpl implements ClaimService {
             claim.setStatus(ClaimStatus.TREAT);
             solution2.setStatus(SolutionStatus.APPROVED);
             solution2.setUpdatedAt(LocalDateTime.now());
-            Double apercuContent = claim.getContent().length() * 0.3;
+          
             List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
             if (pilote != null && !pilote.isEmpty()) {                            
-                String previewContent = claim.getContent()
-                    .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-                    .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+              
                 String message = """
                 <html>
                 <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -1047,7 +1029,7 @@ public class ClaimServiceImpl implements ClaimService {
                         <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                         <p style="margin: 5px 0;">📌 <strong>Code :</strong> %s</p>
                         <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                        <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                        <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                     </div>
 
                     <div style="margin-top: 20px; background-color: #e6ffe6; border-left: 4px solid #008000;
@@ -1069,7 +1051,7 @@ public class ClaimServiceImpl implements ClaimService {
                     </div>
                 </body>
                 </html>
-                """.formatted(finalType, pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalSolution2.getContent());
+                """.formatted(finalType, pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle(),finalSolution2.getContent());
 
                 // Envoi de mail en parallèle
                
@@ -1253,11 +1235,6 @@ public class ClaimServiceImpl implements ClaimService {
             type = "Dénonciation";
         }
 
-        Double apercuContent = claim.getContent().length() * 0.3;
-        String previewContent = claim.getContent()
-                .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
         String messageHtml = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -1276,7 +1253,7 @@ public class ClaimServiceImpl implements ClaimService {
                         padding: 10px 15px;">
                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                 <p style="margin: 5px 0;">❌ <strong>Motif de désapprobation :</strong> %s</p>
             </div>
 
@@ -1293,7 +1270,7 @@ public class ClaimServiceImpl implements ClaimService {
             </div>
         </body>
         </html>
-        """.formatted(claim.getTreatBy().getFirstandlastname(),type,claim.getCodeClient(),unApprouver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,commentaire);
+        """.formatted(claim.getTreatBy().getFirstandlastname(),type,claim.getCodeClient(),unApprouver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle(),commentaire);
         final Claim finalClaim = claim;
         // Envoi de mail en parallèle
        
@@ -1349,11 +1326,7 @@ public class ClaimServiceImpl implements ClaimService {
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
             type = "Dénonciation";
         }
-        Double apercuContent = finalClaim.getContent().length() * 0.3;
-        String previewContent = finalClaim.getContent()
-                .substring(0, Math.min(apercuContent.intValue(), finalClaim.getContent().length()))
-                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+       
         String messageHtml = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -1372,7 +1345,7 @@ public class ClaimServiceImpl implements ClaimService {
                         padding: 10px 15px;">
                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -1388,7 +1361,7 @@ public class ClaimServiceImpl implements ClaimService {
             </div>
         </body>
         </html>
-        """.formatted(finalClaim.getTreatmentAffectedTo().getFirstandlastname(),type,finalClaim.getCodeClient(),approuver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),previewContent);
+        """.formatted(finalClaim.getTreatmentAffectedTo().getFirstandlastname(),type,finalClaim.getCodeClient(),approuver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),finalClaim.getObjet().getLibelle());
                             
         // Envoi de mail en parallèle
        
@@ -1827,11 +1800,6 @@ public class ClaimServiceImpl implements ClaimService {
             finalType = "Dénonciation";
         }
 
-        Double apercuContent = claim.getContent().length() * 0.3;
-        String previewContent = claim.getContent()
-                .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
         String messageHtml = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -1851,7 +1819,7 @@ public class ClaimServiceImpl implements ClaimService {
                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                 <p style="margin: 5px 0;">📌 <strong>Code %s :</strong> %s</p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -1867,7 +1835,7 @@ public class ClaimServiceImpl implements ClaimService {
             </div>
         </body>
         </html>
-        """.formatted(finalType,finalType,finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalType);
+        """.formatted(finalType,finalType,finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle(),finalType);
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
         List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         usersToContact.addAll(pilote); 
@@ -2586,11 +2554,6 @@ public class ClaimServiceImpl implements ClaimService {
                
                     try {
                       
-                       Double apercuContent = finalClaim.getContent().length() * 0.5;
-                        String previewContent = finalClaim.getContent()
-                                .substring(0, Math.min(apercuContent.intValue(), finalClaim.getContent().length()))
-                                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
                         String messageHtml = """
                         <html>
                         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -2610,7 +2573,7 @@ public class ClaimServiceImpl implements ClaimService {
                                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                                 <p style="margin: 5px 0;">📌 <strong>Code de la %s :</strong> %s</p>
                                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                                <p style="margin: 5px 0;">📝 <strong>Aperçu :</strong> %s...</p>
+                                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                                
                             </div>
 
@@ -2627,7 +2590,7 @@ public class ClaimServiceImpl implements ClaimService {
                             </div>
                         </body>
                         </html>
-                        """.formatted(finalTransmittedTo.getFirstandlastname(),type,type,type,finalClaim.getCodeClient(),Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),previewContent,type);
+                        """.formatted(finalTransmittedTo.getFirstandlastname(),type,type,type,finalClaim.getCodeClient(),Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),finalClaim.getObjet().getLibelle(),type);
 
                         mailService.sendMail(destis, "Transmission de traitement - GPR", messageHtml, null);
                                                         

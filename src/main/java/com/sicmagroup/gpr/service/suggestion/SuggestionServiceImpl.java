@@ -235,10 +235,6 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
        
-        Double apercuContent = suggestion.getContent().length() * 0.5;
-        String previewContent = suggestion.getContent().substring(0, Math.min(apercuContent.intValue(), suggestion.getContent().length()))
-        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
         String message = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -258,7 +254,6 @@ public class SuggestionServiceImpl implements SuggestionService {
                 <p style="margin: 0;"><strong>Détails de la suggestion :</strong></p>
                 <p style="margin: 5px 0;">📌 <strong>Code de suggestion :</strong> %s</p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -275,7 +270,7 @@ public class SuggestionServiceImpl implements SuggestionService {
             </div>
         </body>
         </html>
-        """.formatted(pilotes.get(0).getFirstandlastname(),suggestion.getCodeClient(),Utils.convertLocalDateTimeToStr(suggestion.getReceiptDateTime()),previewContent);
+        """.formatted(pilotes.get(0).getFirstandlastname(),suggestion.getCodeClient(),Utils.convertLocalDateTimeToStr(suggestion.getReceiptDateTime()));
 
         // Envoi de mail en parallèle
         
@@ -452,10 +447,7 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         final Suggestion finalSuggestion = suggestion;
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-        Double apercuContent = finalSuggestion.getContent().length() * 0.5;
-        String previewContent = finalSuggestion.getContent()
-                .substring(0, Math.min(apercuContent.intValue(), finalSuggestion.getContent().length()))
-                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+       
         String priseEnCompte = suggestion.isAccepted() ? "Prise en compte" : "Non prise en compte";
 
         String messageHtml = """
@@ -477,7 +469,6 @@ public class SuggestionServiceImpl implements SuggestionService {
                 <p style="margin: 0;"><strong>Détails de la suggestion :</strong></p>
                 <p style="margin: 5px 0;">📌 <strong>Code :</strong> %s</p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
                 <p style="margin: 5px 0;">📌 <strong>Décision :</strong> %s</p>
             </div>
 
@@ -490,7 +481,7 @@ public class SuggestionServiceImpl implements SuggestionService {
             </div>
         </body>
         </html>
-        """.formatted(treator.getFirstandlastname(),finalSuggestion.getCodeClient(),pilotes.get(0).getFirstandlastname(),finalSuggestion.getCodeClient(),Utils.convertLocalDateTimeToStr(finalSuggestion.getReceiptDateTime()),previewContent,priseEnCompte);
+        """.formatted(treator.getFirstandlastname(),finalSuggestion.getCodeClient(),pilotes.get(0).getFirstandlastname(),finalSuggestion.getCodeClient(),Utils.convertLocalDateTimeToStr(finalSuggestion.getReceiptDateTime()),priseEnCompte);
 
         // Envoi de mail en parallèle
         

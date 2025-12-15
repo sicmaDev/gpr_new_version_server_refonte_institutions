@@ -355,7 +355,7 @@ public class MessageServiceImp implements MessageService {
                         <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                         <p style="margin: 5px 0;">📌 <strong>Code de %s :</strong> %s</p>
                         <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                        <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                        <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                     </div>
 
                     <div style="margin-top: 20px; background-color: #e6ffe6; border-left: 4px solid #008000; 
