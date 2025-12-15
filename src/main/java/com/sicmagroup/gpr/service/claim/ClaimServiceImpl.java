@@ -63,6 +63,7 @@ import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.chat.ChatRepository;
+import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.collectionChannel.CollectionChannelServiceImpl;
@@ -124,6 +125,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final HistoriqueAffectationServiceImpl historiqueAffectationServiceImpl;
     private final CurrentUserUtils userAuth;
     private final SuggestionRepository suggestionRepository;
+    private final MailService mailService;
     @Autowired
     private HttpServletRequest httpServletRequest;
 
@@ -323,10 +325,7 @@ public class ClaimServiceImpl implements ClaimService {
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
         List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         usersToContact.addAll(pilote);
-        Double apercuContent = claim.getContent().length() * 0.5;
-        String previewContent = claim.getContent().substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+       
         String message = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -347,7 +346,7 @@ public class ClaimServiceImpl implements ClaimService {
                 <p style="margin: 0;"><strong>Détails de la réclamation :</strong></p>
                 <p style="margin: 5px 0;">📌 <strong>Code de réclamation :</strong> %s</p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -364,13 +363,12 @@ public class ClaimServiceImpl implements ClaimService {
             </div>
         </body>
         </html>
-        """.formatted(claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent);
+        """.formatted(claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle());
 
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(usersToContact, "Nouvelle réclamation enregistrée - GPR", message, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(usersToContact, "Nouvelle réclamation enregistrée - GPR", message, null);
                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'enregistrement de réclamation")
@@ -399,7 +397,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
 
         try {
             Utils.sendSms(usersToContact,
@@ -742,13 +740,7 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         final String finalType = type;
-        Double apercuContent = claim.getContent().length() * 0.3;
-       
-        // Préparer l'aperçu du contenu en échappant les caractères HTML spéciaux
-        String previewContent = claim.getContent()
-        .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+      
         // Utiliser le message personnalisé s'il existe, sinon texte standard
         String mainMessage = (affectTreatmentRequest.getMessage() != null && !affectTreatmentRequest.getMessage().isEmpty())
                 ? affectTreatmentRequest.getMessage()
@@ -772,7 +764,7 @@ public class ClaimServiceImpl implements ClaimService {
                 <p style="margin: 5px 0;">📌 <strong>Code de %s :</strong> %s</p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
                 <p style="margin: 5px 0;">⏱ <strong>Délai de traitement :</strong> %s jours</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -796,7 +788,7 @@ public class ClaimServiceImpl implements ClaimService {
             claim.getCodeClient(),
             Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),
             affectTreatmentRequest.getDelai(),
-            previewContent,
+            claim.getObjet().getLibelle(),
             finalType
         );
 
@@ -804,10 +796,9 @@ public class ClaimServiceImpl implements ClaimService {
         
         final String finalMessage = messageHtml;
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(affectedTo.getEmail(), "Nouvelle "+finalType+" affectée - GPR", finalMessage, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(affectedTo.getEmail(), "Nouvelle "+finalType+" affectée - GPR", finalMessage, null);
                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'affectation de "+finalType)
@@ -837,7 +828,7 @@ public class ClaimServiceImpl implements ClaimService {
                 }
     
             }
-        });
+      
 
         try {
             Utils.sendSms(Arrays.asList(affectedTo), "Le traitement de la réclamation portant le code "+claim.getCodeClient()+" de niveau de gravité "
@@ -912,6 +903,17 @@ public class ClaimServiceImpl implements ClaimService {
         // Is Affected claim ?
         claim.setStatus(ClaimStatus.TREAT);
         solution2.setStatus(SolutionStatus.APPROVED);
+        solution2 = solutionServiceImpl.saveSolution(solution2);
+        claim.setTreatBy(treator);
+        // List<Solution> oldSolutions = claim.getSolutions();
+        // oldSolutions.add(solution2);
+        claim.getSolutions().add(solution2);
+
+        claim.setUpdatedAt(LocalDateTime.now());
+        System.out.println("Here 8 ");
+        claim = repository.save(claim);
+        System.out.println("Here 9 ");
+
         String type = "Réclamation";
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
             type = "Dénonciation";
@@ -919,15 +921,11 @@ public class ClaimServiceImpl implements ClaimService {
 
         final Claim finalClaim = claim;
         final String finalType = type;
+        final Solution finalSolution2 = solution2;
+
         if (claim.hasAffectedTreatment() && treator.getCode() == claim.getTreatmentAffectedTo().getCode()) {
             // Is treator is user who receiverd affectation
-            
-            Double apercuContent = claim.getContent().length() * 0.3;
-
-            String previewContent = claim.getContent()
-                    .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-                    .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+        
             String message = """
             <html>
             <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -947,7 +945,7 @@ public class ClaimServiceImpl implements ClaimService {
                     <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                     <p style="margin: 5px 0;">📌 <strong>Code :</strong> %s</p>
                     <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                    <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                    <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                 </div>
 
                 <div style="margin-top: 20px; background-color: #e6ffe6; border-left: 4px solid #008000;
@@ -969,13 +967,12 @@ public class ClaimServiceImpl implements ClaimService {
                 </div>
             </body>
             </html>
-            """.formatted(finalType,claim.getTreatmentAffectedBy().getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType, claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,request.getSolution());
+            """.formatted(finalType,claim.getTreatmentAffectedBy().getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType, claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle(),finalSolution2.getContent());
 
             // Envoi de mail en parallèle
-            CompletableFuture.runAsync(() -> {
+           
                 try {
-                    Utils.sendmail(finalClaim.getTreatmentAffectedBy().getEmail(), finalType+ " traitée - GPR ",
-                            message, null, " ", settingServiceImpl);
+                    mailService.sendMail(finalClaim.getTreatmentAffectedBy().getEmail(), finalType+ " traitée - GPR ",message, null);
                 
                     Log successLog = Log.builder()
                         .libelle("Mail notification  proposition de solution")
@@ -1004,18 +1001,15 @@ public class ClaimServiceImpl implements ClaimService {
                         logServiceImpl.saveLog(log2);
                     }
                 }
-            });
+          
         } else {
             claim.setStatus(ClaimStatus.TREAT);
             solution2.setStatus(SolutionStatus.APPROVED);
             solution2.setUpdatedAt(LocalDateTime.now());
-            Double apercuContent = claim.getContent().length() * 0.3;
+          
             List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
             if (pilote != null && !pilote.isEmpty()) {                            
-                String previewContent = claim.getContent()
-                    .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-                    .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+              
                 String message = """
                 <html>
                 <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -1035,7 +1029,7 @@ public class ClaimServiceImpl implements ClaimService {
                         <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                         <p style="margin: 5px 0;">📌 <strong>Code :</strong> %s</p>
                         <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                        <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                        <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                     </div>
 
                     <div style="margin-top: 20px; background-color: #e6ffe6; border-left: 4px solid #008000;
@@ -1057,14 +1051,13 @@ public class ClaimServiceImpl implements ClaimService {
                     </div>
                 </body>
                 </html>
-                """.formatted(finalType, pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,request.getSolution());
+                """.formatted(finalType, pilote.get(0).getFirstandlastname(),finalType,claim.getCodeClient(),treator.getFirstandlastname(),finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle(),finalSolution2.getContent());
 
                 // Envoi de mail en parallèle
-                CompletableFuture.runAsync(() -> {
+               
                     try {
         
-                        Utils.sendmail(pilote.get(0).getEmail(), "" + finalType + " traitée",
-                                message, null, " ", settingServiceImpl);
+                        mailService.sendMail(pilote.get(0).getEmail(), "" + finalType + " traitée",message, null);
                                                 
                         Log successLog = Log.builder()
                             .libelle("Mail notification notification " + finalType + " traitée")
@@ -1093,21 +1086,12 @@ public class ClaimServiceImpl implements ClaimService {
                             logServiceImpl.saveLog(log2);
                         }
                     }
-                }); 
+               
             }
 
         }
         // System.out.println("Here 7 ");
-        solution2 = solutionServiceImpl.saveSolution(solution2);
-        claim.setTreatBy(treator);
-        // List<Solution> oldSolutions = claim.getSolutions();
-        // oldSolutions.add(solution2);
-        claim.getSolutions().add(solution2);
-
-        claim.setUpdatedAt(LocalDateTime.now());
-        System.out.println("Here 8 ");
-        claim = repository.save(claim);
-        System.out.println("Here 9 ");
+        
         return claim;
     }
 
@@ -1181,10 +1165,9 @@ public class ClaimServiceImpl implements ClaimService {
         """.formatted(pilotes.get(0).getFirstandlastname(),mainMessage);
                             
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(pilotes.get(0).getEmail(), "Notification de satisfaction client - GPR", messageHtml, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(), "Notification de satisfaction client - GPR", messageHtml, null);
                                         
                 Log successLog = Log.builder()
                     .libelle("Mail notification mesure de satisfaction réclamation")
@@ -1213,7 +1196,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
     
 
         claim.setUpdatedAt(LocalDateTime.now());
@@ -1252,11 +1235,6 @@ public class ClaimServiceImpl implements ClaimService {
             type = "Dénonciation";
         }
 
-        Double apercuContent = claim.getContent().length() * 0.3;
-        String previewContent = claim.getContent()
-                .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
         String messageHtml = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -1275,7 +1253,7 @@ public class ClaimServiceImpl implements ClaimService {
                         padding: 10px 15px;">
                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                 <p style="margin: 5px 0;">❌ <strong>Motif de désapprobation :</strong> %s</p>
             </div>
 
@@ -1292,13 +1270,12 @@ public class ClaimServiceImpl implements ClaimService {
             </div>
         </body>
         </html>
-        """.formatted(claim.getTreatBy().getFirstandlastname(),type,claim.getCodeClient(),unApprouver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,commentaire);
+        """.formatted(claim.getTreatBy().getFirstandlastname(),type,claim.getCodeClient(),unApprouver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle(),commentaire);
         final Claim finalClaim = claim;
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(finalClaim.getTreatBy().getEmail(), "Solution désapprouvée - GPR",
-                        messageHtml, null, " ", settingServiceImpl);
+                mailService.sendMail(finalClaim.getTreatBy().getEmail(), "Solution désapprouvée - GPR",messageHtml, null);
                                                 
                     Log successLog = Log.builder()
                         .libelle("Mail notification solution désapprouvée")
@@ -1327,7 +1304,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }    
             }
-        });
+      
 
         return claim;
     }
@@ -1349,11 +1326,7 @@ public class ClaimServiceImpl implements ClaimService {
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
             type = "Dénonciation";
         }
-        Double apercuContent = finalClaim.getContent().length() * 0.3;
-        String previewContent = finalClaim.getContent()
-                .substring(0, Math.min(apercuContent.intValue(), finalClaim.getContent().length()))
-                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
+       
         String messageHtml = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -1372,7 +1345,7 @@ public class ClaimServiceImpl implements ClaimService {
                         padding: 10px 15px;">
                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -1388,13 +1361,12 @@ public class ClaimServiceImpl implements ClaimService {
             </div>
         </body>
         </html>
-        """.formatted(finalClaim.getTreatmentAffectedTo().getFirstandlastname(),type,finalClaim.getCodeClient(),approuver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),previewContent);
+        """.formatted(finalClaim.getTreatmentAffectedTo().getFirstandlastname(),type,finalClaim.getCodeClient(),approuver.getFirstandlastname(),type,Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),finalClaim.getObjet().getLibelle());
                             
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(finalClaim.getTreatmentAffectedTo().getEmail(), "Solution approuvée - GPR",
-                        messageHtml, null, " ", settingServiceImpl);
+                mailService.sendMail(finalClaim.getTreatmentAffectedTo().getEmail(), "Solution approuvée - GPR",messageHtml, null);
                                                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification solution approuvée")
@@ -1423,7 +1395,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }      
-        });
+      
 
         return claim;
     }
@@ -1475,10 +1447,10 @@ public class ClaimServiceImpl implements ClaimService {
         </html>
         """.formatted(pilotes.get(0).getFirstandlastname(),claim.getCodeClient(),claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()));
         final Claim finalClaim = claim;
-        CompletableFuture.runAsync(() -> {
+       
             try {
                 // Envoi du mail à tous les pilotes
-                Utils.sendmail(pilotes.get(0).getEmail(),"Réclamation classée - GPR",messageHtml,null," ",settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(),"Réclamation classée - GPR",messageHtml,null);
 
                 Log log = Log
                     .builder()
@@ -1507,7 +1479,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
         return claim;
     }
 
@@ -1574,10 +1546,10 @@ public class ClaimServiceImpl implements ClaimService {
         </html>
         """.formatted(pilotes.get(0).getFirstandlastname(),claim.getCodeClient(),claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()));
         final Claim finalClaim = claim;
-        CompletableFuture.runAsync(() -> {
+       
             try {
                 // Envoi du mail à tous les responsables/pilotes
-                Utils.sendmail(pilotes.get(0).getEmail(),"Réclamation au statut Contentieux - GPR",messageHtml,null, " ",settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(),"Réclamation au statut Contentieux - GPR",messageHtml,null);
 
                 Log log = Log
                     .builder()
@@ -1606,7 +1578,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
         return claim;
     }
 
@@ -1828,11 +1800,6 @@ public class ClaimServiceImpl implements ClaimService {
             finalType = "Dénonciation";
         }
 
-        Double apercuContent = claim.getContent().length() * 0.3;
-        String previewContent = claim.getContent()
-                .substring(0, Math.min(apercuContent.intValue(), claim.getContent().length()))
-                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
         String messageHtml = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -1852,7 +1819,7 @@ public class ClaimServiceImpl implements ClaimService {
                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                 <p style="margin: 5px 0;">📌 <strong>Code %s :</strong> %s</p>
                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                <p style="margin: 5px 0;">📝 <strong>Aperçu du contenu :</strong> %s...</p>
+                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
             </div>
 
             <p style="margin-top: 20px;">
@@ -1868,16 +1835,14 @@ public class ClaimServiceImpl implements ClaimService {
             </div>
         </body>
         </html>
-        """.formatted(finalType,finalType,finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),previewContent,finalType);
+        """.formatted(finalType,finalType,finalType,claim.getCodeClient(),Utils.convertLocalDateTimeToStr(claim.getReceiptDateTime()),claim.getObjet().getLibelle(),finalType);
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
         List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         usersToContact.addAll(pilote); 
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(usersToContact,
-                        "Nouvelle Dénonciation enregistrée - GPR", messageHtml, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(usersToContact,"Nouvelle Dénonciation enregistrée - GPR", messageHtml, null);
                                                 
                 Log successLog = Log.builder()
                     .libelle("Mail notification nouvelle dénonciation")
@@ -1906,7 +1871,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });
+      
 
         return claim;
     }
@@ -2586,14 +2551,9 @@ public class ClaimServiceImpl implements ClaimService {
             // if (!pilote.isEmpty()) {                           
                 // Envoi de mail en parallèle
                 String type = finalClaim.getType() == ClaimType.CLAIM ? "réclamation" : "dénonciation";
-                CompletableFuture.runAsync(() -> {
+               
                     try {
                       
-                       Double apercuContent = finalClaim.getContent().length() * 0.5;
-                        String previewContent = finalClaim.getContent()
-                                .substring(0, Math.min(apercuContent.intValue(), finalClaim.getContent().length()))
-                                .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-
                         String messageHtml = """
                         <html>
                         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
@@ -2613,7 +2573,7 @@ public class ClaimServiceImpl implements ClaimService {
                                 <p style="margin: 0;"><strong>Détails de la %s :</strong></p>
                                 <p style="margin: 5px 0;">📌 <strong>Code de la %s :</strong> %s</p>
                                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
-                                <p style="margin: 5px 0;">📝 <strong>Aperçu :</strong> %s...</p>
+                                <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
                                
                             </div>
 
@@ -2630,9 +2590,9 @@ public class ClaimServiceImpl implements ClaimService {
                             </div>
                         </body>
                         </html>
-                        """.formatted(finalTransmittedTo.getFirstandlastname(),type,type,type,finalClaim.getCodeClient(),Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),previewContent,type);
+                        """.formatted(finalTransmittedTo.getFirstandlastname(),type,type,type,finalClaim.getCodeClient(),Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),finalClaim.getObjet().getLibelle(),type);
 
-                        Utils.sendmail(destis, "Transmission de traitement - GPR", messageHtml, null, "", settingServiceImpl);
+                        mailService.sendMail(destis, "Transmission de traitement - GPR", messageHtml, null);
                                                         
                         Log successLog = Log.builder()
                             .libelle("Mail notification transmission de réclamation")
@@ -2669,7 +2629,7 @@ public class ClaimServiceImpl implements ClaimService {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                });
+              
 
                 return claim;
             // } else {
@@ -2802,6 +2762,7 @@ public class ClaimServiceImpl implements ClaimService {
 
         claim = repository.save(claim);
         final Claim finalClaim = claim;
+        
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         
         Double apercuContent = claim.getContent().length() * 0.5;
@@ -2833,10 +2794,9 @@ public class ClaimServiceImpl implements ClaimService {
         """;
                                           
         // Envoi de mail en parallèle
-        CompletableFuture.runAsync(() -> {
+       
             try {
-                Utils.sendmail(pilotes.get(0).getEmail(), "Nouvelle réclamation collectée - GPR BOT", messageHtml, null,
-                        " ", settingServiceImpl);
+                mailService.sendMail(pilotes.get(0).getEmail(), "Nouvelle réclamation collectée - GPR BOT", messageHtml, null);
                                         
                 Log successLog = Log.builder()
                     .libelle("Mail notification enregistrement réclamation")
@@ -2865,7 +2825,7 @@ public class ClaimServiceImpl implements ClaimService {
                     logServiceImpl.saveLog(log2);
                 }
             }
-        });    
+          
 
 
         return claim;
