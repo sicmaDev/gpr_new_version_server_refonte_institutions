@@ -249,7 +249,7 @@ public class SuggestionController {
                         .audios(audios)
                         .build();
                 try {
-                    Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.TEMP_SAVED);
+                    Suggestion suggestion = service.tempSaveSuggestion(suggestionAddRequest, ClaimStatus.TEMP_SAVED);
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
@@ -477,7 +477,7 @@ public class SuggestionController {
         }
 
         if (suggestion.getReceiptDateTime() != null) {
-            suggestionDto.setReceiptDateTime(suggestion.getReceiptDateTime().toString());
+            suggestionDto.setReceiptDateTime(suggestionDto.convertDate(suggestion.getReceiptDateTime()));
         }
 
         if (suggestion.getTreatAt() != null) {

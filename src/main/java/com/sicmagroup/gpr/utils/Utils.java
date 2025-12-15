@@ -399,9 +399,9 @@ public class Utils {
     }
 
     public static String convertLocalDateToString(LocalDateTime dateTime) {
-        String resultat;
+       String resultat;
         // Définir un formateur de date personnalisé
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy", Locale.FRENCH);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm", Locale.FRENCH);
 
         // Formater la date et l'heure
         resultat = dateTime.format(formatter);
