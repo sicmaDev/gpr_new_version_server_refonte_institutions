@@ -3624,7 +3624,7 @@ public class ReportServiceImpl implements ReportService {
                 .builder()
                 .label("Délai respecté")
                 .backgroundColor(SERVICE_BG_POINT_COLOR)
-                // .borderColor(CLAIM_BG_COLOR)
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
                 .data(dataInDelai)
                 .build();
         stackedBar.getDatasets().add(stackedBarDataset);
@@ -3788,6 +3788,7 @@ public class ReportServiceImpl implements ReportService {
                 .builder()
                 .label("Respect")
                 .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
                 .data(dataRespectingDelai)
                 .build();
         
@@ -3883,6 +3884,7 @@ public class ReportServiceImpl implements ReportService {
                 .builder()
                 .label("Respect")
                 .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
                 .data(dataRespectingDelai)
                 .build();
         
@@ -3963,6 +3965,7 @@ public class ReportServiceImpl implements ReportService {
         StackedBarDataset datasetRespectingDelai = StackedBarDataset.builder()
                 .label("Respect")
                 .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
                 .data(dataRespectingDelai)
                 .build();
     
@@ -4052,6 +4055,7 @@ public class ReportServiceImpl implements ReportService {
                 .builder()
                 .label("Respect")
                 .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
                 .data(dataRespectingDelai)
                 .build();
     

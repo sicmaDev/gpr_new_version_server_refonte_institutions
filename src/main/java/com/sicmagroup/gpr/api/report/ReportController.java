@@ -121,6 +121,7 @@ public class ReportController {
 						.tauxResolution(service.tauxResolutionSuggest(null))
 						.evolutionSuggestByYearAndAgence(service.evolutionSuggestBySpAndYear(null))
 						.build();
+						
 				ReportGlobalResponse reportGlobalResponse = ReportGlobalResponse
 						.builder()
 						.global(globalReport)
