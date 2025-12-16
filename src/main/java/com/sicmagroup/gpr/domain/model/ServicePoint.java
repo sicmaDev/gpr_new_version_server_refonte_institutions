@@ -34,14 +34,11 @@ import com.sicmagroup.gpr.domain.enumeration.ServicePointEnum;
 	)
 })
 public class ServicePoint {
-
-
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	@Column(unique = true)
 	private String uuid;
-	@Column(unique = true)
 	private String libelle;
 	@Lob
     @Column(columnDefinition = "TEXT")

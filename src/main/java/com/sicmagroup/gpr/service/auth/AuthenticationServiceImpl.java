@@ -498,6 +498,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         User user;
+        User userFirst = userRepository
+            .findByEmail(request.getEmail())
+            .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        if (userFirst.isDeleted()) {
+            throw new RuntimeException("Votre compte est désactivé. Veuillez contacter l’administrateur.");
+        }
         try {
              user = userRepository.findByEmailAndIsDeleted(request.getEmail(),false).orElseThrow();
         } catch (Exception e) {
@@ -508,13 +515,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .content(null)
                         .build())
                 .build();
-            // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-            //         ApiResponseDto
-            //                 .builder()
-            //                 .status(false)
-            //                 .content(ErrorResponse.builder().message("No token")
-            //                         .title("Votre compte ou token n'est plus valable").build())
-            //                 .build());
 
         }
         
@@ -522,9 +522,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
-        // HashMap<String, Object> extras = new HashMap<>();
-        // extras.put("additionalRole", user.getAdditionalrole());
-        // extras.put("habilitations", user.getHabilitations());
+       
         String jwtToken = jwtServiceImpl.generateToken(user);
 
         UserDto userDto = convertToDto(user);
@@ -1324,7 +1322,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             <p>Bonjour <strong>%s</strong>,</p>
                             
                             <p>
-                                Votre compte sur la plateforme de gestion des plaintes et réclamations (<strong>GPR</strong>) a été désactivé avec succès.
+                                Votre compte sur la plateforme de gestion des plaintes et réclamations (<strong>GPR</strong>) a été désactivé.
                             </p>
                             
                             <p>

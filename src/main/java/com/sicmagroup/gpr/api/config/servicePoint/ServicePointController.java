@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -125,7 +126,6 @@ public class ServicePointController {
     @PostMapping("/add")
     public ResponseEntity<ApiResponseDto> addServicePoint(@RequestBody ServicePointDto servicePointDto) {
         ApiResponseDto apiResponseDto;
-
         ServicePoint servicePoint;
         try {
             servicePoint = serviceImpl.saveServicePoint(convertFromDtoToEntity(servicePointDto));
@@ -133,12 +133,24 @@ public class ServicePointController {
                     .status(true)
                     .content(convertToDto(servicePoint))
                     .build();
+        } catch (DataIntegrityViolationException e) {
+
+           apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                            .title("Erreur de duplication")
+                            .message("Une configuration avec le même libellé existe déjà.")
+                            .build())
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);   
         } catch (Exception e) {
             e.printStackTrace();
             apiResponseDto = ApiResponseDto
                     .builder()
                     .status(false)
-                    .content(ErrorResponse.builder().title("NOT FOUND").message("Service Point not found").build())
+                    .content(ErrorResponse.builder().title("NOT FOUND").message("flemme").build())
                     .build();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
         }
@@ -164,13 +176,24 @@ public class ServicePointController {
                         .content(convertToDto(servicePoint))
                         .build();
                 return ResponseEntity.ok(apiResponseDto);
+            } catch (DataIntegrityViolationException e) {
 
+                apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                            .title("Erreur de duplication")
+                            .message("Une configuration avec le même libellé existe déjà.")
+                            .build())
+                    .build();
+
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
             } catch (Exception e) {
                 e.printStackTrace();
                 apiResponseDto = ApiResponseDto
                         .builder()
                         .status(false)
-                        .content(ErrorResponse.builder().title("NOT FOUND").message("Service Point not found").build())
+                        .content(ErrorResponse.builder().title("NOT FOUND").message("Service Point not foundz").build())
                         .build();
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
             }

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,6 +98,18 @@ public class PosteController {
                     .content(convertToDto(poste))
                     .build();
             return ResponseEntity.ok(apiResponseDto);
+        } catch (DataIntegrityViolationException e) {
+
+            apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder()
+                        .title("Erreur de duplication")
+                        .message("Une configuration avec le même libellé existe déjà.")
+                        .build())
+                .build();
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         } catch (NotFoundException e) {
             e.printStackTrace();
             apiResponseDto = ApiResponseDto

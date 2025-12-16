@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -45,14 +46,39 @@ public class CategorieObjetController {
 
     @PostMapping("/add")
     public ResponseEntity<ApiResponseDto> saveCategorie(@RequestBody CategorieObjetRequest request) {
-        CategorieObjet categorieObjet = service.saveOne(request);
+        ApiResponseDto apiResponseDto;
+        CategorieObjet categorieObjet;
+        try {           
+            categorieObjet = service.saveOne(request);
 
-        ApiResponseDto apiResponseDto = ApiResponseDto
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(this.convertToDto(categorieObjet))
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+         } catch (DataIntegrityViolationException e) {
+
+            apiResponseDto = ApiResponseDto
                 .builder()
-                .status(true)
-                .content(this.convertToDto(categorieObjet))
+                .status(false)
+                .content(ErrorResponse.builder()
+                        .title("Erreur de duplication")
+                        .message("Une configuration avec le même libellé existe déjà.")
+                        .build())
                 .build();
-        return ResponseEntity.ok(apiResponseDto);
+
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            e.printStackTrace();
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("NOT FOUND").message("L'objet choisi n'existe pas").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
     }
 
     @PutMapping("/{id}/update")
@@ -68,6 +94,18 @@ public class CategorieObjetController {
                     .content(this.convertToDto(categorieObjet))
                     .build();
             return ResponseEntity.ok(apiResponseDto);
+        } catch (DataIntegrityViolationException e) {
+
+            apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder()
+                        .title("Erreur de duplication")
+                        .message("Une configuration avec le même libellé existe déjà.")
+                        .build())
+                .build();
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         } catch (Exception e) {
             e.printStackTrace();
             apiResponseDto = ApiResponseDto
