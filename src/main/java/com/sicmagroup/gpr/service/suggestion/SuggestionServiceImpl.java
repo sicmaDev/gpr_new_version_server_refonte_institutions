@@ -426,12 +426,161 @@ public class SuggestionServiceImpl implements SuggestionService {
         return suggestion;
     }
 
+    
     @Override
-    public Suggestion tempSaveSuggestion(SuggestionAddRequest request) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'tempSaveSuggestion'");
-    }
+    public Suggestion tempSaveSuggestion(SuggestionAddRequest request,ClaimStatus status) throws Exception {
+        SuggestionRequest suggestionRequest = request.getSuggestionRequest();
+        Log log = Log
+                .builder().build();
+        Suggestion suggestion = Suggestion
+                .builder().build();
+        User collector;
+       try {
+            collector = authServiceImpl.getById(suggestionRequest.getCollectorId());
+        } catch (Exception e) {
+            throw new Exception("Collector of the claim not found");
+        }
 
+        String libelleLog = "";
+        LogTarget targetLog = null;
+       
+            targetLog = LogTarget.SUGGESTION;
+        
+        log.setTarget(targetLog);
+
+        if (suggestionRequest.getId() != null) {
+            Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
+                    .orElseThrow(() -> new Exception("Aucune suggestion ne porte ce code"));
+            suggestion = oldSuggestion;
+            
+            libelleLog = "Modification d'une suggestion Temporairement sauvegardée";
+           
+
+        } else {
+            if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
+                suggestion.setCode(suggestionRequest.getCode());
+               
+                    libelleLog = "Suggestion Temporairement sauvegardée - offline mis en ligne";
+               
+           
+            } else {
+                String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
+                suggestion.setCode(code);
+            }
+
+        }
+
+        log.setLibelle(libelleLog);
+
+        CollectionChannel collectionChannel;
+        if (suggestionRequest.getCollectionChannelId() != null) {
+            try {
+                collectionChannel = collectionChannelService.getById(suggestionRequest.getCollectionChannelId());
+                suggestion.setCanal(collectionChannel);
+            } catch (Exception e) {
+                throw new Exception("Collection channelle choosed not found");
+            }
+        }
+
+        ServicePoint servicePoint;
+        if (suggestionRequest.getServicePointId() != null) {
+            try {
+                servicePoint = servicePointServiceImpl.getById(suggestionRequest.getServicePointId());
+                suggestion.setServiceIndexe(servicePoint);
+            } catch (Exception e) {
+                throw new Exception("Service Point choosed not found");
+            }
+        }
+
+        Product product;
+        if (suggestionRequest.getProductId() != null) {
+            try {
+                product = productServiceImpl.getById(suggestionRequest.getProductId());
+                suggestion.setProduit(product);
+            } catch (Exception e) {
+                throw new Exception("Product choosed not found");
+            }
+        }
+
+        Language language;
+        if (suggestionRequest.getLanguageId() != null) {
+            try {
+                language = languageServiceImpl.getById(suggestionRequest.getLanguageId());
+                suggestion.setLangue(language);
+            } catch (Exception e) {
+                throw new Exception("Objet choosed not found");
+            }
+        }
+        if (suggestionRequest.getClientFirstAndLastName() != null) {
+            suggestion.setClientFirstAndLastName(suggestionRequest.getClientFirstAndLastName());
+        }
+
+        if (suggestionRequest.getGender() != null && !suggestionRequest.getGender().equals("")) {
+            suggestion.setGender(Gender.valueOf(suggestionRequest.getGender()));
+        } else {
+            suggestion.setGender(Gender.NON_DEFINI);
+        }
+
+        if (suggestionRequest.getAddress() != null) {
+            suggestion.setAddress(suggestionRequest.getAddress());
+        }
+
+        if (suggestionRequest.getPhone() != null) {
+            suggestion.setTel(suggestionRequest.getPhone());
+        }
+
+        if (suggestionRequest.getCrew() != null) {
+            suggestion.setCrew(suggestionRequest.getCrew());
+        }
+
+        if (suggestionRequest.getFolderCode() != null) {
+            suggestion.setFolderCode(suggestionRequest.getFolderCode());
+        }
+
+        if (suggestionRequest.getContent() != null) {
+            suggestion.setContent(suggestionRequest.getContent());
+        }
+
+        suggestion.setCollecteur(collector);
+
+        suggestion.setStatus(status);
+        suggestion.setCreatedAt(LocalDateTime.now());
+        if (suggestionRequest.getReceiptDateTime() != null && !suggestionRequest.getReceiptDateTime().isEmpty()) {
+            suggestion.setReceiptDateTime(Utils.convertStrToLocalDateTime(suggestionRequest.getReceiptDateTime()));
+        }
+        suggestion = repository.save(suggestion);
+
+        if (request.getFiles() != null && request.getFiles().length != 0) {
+            // System.out.println("test");
+            // System.out.println(claim.getCode());
+            List<Media> medias = mediaServiceImpl.store(request.getFiles(), suggestion);
+            suggestion.setUpdatedAt(LocalDateTime.now());
+            suggestion.setFiles(medias);
+            suggestion = repository.save(suggestion);
+        }
+
+        if (request.getAudios() != null && request.getAudios().length != 0) {
+            List<ClaimAudio> audios = claimAudioServiceImpl.store(request.getAudios(),suggestion);
+            suggestion.setUpdatedAt(LocalDateTime.now());
+            suggestion = repository.save(suggestion);
+        }
+
+        //Whatsapp
+        if(suggestionRequest.getFromWhatsapp()){
+            System.out.println("From Whatsapp");
+            Boolean isOk = mediaServiceImpl.attachFileToClaim(suggestion, suggestionRequest.getFilesWhatsapp());
+            if(isOk && suggestionRequest.getInboxWhatsapp() != null){
+                List<InboxMessage> messages = messageRepository.findByInbox(suggestionRequest.getInboxWhatsapp());
+                for (InboxMessage message : messages) {
+                    messageRepository.delete(message);
+                }
+                inboxRepository.delete(suggestionRequest.getInboxWhatsapp());
+            }
+        }
+
+
+        return suggestion ;
+    }
     @Override
     public Suggestion treatSuggestion(Suggestion suggestion, User treator, TreatSuggestionRequest request)
             throws Exception {

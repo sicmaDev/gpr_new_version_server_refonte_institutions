@@ -3,6 +3,7 @@
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.sicmagroup.gpr.domain.dto.claimResponse.CollectionChannelResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.LanguageResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.ProductResponse;
@@ -10,7 +11,8 @@ import com.sicmagroup.gpr.domain.dto.claimResponse.ServicePointResponse;
 import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
-
+import com.sicmagroup.gpr.utils.Utils;
+import java.time.format.DateTimeFormatter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -47,4 +49,8 @@ public class SuggestionDto {
     private List<ExtraContentResponse> extras;
     private String convertedAt;
     private UserResponse convertedBy;
+    public String convertDate(LocalDateTime dateTime){
+        
+        return Utils.convertLocalDateTimeToString(dateTime);
+    }   
 }

@@ -692,7 +692,7 @@ public class BotKeyServiceImpl implements BotKeyService {
         }
 
         if (suggestion.getReceiptDateTime() != null) {
-            suggestionDto.setReceiptDateTime(suggestion.getReceiptDateTime().toString());
+            suggestionDto.setReceiptDateTime(suggestionDto.convertDate(suggestion.getReceiptDateTime()));
         }
 
         if (suggestion.getTreatAt() != null) {

@@ -151,7 +151,6 @@ public class ClaimController {
                 .status(true)
                 .content(mediaResponses)
                 .build();
-        System.out.println("getAllFilesForAClaim" + mediaResponses);
         return ResponseEntity.ok(apiResponseDto);
     }
 

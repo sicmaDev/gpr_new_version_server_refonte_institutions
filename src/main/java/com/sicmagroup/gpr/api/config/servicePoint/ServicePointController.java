@@ -150,7 +150,7 @@ public class ServicePointController {
     public ResponseEntity<ApiResponseDto> updateServicePoint(@PathVariable(name = "id") Long id,
             @RequestBody ServicePointDto servicePointDto) {
         ApiResponseDto apiResponseDto;
-         Long idParsed = id.longValue();
+        Long idParsed = id.longValue();
         Long serviceId = servicePointDto.getId().longValue();
         if (!idParsed.equals(serviceId)) {
             throw new IllegalArgumentException("Les ID ne correspondent pas");

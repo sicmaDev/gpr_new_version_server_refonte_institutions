@@ -15,13 +15,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import jakarta.persistence.UniqueConstraint;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "gps_collection_channel")
+@Table(name = "gps_collection_channel",uniqueConstraints = @UniqueConstraint(columnNames = {"libelle"}))
 public class CollectionChannel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
