@@ -82,7 +82,20 @@ public class DocumentationController {
             List<Documentation> rDocumentations = serviceImpl.stores(files, libellesGet.toArray(new String[0]),
                     connectedUser);
 
-                    System.out.println(rDocumentations);
+            System.out.println(rDocumentations);
+            if (rDocumentations == null) {
+                ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                        .title("Erreur de duplication")
+                        .message("Ce fichier existe déjà dans le système.")
+                        .build())
+                    .build();
+
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }  
+            
             ApiResponseDto apiResponseDto = ApiResponseDto
 
                     .builder()
