@@ -113,10 +113,21 @@ public class SuggestionServiceImpl implements SuggestionService {
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
                     .orElseThrow(() -> new Exception("Aucune suggestion ne porte ce code"));
             suggestion = oldSuggestion;
-            suggestion.setCodeClient(oldSuggestion.getCodeClient());           
+               
+            
+             if (oldSuggestion.getCodeClient() == null || oldSuggestion.getCodeClient() == "") {
+                String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
+                suggestion.setCodeClient(codeClient);
+            }
+            else {
+                suggestion.setCodeClient(oldSuggestion.getCodeClient()); 
+                // claim.setCodeClient(claimToSave.getCodeClient());
+            }
         } else {
             if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
                 suggestion.setCode(suggestionRequest.getCode());
+                suggestion.setCodeClient(suggestionRequest.getCodeClient());
+
             } else {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
                 suggestion.setCode(code);
