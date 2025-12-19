@@ -39,7 +39,12 @@ public class DocumentationServiceImpl implements DocumentationService {
 
         // for (int i = 0; i < libelle.length; i++) {
             
-            resuList.add(storeOne(files[0], libelle[0], user));
+            Documentation doc = storeOne(files[0], libelle[0], user);
+
+            if (doc == null) {
+                return null;
+            } 
+            resuList.add(doc);
         // }
 
         return resuList;
@@ -60,7 +65,11 @@ public class DocumentationServiceImpl implements DocumentationService {
         }
 
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
-
+        List<Documentation> existing = documentationRepository.findByNameAndSize(fileName, file.getSize());
+        if (!existing.isEmpty()) {
+            return null;
+        }
+        
         if (fileName.contains("..")) {
             throw new FileStorageException("Sorry! Filename contains invalid path sequence " + fileName);
         }

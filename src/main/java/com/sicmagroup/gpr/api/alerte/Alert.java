@@ -5,6 +5,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,7 +33,10 @@ public class Alert {
     @GetMapping(value = "/claim")
     public ResponseEntity<ApiResponseDto> getAlertClaim() {
 
-        List<AlertDto> claimAlertDtos = claimService.getAllAlertDtosByType(ClaimType.CLAIM);
+        List<AlertDto> claimAlertDtos = claimService.getAllAlertDtosByType(ClaimType.CLAIM)
+            .stream()
+            .sorted((c1, c2) -> c2.getDeclenchedDate().compareTo(c1.getDeclenchedDate()))
+            .collect(Collectors.toList()); 
 
         ApiResponseDto apiResponseDto = ApiResponseDto
                 .builder()
@@ -45,7 +49,11 @@ public class Alert {
     @GetMapping(value = "/denun")
     public ResponseEntity<ApiResponseDto> getAlertDenun() {
 
-        List<AlertDto> claimAlertDtos = claimService.getAllAlertDtosByType(ClaimType.DENUNCIACION);
+        List<AlertDto> claimAlertDtos = claimService.getAllAlertDtosByType(ClaimType.DENUNCIACION)
+            .stream()
+            .sorted((c1, c2) -> c2.getDeclenchedDate().compareTo(c1.getDeclenchedDate()))
+            .collect(Collectors.toList());
+            
         ApiResponseDto apiResponseDto = ApiResponseDto
                 .builder()
                 .status(true)

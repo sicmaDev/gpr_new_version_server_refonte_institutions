@@ -481,7 +481,7 @@ public class ClaimController {
                     Arrays.asList(ClaimStatus.TREAT));
         } else {
             allClaims = service.getClaimByStatus(ClaimType.CLAIM, status);
-        }
+        }        
         List<ClaimDto> allClaimDtos = allClaims.stream()
             .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
             .map(this::convertToDto)

@@ -420,7 +420,10 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
     }
 
     // Conversion en DTO
-    List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+    List<ClaimDto> allClaimDtos = allClaims.stream()
+        .map(this::convertToDto)
+        .sorted((c1, c2) -> c2.getCreatedAt().compareTo(c1.getCreatedAt()))
+        .collect(Collectors.toList());
 
     // Création de la réponse API
     apiResponseDto = ApiResponseDto
