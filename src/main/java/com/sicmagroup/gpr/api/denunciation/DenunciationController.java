@@ -188,7 +188,7 @@ public class DenunciationController {
                 // Ajouter le point de service de l'utilisateur à la liste des points de service liés
                 relatedServicePoints.add(servicePoint);
         
-                // Filtrer les réclamations pour tous ces points de service
+                // Filtrer les Dénonciations pour tous ces points de service
                 allClaims = allClaims.stream()
                     .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
                     .collect(Collectors.toList());
@@ -268,7 +268,7 @@ public class DenunciationController {
 
         if (connectedUser.isRa()) {
 
-            // Filtrer les réclamations appartenant au même point de service que l'utilisateur
+            // Filtrer les Dénonciations appartenant au même point de service que l'utilisateur
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.SAVED,
             ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
@@ -287,7 +287,7 @@ public class DenunciationController {
                 // Ajouter le point de service de l'utilisateur à la liste des points de service liés
                 relatedServicePoints.add(servicePoint);
         
-                // Filtrer les réclamations pour tous ces points de service
+                // Filtrer les Dénonciations pour tous ces points de service
                 allClaims = allClaims.stream()
                     .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
                     .collect(Collectors.toList());
@@ -315,7 +315,7 @@ public class DenunciationController {
                 allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims);
             }
         }else {
-            // voir les réclamations qu'on à affecter à l'utilisateur et
+            // voir les Dénonciations qu'on à affecter à l'utilisateur et
             allClaims = service.getAllByTypeAndCollectorAndStatusOrTreatmentAffectedToAndStatusIn(
                     ClaimType.DENUNCIACION, ClaimStatus.SAVED, connectedUser,
                     Arrays.asList(ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
@@ -703,7 +703,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
-                            .content(ErrorResponse.builder().message(e.getMessage()).title("Réclamation introuvable")
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("Dénonciation introuvable")
                                     .build())
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
@@ -715,7 +715,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
-                            .content(ErrorResponse.builder().message(e.getMessage()).title("Réclamation introuvable")
+                            .content(ErrorResponse.builder().message(e.getMessage()).title("Dénonciation introuvable")
                                     .build())
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
@@ -728,7 +728,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                             .status(false)
                             .content(
                                     ErrorResponse.builder()
-                                            .message("Vous n'êtes pas habileté à traiter cette réclamation GRAVE")
+                                            .message("Vous n'êtes pas habileté à traiter cette Dénonciation GRAVE")
                                             .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
@@ -739,7 +739,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                             .builder()
                             .status(false)
                             .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas habileté à traiter cette réclamation à risque MOYEN")
+                                    .message("Vous n'êtes pas habileté à traiter cette Dénonciation à risque MOYEN")
                                     .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
@@ -749,7 +749,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                             .builder()
                             .status(false)
                             .content(ErrorResponse.builder()
-                                    .message("Vous n'êtes pas hailité à traiter cette réclamation à risque MINEUR")
+                                    .message("Vous n'êtes pas hailité à traiter cette Dénonciation à risque MINEUR")
                                     .title("Habilitation manquante").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
@@ -786,86 +786,6 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
         }
     }
 
-    // @PutMapping(value = "/measureSatisfaction")
-    // public ResponseEntity<ApiResponseDto> measureSatisfactioEntity(@RequestBody
-    // MeasureSatisfactionRequest request) {
-    // ApiResponseDto apiResponseDto = new ApiResponseDto();
-    // Claim claim = new Claim();
-    // try {
-    // claim = service.getById(request.getClaimId());
-    // } catch (Exception e) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION
-    // THROW").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    // }
-
-    // if (claim.getStatus() != ClaimStatus.TREAT) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message("Status de la réclamation
-    // invalide.")
-    // .title("Opération impossible").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    // }
-
-    // Solution solution = new Solution();
-
-    // try {
-    // solution = solutionServiceImpl.getById(request.getSolutionId());
-    // } catch (Exception e) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION
-    // THROW").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    // }
-
-    // User measurer = new User();
-
-    // try {
-    // measurer = authService.getById(request.getMeasurerId());
-
-    // } catch (Exception e) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION
-    // THROW").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    // }
-
-    // if (!measurer.canMeasureClaim()) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message("Vous n'êtes pas hailité à mesurer
-    // une réclamation")
-    // .title("Habilitation manquante").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
-    // }
-
-    // claim = service.measureClaim(claim, solution, measurer,
-    // request.getSatisfactionStatus());
-
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(true)
-    // .content(convertToDto(claim))
-    // .build();
-    // return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
-
-    // }
-
     @PutMapping(value = "/unapprouvedSolution")
     public ResponseEntity<ApiResponseDto> unApprouvedSolution(@RequestBody UnApprouvedRequest request) {
         ApiResponseDto apiResponseDto = new ApiResponseDto();
@@ -890,7 +810,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
-                            .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
+                            .content(ErrorResponse.builder().message("Status de la Dénonciation invalide.")
                                     .title("Opération impossible").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
@@ -971,7 +891,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
-                            .content(ErrorResponse.builder().message("Status de la réclamation invalide.")
+                            .content(ErrorResponse.builder().message("Status de la Dénonciation invalide.")
                                     .title("Opération impossible").build())
                             .build();
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
@@ -1068,7 +988,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                 //             .builder()
                 //             .status(false)
                 //             .content(ErrorResponse.builder()
-                //                     .message("Vous n'êtes pas le collecteur de cette réclamation.")
+                //                     .message("Vous n'êtes pas le collecteur de cette Dénonciation.")
                 //                     .title("Opération invalide")
                 //                     .build())
                 //             .build();
@@ -1127,25 +1047,18 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
             }
 
-            if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
-                try {
-                    service.deleteById_2(id);
-                    return ResponseEntity.ok(
-                        ApiResponseDto.builder().status(true).content("Réclamation supprimée avec succès.").build()
-                        );
-                } catch (NotFoundException e) {
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                        ApiResponseDto.builder().status(false).content("Réclamation non trouvée.").build()
+          
+            try {
+                service.deleteById_2(id);
+                return ResponseEntity.ok(
+                    ApiResponseDto.builder().status(true).content("Dénonciation supprimée avec succès.").build()
                     );
-                }
-            } else {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                    ApiResponseDto.builder()
-                        .status(false)
-                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
-                        .build()
+            } catch (NotFoundException e) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    ApiResponseDto.builder().status(false).content("Dénonciation non trouvée.").build()
                 );
             }
+           
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ApiResponseDto.builder()
@@ -1217,173 +1130,6 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
             );
         }
     }
-
-    // @PutMapping(value = "/classedDenun")
-    // public ResponseEntity<ApiResponseDto> classedClaim(
-    // @RequestBody ClassedClaimRequest request) {
-    // ApiResponseDto apiResponseDto = new ApiResponseDto();
-
-    // Claim claim = new Claim();
-    // try {
-    // claim = service.getById(request.getClaimId());
-    // } catch (Exception e) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION
-    // THROW").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    // }
-
-    // User classer = new User();
-
-    // try {
-    // classer = authService.getById(request.getUserId());
-
-    // } catch (Exception e) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION
-    // THROW").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    // }
-
-    // if (!classer.canMeasureClaim()) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message("Opération non authorisée")
-    // .title("Habilitation insufissante").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
-    // }
-
-    // List<ClaimStatus> authorizedClaimStatus =
-    // Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-    // ClaimStatus.PARTIAL_SATISFIED);
-
-    // if (authorizedClaimStatus.contains(claim.getStatus())) {
-    // claim = service.classedClaim(claim, classer);
-    // } else {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message("Une réclamation non mesurée ne peut
-    // pas être classée")
-    // .title("Opération impossible").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-    // }
-
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(true)
-    // .content(convertToDto(claim))
-    // .build();
-
-    // return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
-
-    // }
-
-    // @PutMapping(value = "/litigate")
-    // public ResponseEntity<ApiResponseDto> litigateClaim(
-    // @RequestBody LitigateClaimRequest request) {
-    // ApiResponseDto apiResponseDto = new ApiResponseDto();
-
-    // Claim claim = new Claim();
-    // try {
-    // claim = service.getById(request.getClaimId());
-    // } catch (Exception e) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION
-    // THROW").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    // }
-
-    // User litigatUser = new User();
-
-    // try {
-    // litigatUser = authService.getById(request.getUserId());
-    // } catch (Exception e) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION
-    // THROW").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-    // }
-    // if (request.getExternalRecourseChoosed().isEmpty()) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder()
-    // .message("Il faut au moins choisir un organe saisi comme recours externe")
-    // .title("Aucun recours externe trouvé").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-    // }
-    // List<ExternalRecourse> listChoosed = new ArrayList<>();
-    // for (int i = 0; i < request.getExternalRecourseChoosed().split(",").length;
-    // i++) {
-    // try {
-    // listChoosed.add(externalRecourseServiceImpl
-    // .getById(Long.parseLong(request.getExternalRecourseChoosed().split(",")[i])));
-    // } catch (Exception e) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message(e.getMessage())
-    // .title("Recours externe " +
-    // request.getExternalRecourseChoosed().split(",")[i]
-    // + " introuvable")
-    // .build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-    // }
-    // }
-
-    // if (!litigatUser.canMeasureClaim()) {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder().message("Opération non authorisée")
-    // .title("Habilitation insufissante").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(apiResponseDto);
-    // }
-
-    // List<ClaimStatus> authorizedClaimStatus =
-    // Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-    // ClaimStatus.PARTIAL_SATISFIED);
-
-    // if (authorizedClaimStatus.contains(claim.getStatus())) {
-    // claim = service.litigateClaim(claim, litigatUser, listChoosed);
-    // } else {
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(false)
-    // .content(ErrorResponse.builder()
-    // .message("Une réclamation non mesurée ne peut pas être classée litigieuse")
-    // .title("Opération impossible").build())
-    // .build();
-    // return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-    // }
-
-    // apiResponseDto = ApiResponseDto
-    // .builder()
-    // .status(true)
-    // .content(convertToDto(claim))
-    // .build();
-    // return ResponseEntity.status(HttpStatus.OK).body(apiResponseDto);
-
-    // }
 
     private MediaResponse convertToResponse(Media media) {
         MediaResponse mediaResponse = modelMapper.map(media, MediaResponse.class);
