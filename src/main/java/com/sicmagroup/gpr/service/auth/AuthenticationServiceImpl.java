@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
@@ -501,9 +502,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         User userFirst = userRepository
             .findByEmail(request.getEmail())
             .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
-
+        
         if (userFirst.isDeleted()) {
-            throw new RuntimeException("Votre compte est désactivé. Veuillez contacter l’administrateur.");
+            return AuthenticationResponse.builder()
+                .response(ApiResponseDto.builder()
+                    .status(false)
+                    .content(Map.of(
+                        "message", "Votre compte est désactivé. Veuillez contacter l’administrateur."
+                    ))
+                    .build())
+                .build();
+
         }
         try {
              user = userRepository.findByEmailAndIsDeleted(request.getEmail(),false).orElseThrow();
@@ -1399,7 +1408,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
                             <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
                             
-                            <h2 style="color: #004080; text-align: center;">Validation de votre compte - GPR</h2>
+                            <h2 style="color: #004080; text-align: center;">Activation de votre compte - GPR</h2>
                             
                             <p>Bonjour <strong>%s</strong>,</p>
                             

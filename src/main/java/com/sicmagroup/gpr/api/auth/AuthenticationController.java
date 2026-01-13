@@ -52,7 +52,14 @@ public class AuthenticationController {
 
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
-        return ResponseEntity.ok(authenticationServiceImpl.authenticate(request));
+           AuthenticationResponse response = authenticationServiceImpl.authenticate(request);
+          if (!response.getResponse().isStatus()) {
+                return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(response);
+            }
+        // return ResponseEntity.ok(authenticationServiceImpl.authenticate(request));
+        return ResponseEntity.ok(response);
     }
     @GetMapping("/testy")
     public String testy() {
