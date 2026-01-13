@@ -134,6 +134,18 @@ public class PosteController {
             Poste poste;
             try {
                 poste = posteServiceImpl.getById(id);
+             } catch (DataIntegrityViolationException e) {
+
+                apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                            .title("Erreur de duplication")
+                            .message("Une configuration avec le même libellé existe déjà.")
+                            .build())
+                    .build();
+
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
             } catch (Exception e) {
                 apiResponseDto = ApiResponseDto
                         .builder()

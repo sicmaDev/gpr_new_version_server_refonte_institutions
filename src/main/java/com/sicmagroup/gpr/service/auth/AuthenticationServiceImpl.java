@@ -1924,7 +1924,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     alertDto = AlertDto
                             .builder()
                             .claimClient(claim.getClientFirstAndLastName())
-                            .claimCode(claim.getCode())
+                            .claimCodeClient(claim.getCodeClient())
                             .claimId(claim.getId())
                             .retardDay(days + " jr(s) " + hours + " heure(s)")
                             .declenchedDate(calculateDate)
@@ -1993,7 +1993,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         dashboard.put("tauxSatisfaction", tauxSatisfactionFormate);
 
         
-                List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
+            List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
         retardClaims.addAll(alertClaimAndDenun(ClaimType.DENUNCIACION));
         dashboard.put("claimDenunRetard", retardClaims);
         dashboard.put("TotalclaimDenunRetard", retardClaims.size());
