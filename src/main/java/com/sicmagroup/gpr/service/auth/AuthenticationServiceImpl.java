@@ -1985,10 +1985,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         // dashboard.put("tauxSatisfaction",
         //        Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
         
-         // Formater le résultat avec deux chiffres après la virgule
-        DecimalFormat df = new DecimalFormat("#.00");
-        String tauxSatisfactionFormate = df.format(Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
-
+        // Formater le résultat avec deux chiffres après la virgule
+        String tauxSatisfactionFormate;
+        if (claimsTreat.size() == 0) {
+            tauxSatisfactionFormate = "0";
+        } else {
+            DecimalFormat df = new DecimalFormat("#.00");
+            tauxSatisfactionFormate = df.format(Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
+        }
+       
         // Ajout au dashboard
         dashboard.put("tauxSatisfaction", tauxSatisfactionFormate);
 
