@@ -53,7 +53,7 @@ public class AuthenticationController {
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest request) {
            AuthenticationResponse response = authenticationServiceImpl.authenticate(request);
-          if (!response.getResponse().isStatus()) {
+            if (!response.getResponse().isStatus()) {
                 return ResponseEntity
                     .status(HttpStatus.FORBIDDEN)
                     .body(response);

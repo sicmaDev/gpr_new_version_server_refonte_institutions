@@ -11,6 +11,8 @@ public class Constante {
     public static final String TEST_PATH_AUDIO = "/home/api-gpr/depot/gpr/claim_audio/";
     public static final String TEST_PATH_RESSOURCE = "/home/api-gpr/depot/gpr/documents/";
 
+    public static final String LICENSE_URL = "https://gpradmin.sicmagroup.com/api/v1/license/updateLicenceClientSide";
+
 
     public static final String INSTITUTION_SLUG = "app-institution";
     public static final String SMS_SLUG = "app-sms";
