@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,13 +57,14 @@ public class AlertRetardCron {
 
             affectationsEnRetard.addAll(affectationsBientotEnRetard);
 
+            List<HistoriqueAffectation> affectationsEnRetardFiltrees = filtrerHorsLitigation(affectationsEnRetard);   
             List<Claim> plaintesNonAffectees = getClaimsNonAffecteesEnRetard(now, fourDaysLater);
 
-            sendToAgents(affectationsEnRetard);
+            sendToAgents(affectationsEnRetardFiltrees);
 
-            sendToPilotes(affectationsEnRetard, plaintesNonAffectees);
+            sendToPilotes(affectationsEnRetardFiltrees, plaintesNonAffectees);
         } catch (Exception e) {
-            System.out.println("Erreur lors de l'envoi du mail : " + e.getMessage());
+            System.out.println("Erreur lors de l'envoi du mail : " + e);
         }
     }
 
@@ -77,7 +79,6 @@ public class AlertRetardCron {
     private void sendToAgents(List<HistoriqueAffectation> affectations) {
         Map<String, List<HistoriqueAffectation>> affectationsParAgent =
                 affectations.stream().collect(Collectors.groupingBy(HistoriqueAffectation::getEmailAgent));
-        System.out.println("cc");
         for (Map.Entry<String, List<HistoriqueAffectation>> entry : affectationsParAgent.entrySet()) {
             String emailAgent = entry.getKey();
             List<HistoriqueAffectation> affectationsAgent = entry.getValue();
@@ -327,6 +328,30 @@ public class AlertRetardCron {
 
         return body.toString();
     }
+
+
+    private List<HistoriqueAffectation> filtrerHorsLitigation(
+        List<HistoriqueAffectation> affectations) {
+
+        Set<Long> ids = affectations.stream()
+                .map(HistoriqueAffectation::getReclamationId)
+                .collect(Collectors.toSet());
+
+        Map<Long, Claim> map = claimRepository.findAllById(ids)
+                .stream()
+                .collect(Collectors.toMap(Claim::getId, r -> r));
+
+        return affectations.stream()
+                .filter(h -> {
+                    Claim r = map.get(h.getReclamationId());
+                    return r != null
+                            && r.getStatus() != null
+                            && !ClaimStatus.LITIGATION.name()
+                                    .equals(r.getStatus().toString());
+                })
+                .collect(Collectors.toList());
+    }
+
 
 
 }
