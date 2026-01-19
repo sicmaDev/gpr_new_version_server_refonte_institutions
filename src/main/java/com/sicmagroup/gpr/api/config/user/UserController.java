@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -163,7 +164,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request) {
+public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequest request) {
         if (request.getAdditionalRole() == "") {
             request.setAdditionalRole(Role.MOLDUE.name());
         }
@@ -174,11 +175,27 @@ public class UserController {
 
         try {
             return ResponseEntity.ok(authenticationServiceImpl.register(request));
-        } catch (AuthenticationException e) {
+        }catch (DataIntegrityViolationException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                .builder()
+                .status(false)
+                .content(ErrorResponse.builder()
+                        .title("Erreur de duplication")
+                        .message("Un utilisateur avec ce numéro ou cet email existe déjà.")
+                        .build())
+                .build();
+
+            AuthenticationResponse authenticationResponse = AuthenticationResponse
+                .builder()
+                .response(apiResponseDto)
+                .build();
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(authenticationResponse);
+        }catch (AuthenticationException e) {
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(false)
-                    .content(ErrorResponse.builder().title("Invalid email").message("This email already exist").build())
+                    .content(ErrorResponse.builder().title("Invalid email").message("Un utilisateur avec cet email existe déjà").build())
                     .build();
             e.printStackTrace();
             AuthenticationResponse authenticationResponse = AuthenticationResponse
@@ -188,8 +205,7 @@ public class UserController {
 
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(authenticationResponse);
         }
-    }
-
+    }    
     @PostMapping("/publicRegister")
     public ResponseEntity<AuthenticationResponse> publicRegister(@RequestBody RegisterRequest request) {
         if (request.getAdditionalRole() == null || request.getAdditionalRole().equals("")) {
@@ -252,7 +268,20 @@ public class UserController {
                         .build();
                 return ResponseEntity.ok(apiResponseDto);
 
-            } catch (Exception e) {
+            } catch (DataIntegrityViolationException e) {
+
+                apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                        .title("Erreur de duplication")
+                        .message("Un utilisateur avec ce numéro ou cet email existe déjà.")
+                        .build())
+                    .build();
+
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+
+            }catch (Exception e) {
                 e.printStackTrace();
                 apiResponseDto = ApiResponseDto
                         .builder()
