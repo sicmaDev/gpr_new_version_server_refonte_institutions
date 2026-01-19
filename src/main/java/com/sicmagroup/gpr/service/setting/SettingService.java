@@ -14,6 +14,6 @@ public interface SettingService {
     Setting getbySlug(String slug) throws Exception;
     Setting save(AddSettingRequest request);    
     Setting update(UpdateSettingRequest request) throws Exception;
-    void updateLicence();
+    // void updateLicence();
     
 }

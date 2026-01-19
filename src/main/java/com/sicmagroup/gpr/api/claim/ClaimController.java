@@ -208,7 +208,7 @@ public class ClaimController {
         if (connectedUser.isRa()) {
             // Récupérer le point de service de l'utilisateur
             ServicePoint servicePoint = connectedUser.getServicePoint();
-            
+            Long raId = connectedUser.getId();
             // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
             List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
             
@@ -218,12 +218,15 @@ public class ClaimController {
         
                 // Filtrer les réclamations pour tous ces points de service
                 allClaims = allClaims.stream()
-                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()) 
+                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             } else {
                 // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
                 allClaims = allClaims.stream()
-                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint)
+                      || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
+                
                     .collect(Collectors.toList());
             }
         }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
@@ -357,7 +360,7 @@ public class ClaimController {
             // Filtrer les réclamations appartenant au même point de service que l'utilisateur
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.CLAIM, Arrays.asList(ClaimStatus.SAVED,
             ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
-
+            Long raId = connectedUser.getId();
             
             // List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.CLAIM,
             //         Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
@@ -375,12 +378,14 @@ public class ClaimController {
         
                 // Filtrer les réclamations pour tous ces points de service
                 allClaims = allClaims.stream()
-                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint())
+                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             } else {
                 // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
                 allClaims = allClaims.stream()
-                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint)
+                   || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             }
         }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
