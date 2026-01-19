@@ -138,7 +138,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         ServicePoint servicePoint = servicePointRepository.findById(request.getServicePointId()).get();
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new AuthenticationException("Error this email already exist");
+            throw new AuthenticationException("Un utilisateur avec cet email existe déjà");
         }
         int totalUser = 0;
         String license = "";
@@ -1916,6 +1916,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .builder()
                             .claimClient(claim.getClientFirstAndLastName())
                             .claimCodeClient(claim.getCodeClient())
+                            .claimCode(claim.getCode())
                             .claimId(claim.getId())
                             .retardDay(days + " jr(s) " + hours + " heure(s)")
                             .declenchedDate(calculateDate)
