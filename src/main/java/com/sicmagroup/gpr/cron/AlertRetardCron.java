@@ -71,11 +71,16 @@ public class AlertRetardCron {
             affectationsEnRetard.addAll(affectationsBientotEnRetard);
 
             List<HistoriqueAffectation> affectationsEnRetardFiltrees = filtrerHorsLitigation(affectationsEnRetard);   
+            List<HistoriqueAffectation> affectationsEnRetardFiltreesP = filtrerHorsLitigationP(affectationsEnRetard);   
             List<Claim> plaintesNonAffectees = getClaimsNonAffecteesEnRetard(now, fourDaysLater);
 
-            sendToAgents(affectationsEnRetardFiltrees);
-
-            sendToPilotes(affectationsEnRetardFiltrees, plaintesNonAffectees);
+            if (affectationsEnRetardFiltrees.size() > 0) {
+                sendToAgents(affectationsEnRetardFiltrees);
+            }
+            if (affectationsEnRetardFiltreesP.size() > 0 || plaintesNonAffectees.size() > 0) {
+                sendToPilotes(affectationsEnRetardFiltreesP, plaintesNonAffectees);
+                
+            }
         } catch (Exception e) {
             System.out.println("Erreur lors de l'envoi du mail : " + e);
         }
@@ -97,7 +102,7 @@ public class AlertRetardCron {
             List<HistoriqueAffectation> affectationsAgent = entry.getValue();
 
             try {
-                String subject = "Alerte - Réclamations en retard";
+                String subject = "Alerte - Réclamations";
                 String body = buildAgentMail(affectationsAgent);
 
                 User user = userRepository.findByEmailAndIsDeleted(emailAgent, false)
@@ -119,10 +124,8 @@ public class AlertRetardCron {
 
             if (pilotes.isEmpty()) return;
 
-            // String subject = "Alerte - Réclamations en retard (" +
-            //     (affectations.size() + claimsNonAffectees.size()) + ")"+
-            //     (System.currentTimeMillis() % 100000);
-            String subject = "Alerte - Réclamations en retard";
+           
+            String subject = "Alerte - Réclamations";
 
             String body = buildPiloteMail(affectations, claimsNonAffectees);
 
@@ -157,7 +160,7 @@ public class AlertRetardCron {
                 .append(",<br>") ;
         body.append("Vous avez <strong>")
                 .append(affectations.size())
-                .append(" plainte(s)</strong> en retard ou proches de l’échéance :");
+                .append(" plainte(s)</strong> affectée(s) :");
         body.append("</p>");
 
         // ---- TABLEAU ----
@@ -233,15 +236,15 @@ public class AlertRetardCron {
         body.append("box-shadow:0 2px 8px rgba(0,0,0,0.1); padding:25px;'>");
 
         // ---- TITRE ----
-        body.append("<h2 style='color:#004080; text-align:center;'>Rapport de suivi des plaintes en retard - GPR</h2>");
+        body.append("<h2 style='color:#004080; text-align:center;'>Rapport de suivi des plaintes - GPR</h2>");
         body.append("<p>Bonjour,</p>");
-        body.append("<p>Veuillez trouver ci-dessous un résumé des plaintes en retard de traitement.</p>");
+        body.append("<p>Veuillez trouver ci-dessous un résumé des plaintes.</p>");
 
         // ==========================================================
         //         PLAINTES AFFECTÉES EN RETARD
         // ==========================================================
         if (!affectations.isEmpty()) {
-            body.append("<h3 style='color:#d9534f;'>Plaintes affectées en retard (")
+            body.append("<h3 style='color:#d9534f;'>Plaintes affectées (")
                 .append(affectations.size()).append(")</h3>");
 
             Map<String, List<HistoriqueAffectation>> parAgent = affectations
@@ -291,7 +294,7 @@ public class AlertRetardCron {
         //         PLAINTES NON AFFECTÉES EN RETARD
         // ==========================================================
         if (!claimsNonAffectees.isEmpty()) {
-            body.append("<h3 style='color:#f0ad4e;'>Plaintes non affectées en retard (")
+            body.append("<h3 style='color:#f0ad4e;'>Plaintes non affectées (")
                 .append(claimsNonAffectees.size()).append(")</h3>");
 
             body.append("<table style='width:100%; border-collapse: collapse; margin-bottom:20px;'>");
@@ -342,6 +345,26 @@ public class AlertRetardCron {
     }
 
     private List<HistoriqueAffectation> filtrerHorsLitigation(
+        List<HistoriqueAffectation> affectations) {
+
+        Set<Long> ids = affectations.stream()
+                .map(HistoriqueAffectation::getReclamationId)
+                .collect(Collectors.toSet());
+
+        Map<Long, Claim> map = claimRepository.findAllById(ids)
+                .stream()
+                .collect(Collectors.toMap(Claim::getId, r -> r));
+
+        return affectations.stream()
+            .filter(h -> {
+                Claim r = map.get(h.getReclamationId());
+                return r != null
+                        && r.getStatus() == ClaimStatus.AFFECTED;
+            })
+            .collect(Collectors.toList());
+    }
+
+    private List<HistoriqueAffectation> filtrerHorsLitigationP(
         List<HistoriqueAffectation> affectations) {
 
         Set<Long> ids = affectations.stream()
