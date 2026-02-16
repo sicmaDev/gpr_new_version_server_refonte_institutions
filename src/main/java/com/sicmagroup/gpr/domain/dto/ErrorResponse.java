@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class ErrorResponse {
     private String title;
     private String message;
+    private String key;
 }

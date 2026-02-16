@@ -122,6 +122,26 @@ public class Claim {
     @ManyToOne
     private User transmittedBy;
 
+
+    @Column(name = "is_deleted",columnDefinition = "boolean default false")
+	private boolean isDeleted;
+    @Column(name = "is_restored",columnDefinition = "boolean default false")
+	private boolean isRestored;
+    @ManyToOne
+    @JoinColumn(name = "deleted_by", nullable = true)
+    private User deletedBy;
+    @ManyToOne
+    @JoinColumn(name = "restored_by", nullable = true)
+    private User restoredBy;
+    @Column(name = "deleted_at", nullable = true)
+    private LocalDateTime deletedAt;
+    @Column(name = "restored_at", nullable = true)
+    private LocalDateTime restoredAt;
+    @Lob
+    @Column(columnDefinition = "TEXT")
+	private String delete_reason;
+
+
     @OneToOne()
     private Chat session;
 	

@@ -2957,4 +2957,34 @@ public class ClaimServiceImpl implements ClaimService {
         
         repository.delete(claim);
     }
+    @Override
+    public List<Claim> checkPhone(String phone, ServicePoint userAgency, boolean isPilot) {
+        List<ClaimStatus> nonTerminatedStatuses = Arrays.asList(
+                ClaimStatus.SAVED,
+                ClaimStatus.AFFECTED,
+                ClaimStatus.TO_APPROUVED,
+                ClaimStatus.DESAPPROUVED,
+                ClaimStatus.TREAT,
+                ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED,
+                ClaimStatus.LITIGATION,
+                ClaimStatus.CLASSED,
+                ClaimStatus.TRANSMITTED
+        );
+
+        List<Claim> claims = Collections.emptyList();
+        if (isPilot) {
+            if (phone != null && !phone.isEmpty()) {
+                claims = repository.findByTelAndStatusInAndIsDeletedFalse(phone, nonTerminatedStatuses);
+            }
+        } else {
+            if (phone != null && !phone.isEmpty()) {
+                claims = repository.findByTelAndServicePointAndStatusInAndIsDeletedFalse(phone, userAgency, nonTerminatedStatuses);
+            }
+        }
+
+        return claims;
+    }
+
+
 }

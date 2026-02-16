@@ -17,6 +17,7 @@ import com.sicmagroup.gpr.domain.enumeration.SatisfactionStatus;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
 import com.sicmagroup.gpr.domain.model.ExtraContent;
+import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
 
@@ -103,4 +104,7 @@ public interface ClaimService {
         public void deleteById_2(Long id) throws NotFoundException;
 
         Claim saveExtra(ExtraContent extraContent, MultipartFile[] files, MultipartFile[] audios, Long id) throws Exception;
+
+        public List<Claim> checkPhone(String phone, ServicePoint userAgency, boolean isPilot);
+        //public List<Claim> checkPhone(String phone);
 }

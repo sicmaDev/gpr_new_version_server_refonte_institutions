@@ -89,7 +89,7 @@ import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.service.suggestion.SuggestionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
-
+import com.sicmagroup.gpr.domain.dto.PhoneCheckResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -595,7 +595,6 @@ public class ClaimController {
             throws JsonMappingException, JsonProcessingException {
         ApiResponseDto apiResponseDto;
         apiResponseDto = Utils.verifyLicence();
-        System.out.println("VDR : ");
         if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {
@@ -620,17 +619,19 @@ public class ClaimController {
                             .content(convertToDto(claim))
                             .build();
                     return ResponseEntity.ok(apiResponseDto);
-                } catch (Exception e) {
-                    apiResponseDto = ApiResponseDto
-                            .builder()
-                            .status(false)
-                            .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION TGHROW").build())
-                            .build();
-                    if (e.getMessage().contains("not found")) {
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
-                    } else {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-                    }
+                }  catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message(e.getMessage()).title("EXCEPTION THROW")
+                            .key("DUPLICATE_CLAIM")
+                            .build())
+                    .build();
+            if (e.getMessage().contains("not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
                 }
             } else {
                 apiResponseDto = ApiResponseDto
@@ -2008,4 +2009,74 @@ public class ClaimController {
             return null;
         }
     }
+
+    @GetMapping("/checkPhone/{phone}")
+    public ResponseEntity<ApiResponseDto> checkPhone(@PathVariable String phone) {
+        ApiResponseDto apiResponseDto;
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+        User connectedUser = User.builder().build();
+            try {
+            connectedUser = authService.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                            .title("NOT FOUND EXCEPTION")
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+
+        ServicePoint userAgency = connectedUser.getServicePoint();
+        if (userAgency == null) {
+            throw new RuntimeException("Utilisateur connecté sans agence assignée");
+        }
+
+        
+        boolean isPilot = connectedUser.getAdditionalrole() == Role.PILOTE;
+        List<Claim> existingClaims = service.checkPhone(phone, userAgency, isPilot);
+
+        PhoneCheckResponseDto content;
+        try {
+            if (existingClaims != null && !existingClaims.isEmpty()) {
+                List<ClaimDto> claimDtos = existingClaims.stream()
+                    .sorted((c1, c2) -> c2.getReceiptDateTime().compareTo(c1.getReceiptDateTime()))
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
+
+                content = PhoneCheckResponseDto.builder()
+                        .exists(true)
+                        .message("Ce numéro est déjà associé à une ou plusieurs réclamations en cours.")
+                        .claims(claimDtos)
+                        .build();
+            } else {
+                content = PhoneCheckResponseDto.builder()
+                        .exists(false)
+                        .message("Aucune réclamation en cours pour ce numéro.")
+                        .claims(Collections.emptyList())
+                        .build();
+            }
+
+            apiResponseDto = ApiResponseDto.builder()
+                    .status(true)
+                    .content(content)
+                    .build();
+
+            return ResponseEntity.ok(apiResponseDto);
+
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                            .message("Une erreur est survenue lors de la vérification du numéro de téléphone.")
+                            .title("INTERNAL SERVER ERROR")
+                            .build())
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponseDto);
+        }
+    }
+   
 }

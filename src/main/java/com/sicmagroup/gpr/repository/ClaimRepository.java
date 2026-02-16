@@ -177,6 +177,12 @@ public interface ClaimRepository extends JpaRepository<Claim, Long>, ClaimReposi
 
         List<Claim> findByStatusIn(List<ClaimStatus> status);
 
+         List<Claim> findByTelAndServicePointAndStatusInAndIsDeletedFalse(String tel, ServicePoint servicePoint, List<ClaimStatus> statuses);
+        List<Claim> findByServicePointAndStatusInAndIsDeletedFalse(ServicePoint servicePoint, List<ClaimStatus> statuses);
+        List<Claim> findByTelAndStatusInAndIsDeletedFalse(String tel, List<ClaimStatus> statuses);
+        List<Claim> findByTelAndIsDeletedFalse(String tel);
+        List<Claim> findAllByIsDeletedFalse();
+
 
 
 }
