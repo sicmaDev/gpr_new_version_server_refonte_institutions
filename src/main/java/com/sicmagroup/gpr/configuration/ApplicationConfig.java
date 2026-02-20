@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestTemplate;
 
 import com.sicmagroup.gpr.domain.dto.botkey.BotKeyConfigResponse;
 import com.sicmagroup.gpr.repository.UserRepository;
@@ -55,5 +56,10 @@ public class ApplicationConfig {
     @Bean
     public BotKeyConfigResponse botKeyConfigResponse() {
         return new BotKeyConfigResponse();
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }
