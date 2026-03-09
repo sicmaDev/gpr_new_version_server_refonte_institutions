@@ -52,7 +52,6 @@ public class ServicePoint {
 	private boolean isPrincipalAgence;
 	@Column(columnDefinition = "boolean default false")
 	private boolean isDeleted;
-
 	// Nouvelle relation direction_id qui fait référence à un autre ServicePoint
     // @ManyToOne
     @JoinColumn(name = "direction_id")

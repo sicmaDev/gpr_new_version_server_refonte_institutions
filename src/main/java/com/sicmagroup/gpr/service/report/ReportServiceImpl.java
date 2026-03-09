@@ -285,7 +285,7 @@ public class ReportServiceImpl implements ReportService {
                 sugges = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
             } else {
 
-                claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
+                claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
             }
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
@@ -378,7 +378,7 @@ public class ReportServiceImpl implements ReportService {
             colorList.put(objet.getLibelle(), Utils.generateRandomColor(1).get(0).toBgString());
         }
         for (ClaimType RSDSelect : RDSList) {
-            List<Claim> claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
+            List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
             for (ServicePoint agence : sp) {
@@ -448,7 +448,7 @@ public class ReportServiceImpl implements ReportService {
                 Arrays.asList(GravityLevel.GRAVE, GravityLevel.MINEUR, GravityLevel.MOYEN));
 
         for (ClaimType RSDSelect : RDSList) {
-            List<Claim> claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
+            List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
             for (ServicePoint agence : sp) {
@@ -526,7 +526,7 @@ public class ReportServiceImpl implements ReportService {
 
             } else {
 
-                claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
+                claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
             }
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
@@ -613,7 +613,7 @@ public class ReportServiceImpl implements ReportService {
                 Arrays.asList(Gender.HOMME, Gender.FEMME, Gender.NON_DEFINI));
 
         for (ClaimType RSDSelect : RDSList) {
-            List<Claim> claims = claimRepository.findByTypeAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
+            List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
             List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
@@ -697,7 +697,7 @@ public class ReportServiceImpl implements ReportService {
         }
 
         List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
-        List<Claim> claims = claimRepository.findByServicePointInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
+        List<Claim> claims = claimRepository.findByServicePointInAndIsDeletedFalseAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
 
         HashMap<String, String> colorList = new HashMap<>();
         for (CollectionChannel channel : channels) {
@@ -774,7 +774,7 @@ public class ReportServiceImpl implements ReportService {
             objets = oRepository.findAll();
         }
 
-        List<Claim> claims = claimRepository.findByServicePointInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
+        List<Claim> claims = claimRepository.findByServicePointInAndIsDeletedFalseAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
 
         HashMap<String, String> colorList = new HashMap<>();
         for (Objet objet : objets) {
@@ -828,8 +828,8 @@ public class ReportServiceImpl implements ReportService {
                 totalSuggest = suggestionRepository.countSuggestByCriterias(request);
             }
         } else {
-            totalClaim = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
-            totalDenun = claimRepository.countByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+            totalClaim = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            totalDenun = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
             totalSuggest = suggestionRepository.countByStatusNot(ClaimStatus.TEMP_SAVED);
         }
 
@@ -1037,7 +1037,7 @@ public class ReportServiceImpl implements ReportService {
             List<ClaimPerServicePointProjection> allResult = claimRepository
                     .countClaimPerServicePoint(ClaimType.CLAIM);
             List<ServicePoint> allSp = spRepository.findAll();
-            long total = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            long total = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
 
             boolean isFind = false;
             for (ServicePoint sp : allSp) {
@@ -1099,7 +1099,8 @@ public class ReportServiceImpl implements ReportService {
             List<ClaimPerServicePointProjection> allResult = claimRepository
                     .countClaimPerServicePoint(ClaimType.DENUNCIACION);
             List<ServicePoint> allSp = spRepository.findAll();
-            long total = claimRepository.countByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+            long total = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+
 
             boolean isFind = false;
             for (ServicePoint sp : allSp) {
@@ -3059,9 +3060,9 @@ public class ReportServiceImpl implements ReportService {
 
         } else {
 
-            List<Claim> claims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM,
+            List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM,
                     ClaimStatus.TEMP_SAVED);
-            total = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            total = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
                 int nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
@@ -3179,7 +3180,7 @@ public class ReportServiceImpl implements ReportService {
             // }
 
             // Alby
-            List<Claim> claims = claimRepository.findByTypeAndStatusNot(ClaimType.DENUNCIACION,
+            List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION,
                     ClaimStatus.TEMP_SAVED);
             total = (long) claims.size();
             for (GravityLevel gravityLevel : allLevels) {
@@ -3508,7 +3509,7 @@ public class ReportServiceImpl implements ReportService {
             System.out.println("lol ");
             List<ClaimPerStatusSatisfactionProjection> allResult = claimRepository.countClaimPerSatisfaction();
 
-            total = claimRepository.countByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+            total = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
 
             for (ClaimStatus status : allSatisfaction) {
 
@@ -3578,7 +3579,7 @@ public class ReportServiceImpl implements ReportService {
                             ClaimStatus.CLASSED));
 
         } else {
-            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
                             ClaimStatus.CLASSED));
         }
@@ -3723,7 +3724,7 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         } else {
-            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         }
@@ -3809,7 +3810,7 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         } else {
-            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+             allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         }
@@ -3903,7 +3904,7 @@ public class ReportServiceImpl implements ReportService {
             allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
             Arrays.asList(ClaimStatus.TREAT));
         } else {
-            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.DENUNCIACION,
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
             Arrays.asList(ClaimStatus.TREAT));
         }
     
@@ -3982,7 +3983,7 @@ public class ReportServiceImpl implements ReportService {
             allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
                     Arrays.asList(ClaimStatus.TREAT));
         } else {
-            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.DENUNCIACION,
+             allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
             Arrays.asList(ClaimStatus.TREAT));
         }
     
@@ -4077,7 +4078,7 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         } else {
-            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+           allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         }
@@ -4150,7 +4151,7 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         } else {
-            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         }
@@ -4226,7 +4227,7 @@ public class ReportServiceImpl implements ReportService {
     public LineChart evolutionSatisfactionByYear(@Nullable FilterRequest request) {
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.PARTIAL_SATISFIED);
-        List<Claim> allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+        List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
         LocalDate currentDate = LocalDate.now();
         List<String> last12Months = new ArrayList<>();
         List<String> last12MonthsEn = new ArrayList<>();
@@ -4247,7 +4248,7 @@ public class ReportServiceImpl implements ReportService {
         if (request != null) {
             allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request, allSatisfaction);
         } else {
-            allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
         }
 
         LineChart lineChart = LineChart
@@ -4428,9 +4429,9 @@ public class ReportServiceImpl implements ReportService {
                 end = LocalDateTime
                         .parse(thisYear + "-" + monthStr + "-" + month.length(currentDate.isLeapYear()) + "T23:59:59");
 
-                dataC.set(i, (double) claimRepository.countByTypeAndStatusNotAndReceiptDateTimeBetween(ClaimType.CLAIM,
+                dataC.set(i, (double) claimRepository.countByTypeAndIsDeletedFalseAndStatusNotAndReceiptDateTimeBetween(ClaimType.CLAIM,
                         ClaimStatus.TEMP_SAVED, start, end));
-                dataD.set(i, (double) claimRepository.countByTypeAndStatusNotAndReceiptDateTimeBetween(
+                dataD.set(i, (double) claimRepository.countByTypeAndIsDeletedFalseAndStatusNotAndReceiptDateTimeBetween(
                         ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED, start, end));
                 dataS.set(i, (double) suggestionRepository
                         .countByStatusNotAndReceiptDateTimeBetween(ClaimStatus.TEMP_SAVED, start, end));
@@ -4478,10 +4479,10 @@ public class ReportServiceImpl implements ReportService {
             totalClaims = claimRepository
                     .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.CLAIM).size();
         } else {
-            totalTreatClaims = claimRepository.countByTypeAndStatusIn(ClaimType.CLAIM,
+            totalTreatClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION));
-            totalClaims = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            totalClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
         }
 
         if (totalClaims != 0) {
@@ -4505,9 +4506,9 @@ public class ReportServiceImpl implements ReportService {
                     .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.DENUNCIACION)
                     .size();
         } else {
-            totalTreatClaims = claimRepository.countByTypeAndStatusIn(ClaimType.DENUNCIACION,
+             totalTreatClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
                     Arrays.asList(ClaimStatus.TREAT));
-            totalClaims = claimRepository.countByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+            totalClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
         }
 
         if (totalClaims != 0) {
@@ -4778,22 +4779,21 @@ public class ReportServiceImpl implements ReportService {
 
             totalTreatObj = totalTreatDenun + totalTreatClaims + totalSuggestTreat;
         } else {
-            totalTreatDenun = claimRepository.countByTypeAndStatusIn(ClaimType.DENUNCIACION,
+            totalTreatDenun = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
                     Arrays.asList(ClaimStatus.TREAT));
-            totalDenuns = claimRepository.countByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+            totalDenuns = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
 
-            totalTreatClaims = claimRepository.countByTypeAndStatusIn(ClaimType.CLAIM,
+            totalTreatClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION));
-            totalClaims = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
-
+            totalClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
             List<Suggestion> allTreatResult = suggestionRepository.findByStatusIn(Arrays.asList(ClaimStatus.TREAT));
             List<Suggestion> suggestNotTempSaved = suggestionRepository.findByStatusNot(ClaimStatus.TEMP_SAVED);
 
             totalObj = totalDenuns + totalClaims + suggestNotTempSaved.size();
             totalTreatObj = totalTreatDenun + totalTreatClaims + allTreatResult.size();
         }
-        if (totalObj != 0) {
+        if (totalObj != 0) { 
             return ((double) totalTreatObj / totalObj);
         } else {
             return 0;

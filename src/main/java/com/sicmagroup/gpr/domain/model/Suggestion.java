@@ -99,5 +99,24 @@ public class Suggestion {
     private LocalDateTime updatedAt;
     private LocalDateTime treatAt;
     private LocalDateTime onlineUploadDateTime;
+
+    @Column(columnDefinition = "boolean default false")
+	private boolean isDeleted;
+    @Column(columnDefinition = "boolean default false")
+	private boolean isRestored;
+    @ManyToOne
+    @JoinColumn(name = "deleted_by", nullable = true)
+    private User deletedBy;
+    @ManyToOne
+    @JoinColumn(name = "restored_by", nullable = true)
+    private User restoredBy;
+    @Column(name = "deleted_at", nullable = true)
+    private LocalDateTime deletedAt;
+    @Column(name = "restored_at", nullable = true)
+    private LocalDateTime restoredAt;
+    @Lob
+    @Column(columnDefinition = "TEXT")
+	private String delete_reason;
+    
     
 }

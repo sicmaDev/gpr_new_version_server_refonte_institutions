@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Map;
-
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.HttpStatus;
@@ -2011,7 +2011,8 @@ public class ClaimController {
     }
 
     @GetMapping("/checkPhone/{phone}")
-    public ResponseEntity<ApiResponseDto> checkPhone(@PathVariable String phone) {
+    public ResponseEntity<ApiResponseDto> checkPhone(@PathVariable String phone)
+    {
         ApiResponseDto apiResponseDto;
         UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
                 .getPrincipal();
@@ -2079,4 +2080,169 @@ public class ClaimController {
         }
     }
    
+
+    @PostMapping("/delete/soft")
+    public ResponseEntity<ApiResponseDto> deleteClaim(@RequestBody ClaimDeleteRequest request, HttpServletRequest request2) {
+        ApiResponseDto apiResponseDto;
+        try {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+            User connectedUser = User.builder().build();
+
+            try {
+                connectedUser = authService.getByEmail(collectorDetails.getUsername());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+            Claim claim = new Claim();
+            try {
+                claim = service.getByCode(request.getClaimCode());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Réclamation non trouvée")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+            // 🔎 Vérification du statut
+            if (claim.getStatus() != ClaimStatus.SAVED) {
+                apiResponseDto = ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                            .message("Action non autorisée : la réclamation n'est pas au statut Enregistrée.")
+                            .title("INVALID STATUS")
+                            .build())
+                    .build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
+
+            if (connectedUser.getPoste().getHabilitations().contains("H12")) {
+                try {
+                   
+                    // Vérifie que la réclamation n’est pas déjà supprimée
+                    if (Boolean.TRUE.equals(claim.isDeleted())) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                            ApiResponseDto.builder()
+                                .status(false)
+                                .content("Cette réclamation a déjà été supprimée !!!")
+                                .build()
+                        );
+                    }else{
+                        service.deleteById(claim,request.getReason(),connectedUser);
+                        return ResponseEntity.ok(
+                            ApiResponseDto.builder().status(true).content("Réclamation supprimée avec succès.").build()
+                        );
+                    }
+                  
+                } catch (NotFoundException e) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        ApiResponseDto.builder().status(false).content("Erreur lors de la suppression.").build()
+                    );
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    ApiResponseDto.builder()
+                        .status(false)
+                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
+                        .build()
+                );
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .build()
+            );
+        }
+    }
+
+    @PostMapping("/restore/{id}")
+    public ResponseEntity<ApiResponseDto> restoreClaim(@PathVariable Long id, HttpServletRequest request2) {
+        ApiResponseDto apiResponseDto;
+        try {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+            User connectedUser = User.builder().build();
+             try {
+                connectedUser = authService.getByEmail(collectorDetails.getUsername());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+            
+            Claim claim = new Claim();
+            try {
+                claim = service.getById(id);
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Réclamation non trouvée")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+            if (connectedUser.getPoste().getHabilitations().contains("H12")) {
+                try {
+                   
+                    // Vérifie que la réclamation n’est pas déjà supprimée
+                    if (Boolean.FALSE.equals(claim.isDeleted())) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                            ApiResponseDto.builder()
+                                .status(false)
+                                .content("Cette réclamation n'a pas été supprimée !!!")
+                                .build()
+                        );
+                    }else{
+                        service.restoreById(id,connectedUser);
+                        return ResponseEntity.ok(
+                            ApiResponseDto.builder().status(true).content("Réclamation supprimée avec succès.").build()
+                        );
+                    }
+                  
+                } catch (NotFoundException e) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        ApiResponseDto.builder().status(false).content("Erreur lors de la suppression.").build()
+                    );
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    ApiResponseDto.builder()
+                        .status(false)
+                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
+                        .build()
+                );
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .build()
+            );
+        }
+    }
+
 }
+
+

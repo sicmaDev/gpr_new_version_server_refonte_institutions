@@ -40,7 +40,7 @@ public class StatsDenun {
         if (request != null) {
             total = claimRepository.countClaimByCriterias(request, ClaimType.DENUNCIACION);
         } else {
-            total = claimRepository.countByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+            total = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
         }
 
         HashMap<String, Double> resultat = new HashMap<>();
@@ -237,7 +237,7 @@ public class StatsDenun {
                 }
             }
         } else {
-            total = claimRepository.findByTypeAndStatusIn(ClaimType.DENUNCIACION, status).size();
+           total = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION, status).size();
         }
         resultat.put("Nombre de dénonciations traitées", Double.parseDouble("" + total));
         return resultat;
@@ -270,7 +270,7 @@ public class StatsDenun {
             }
 
         } else {
-            claimsByStatus = claimRepository.findByTypeAndStatusIn(ClaimType.DENUNCIACION, status);
+            claimsByStatus = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION, status);
         }
         Double oldVal = 0D;
         for (Claim claim : claimsByStatus) {
@@ -318,7 +318,7 @@ public class StatsDenun {
                 }
             }
         } else {
-            claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.DENUNCIACION, status);
+            claimsTreat = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION, status);
 
         }
         LocalDateTime receiptDate;

@@ -87,7 +87,7 @@ public class AlertRetardCron {
     }
 
     private List<Claim> getClaimsNonAffecteesEnRetard(LocalDateTime now, LocalDateTime fourDaysLater) {
-        return claimRepository.findByStatus(ClaimStatus.SAVED).stream()
+        return claimRepository.findByStatusAndIsDeletedFalse(ClaimStatus.SAVED).stream()
                 .filter(claim -> claim.getObjet() != null && claim.getObjet().getProcessingTime() > 0)
                 .filter(claim -> claim.getCreatedAt().plusDays(claim.getObjet().getProcessingTime())
                         .isBefore(fourDaysLater))

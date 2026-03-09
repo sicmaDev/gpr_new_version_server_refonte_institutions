@@ -922,7 +922,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (type.equals(ConfigExportEnum.claims) || type.equals(ConfigExportEnum.denunciations)) {
             ClaimType claimType = type.equals(ConfigExportEnum.claims) ? ClaimType.CLAIM : ClaimType.DENUNCIACION;
             try {
-                List<Claim> claims = claimRepository.findByType(claimType);
+                List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalse(claimType);
                 List<ClaimDto> claimDtos = claims.stream().map((Claim claim) -> {
                     return modelMapper.map(claim, ClaimDto.class);
                 })
@@ -1943,8 +1943,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public HashMap<String, Object> getDashboard() {
-        List<Claim> claims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
-        List<Claim> denuns = claimRepository.findByTypeAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+        List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+        List<Claim> denuns = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
         List<Suggestion> suggestions = suggestionRepository
                 .findByStatusNot(ClaimStatus.TEMP_SAVED);
         List<ClaimStatus> treatClaimStatus = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED,
@@ -1976,12 +1976,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.SATISFIED);
        
         List<Claim> claimsTreat = new ArrayList<>();
-        claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
+        claimsTreat = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, status);
     
 
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
-        List<Claim> allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+        List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
 
         // dashboard.put("tauxSatisfaction",
         //        Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));

@@ -135,6 +135,12 @@ public class User implements UserDetails {
 	private boolean isRa;
 	private String titre;
 
+	@OneToMany(mappedBy = "deletedBy")
+	private List<Claim> deletedClaims;
+
+	@OneToMany(mappedBy = "restoredBy")
+	private List<Claim> restoredClaims;
+
 	@OneToMany
 	@JsonIgnore
 	private List<Message> messages;

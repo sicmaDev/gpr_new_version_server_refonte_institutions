@@ -60,11 +60,11 @@ public class BceaoReportService {
                 bceaoReport.setPiloteContact(pilotes.get(0).getTel());
         }
         // total claim
-        List<Claim> claims = claimRepository.findByTypeAndStatusNotAndReceiptDateTimeBetween(ClaimType.CLAIM,
+       List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNotAndReceiptDateTimeBetween(ClaimType.CLAIM,
                 ClaimStatus.TEMP_SAVED, start, end);
         bceaoReport.setTotalClaim(claims.size());
         // total Denun
-        List<Claim> denuns = claimRepository.findByTypeAndStatusNotAndReceiptDateTimeBetween(ClaimType.DENUNCIACION,
+       List<Claim> denuns = claimRepository.findByTypeAndIsDeletedFalseAndStatusNotAndReceiptDateTimeBetween(ClaimType.DENUNCIACION,
                 ClaimStatus.TEMP_SAVED, start, end);
         bceaoReport.setTotalDenun(denuns.size());
         // total suggest
@@ -146,17 +146,17 @@ public class BceaoReportService {
         // taux satisfcation
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
         ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
-        List<Claim> claims2 = claimRepository.findByTypeAndStatusInAndReceiptDateTimeBetween(ClaimType.CLAIM,
+        List<Claim> claims2 = claimRepository.findByTypeAndIsDeletedFalseAndStatusInAndReceiptDateTimeBetween(ClaimType.CLAIM,
         allSatisfaction, start, end);
+        List<Claim> claimsSatisfied = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
+                Arrays.asList(ClaimStatus.SATISFIED));
         // List<Claim> claimsSatisfied = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM,
         //         Arrays.asList(ClaimStatus.SATISFIED));
-        List<Claim> claimsSatisfied = claimRepository.findByTypeAndStatusInAndReceiptDateTimeBetween(
-                ClaimType.CLAIM, Arrays.asList(ClaimStatus.SATISFIED),start, end); 
         bceaoReport.setTauxSatisfaction(Utils.parseDouble(
                 Utils.percentCalculator(Long.valueOf(claimsSatisfied.size()), Long.valueOf(claims2.size()))));
         // litigate global
-        bceaoReport.setTotalLitigateClaim(
-                claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, Arrays.asList(ClaimStatus.LITIGATION)).size());
+       bceaoReport.setTotalLitigateClaim(
+                claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, Arrays.asList(ClaimStatus.LITIGATION)).size());
         // claimsReceivedInPeriod
         bceaoReport.setClaimsReceivedInPeriod(claimsReceivedInPeriod.toArray(new BceaoClaimDetails[0]));
         // claimsTreatInPeriod

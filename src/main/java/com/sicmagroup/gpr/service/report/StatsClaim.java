@@ -35,7 +35,7 @@ public class StatsClaim {
             total = claimRepository.countClaimByCriterias(request, ClaimType.CLAIM);
         } else {
 
-            total = claimRepository.countByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            total = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
         }
 
         HashMap<String, Double> resultat = new HashMap<>();
@@ -266,7 +266,7 @@ public class StatsClaim {
                 }
             }
         } else {
-            total = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status).size();
+            total = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, status).size();
         }
         resultat.put("Nombre de réclamations traitées", Double.parseDouble("" + total));
         return resultat;
@@ -303,7 +303,7 @@ public class StatsClaim {
             }
 
         } else {
-            claimsByStatus = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
+            claimsByStatus = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, status);
         }
         Double oldVal = 0D;
         for (Claim claim : claimsByStatus) {
@@ -352,7 +352,7 @@ public class StatsClaim {
                 }
             }
         } else {
-            claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
+            claimsTreat = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, status);
 
         }
         LocalDateTime receiptDate;
@@ -511,8 +511,7 @@ public class StatsClaim {
                 }
             }
         } else {
-            claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
-
+            claimsTreat = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, status);
         }
 
         resultat.replace("Nombre de réclamations à réclamants satisfaits",
@@ -542,12 +541,12 @@ public class StatsClaim {
                 }
             }
         } else {
-            claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
+            claimsTreat = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, status);
         }
 
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
-        List<Claim> allClaims = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+        List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
         // System.out.println("Taux");
         resultat.replace("Taux de satisfaction(%)",
                 Utils.parseDouble(
@@ -576,7 +575,7 @@ public class StatsClaim {
             // allClaims = claimRepository.countClaimByCriteria(request);
         } else {
             // Si aucun filtre n'est fourni, on récupère toutes les réclamations
-            allClaims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
         }
     
         // Récupération du nombre total de réclamations traitées
@@ -611,7 +610,7 @@ public class StatsClaim {
         );
     
         // Récupération de toutes les réclamations
-        List<Claim> allClaims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);; // Méthode pour récupérer toutes les réclamations
+        List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
         List<Claim> allExpiredClaims = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
     
@@ -660,7 +659,7 @@ public class StatsClaim {
     
         try {
             // Récupération de toutes les réclamations
-            allClaims = claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);;
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
     
             // Filtrage des réclamations échues
             for (Claim claim : allClaims) {

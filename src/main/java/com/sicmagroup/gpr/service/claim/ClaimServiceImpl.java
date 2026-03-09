@@ -131,7 +131,7 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public List<Claim> getAll(ClaimType type) {
-        return repository.findByType(type);
+        return repository.findByTypeAndIsDeletedFalse(type);
     }
 
     @Override
@@ -1584,22 +1584,22 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public List<Claim> getClaimByStatus(ClaimType type, ClaimStatus status) {
-        return repository.findByTypeAndStatus(type, status);
+        return repository.findByTypeAndIsDeletedFalseAndStatus(type, status);
     }
 
     @Override
     public List<Claim> getAllNotTempSave(ClaimType type) {
-        return repository.findByTypeAndStatusNot(type, ClaimStatus.TEMP_SAVED);
+         return repository.findByTypeAndIsDeletedFalseAndStatusNot(type, ClaimStatus.TEMP_SAVED);
     }
 
     @Override
     public List<Claim> getAllByTypeStatusCollector(ClaimType type, ClaimStatus status, User collector) {
-        return repository.findByTypeAndStatusAndCollector(type, status, collector);
+        return repository.findByTypeAndIsDeletedFalseAndStatusAndCollector(type, status, collector);
     }
 
-    @Override
+    // @Override
     public List<Claim> getAllByTypeAndStatusIn(ClaimType type, List<ClaimStatus> statusList) {
-        return repository.findByTypeAndStatusIn(type, statusList);
+        return repository.findByTypeAndIsDeletedFalseAndStatusIn(type, statusList);
     }
 
     @Override
@@ -1607,7 +1607,7 @@ public class ClaimServiceImpl implements ClaimService {
             ClaimStatus status, User affectedTo,
             List<ClaimStatus> statusList) {
 
-        List<Claim> resultat = repository.findByTypeAndCollectorAndStatusOrTypeAndTreatmentAffectedToAndStatusIn(type,
+        List<Claim> resultat = repository.findByTypeAndIsDeletedFalseAndCollectorAndStatusOrTypeAndTreatmentAffectedToAndStatusIn(type,
                 affectedTo, status, type, affectedTo, statusList);
         List<Claim> tmp = resultat;
 
@@ -1638,7 +1638,7 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public List<Claim> getAllWithLatestApprouvedSolutionByTypeAndStatusIn(ClaimType type,
             List<ClaimStatus> statusList) {
-        List<Claim> req = repository.findByTypeAndStatusIn(type, statusList);
+        List<Claim> req = repository.findByTypeAndIsDeletedFalseAndStatusIn(type, statusList);
         for (Claim claim : req) {
             Collections.reverse(claim.getSolutions());
             claim.getSolutions().removeIf(solution -> solution.getStatus() == SolutionStatus.UNAPPROVED);
@@ -1660,7 +1660,7 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public List<Claim> getAllWithApprovedSolutionByTypeAndStatus(ClaimType type, List<ClaimStatus> statusList) {
-        List<Claim> req = repository.findByTypeAndStatusIn(type, statusList);
+        List<Claim> req = repository.findByTypeAndIsDeletedFalseAndStatusIn(type, statusList);
         for (Claim claim : req) {
             Collections.reverse(claim.getSolutions());
             claim.getSolutions().removeIf(solution -> solution.getStatus() == SolutionStatus.UNAPPROVED);
@@ -2957,6 +2957,91 @@ public class ClaimServiceImpl implements ClaimService {
         
         repository.delete(claim);
     }
+
+    //    @Override
+    public void deleteById(Claim claim, String reason, User currentUser) throws NotFoundException {
+        
+        // Vérifie que la réclamation n’est pas déjà supprimée
+        if (Boolean.TRUE.equals(claim.isDeleted())) {
+            throw new IllegalStateException("Cette réclamation est déjà supprimée.");
+        }
+
+        // Marque la réclamation comme supprimée (soft delete)
+        claim.setDeleted(true);
+        claim.setDeletedAt(LocalDateTime.now());
+        claim.setDeletedBy(currentUser);
+        claim.setDelete_reason(reason);
+        claim.setRestored(false); // par sécurité
+
+        repository.save(claim);
+
+        Log log = Log
+                .builder()
+                .content("La " + 
+                (claim.getType().equals(ClaimType.CLAIM) ? 
+                    "réclamation " : "dénonciation ") +
+                "portant le code: " + claim.getCode() + 
+                " a été supprimée par l'utilisateur: " + currentUser.getFirstandlastname())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(currentUser.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .build();
+        if (claim.getType().equals(ClaimType.CLAIM)) {
+            log.setLibelle("Suppression de Réclamation");
+            log.setTarget(LogTarget.CLAIM);
+        } else {
+            log.setLibelle("Suppression de Dénonciation");
+            log.setTarget(LogTarget.DENUNCIACION);
+        }
+
+        logServiceImpl.saveLog(log);
+    }
+
+    public void restoreById(Long id, User currentUser) throws NotFoundException {
+        Claim claim = repository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Réclamation introuvable"));
+
+        if (!claim.isDeleted()) {
+            throw new RuntimeException("La réclamation n'est pas supprimée");
+        }
+
+        // Marque la réclamation comme supprimée (soft delete)
+        claim.setDeleted(false);
+        claim.setDeletedAt(null);
+        claim.setDeletedBy(null);
+        claim.setDelete_reason(null);
+        claim.setRestored(true); 
+        claim.setRestoredAt(LocalDateTime.now());
+        claim.setRestoredBy(currentUser); 
+
+        repository.save(claim);
+
+        Log log = Log
+                .builder()
+                .content("La " + 
+                (claim.getType().equals(ClaimType.CLAIM) ? 
+                    "réclamation " : "dénonciation ") +
+                "portant le code: " + claim.getCode() + 
+                " a été restaurée par l'utilisateur: " + currentUser.getFirstandlastname())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(currentUser.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .build();
+        if (claim.getType().equals(ClaimType.CLAIM)) {
+            log.setLibelle("Restauration de Réclamation");
+            log.setTarget(LogTarget.CLAIM);
+        } else {
+            log.setLibelle("Restauration de Dénonciation");
+            log.setTarget(LogTarget.DENUNCIACION);
+        }
+
+        logServiceImpl.saveLog(log);
+
+    }
+
+
     @Override
     public List<Claim> checkPhone(String phone, ServicePoint userAgency, boolean isPilot) {
         List<ClaimStatus> nonTerminatedStatuses = Arrays.asList(
@@ -2986,5 +3071,5 @@ public class ClaimServiceImpl implements ClaimService {
         return claims;
     }
 
-
+    
 }
