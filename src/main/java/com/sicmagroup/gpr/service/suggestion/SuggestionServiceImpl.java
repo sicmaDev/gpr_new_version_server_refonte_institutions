@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import jakarta.servlet.http.HttpServletRequest;
 import com.fasterxml.jackson.core.StreamReadConstraints.Builder;
 import com.sicmagroup.gpr.api.suggestion.SuggestionAddRequest;
 import com.sicmagroup.gpr.api.suggestion.SuggestionRequest;
@@ -73,7 +73,7 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final ClaimAudioRepository claimAudioRepository;
     private final ExtraContentRepository extraContentRepository;
     private final MailService mailService;
-    
+    private HttpServletRequest httpServletRequest; 
 
 
     @Override
@@ -191,6 +191,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         if (suggestionRequest.getAddress() != null) {
             suggestion.setAddress(suggestionRequest.getAddress());
         }
+        if (suggestionRequest.getEmail() != null) {
+            suggestion.setEmail(suggestionRequest.getEmail());
+        }
 
         if (suggestionRequest.getPhone() != null) {
             suggestion.setTel(suggestionRequest.getPhone());
@@ -293,9 +296,9 @@ public class SuggestionServiceImpl implements SuggestionService {
                     .content("Success mail notification suggestion enregistrée")
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
-                    .userId(0L)
-                    .userIpAddress(null)
-                    .target(LogTarget.APP)
+                    .userId(suggestion.getCollecteur().getId())
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                    .target(LogTarget.SUGGESTION)
                     .build();
 
                 logServiceImpl.saveLog(successLog);
@@ -307,9 +310,9 @@ public class SuggestionServiceImpl implements SuggestionService {
                             .content(e.getMessage())
                             .createdAt(LocalDateTime.now())
                             .type(LogType.ERROR)
-                            .userId(0L)
-                            .userIpAddress(null)
-                            .target(LogTarget.APP)
+                            .userId(suggestion.getCollecteur().getId())
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                            .target(LogTarget.SUGGESTION)
                             .build();
 
                     logServiceImpl.saveLog(log2);
@@ -535,6 +538,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         if (suggestionRequest.getAddress() != null) {
             suggestion.setAddress(suggestionRequest.getAddress());
         }
+        if (suggestionRequest.getEmail() != null) {
+            suggestion.setEmail(suggestionRequest.getEmail());
+        }
 
         if (suggestionRequest.getPhone() != null) {
             suggestion.setTel(suggestionRequest.getPhone());
@@ -607,7 +613,7 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         final Suggestion finalSuggestion = suggestion;
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-       
+
         String priseEnCompte = suggestion.isAccepted() ? "Prise en compte" : "Non prise en compte";
 
         String messageHtml = """
@@ -653,9 +659,9 @@ public class SuggestionServiceImpl implements SuggestionService {
                     .content("Success mail notification suggestion traité")
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
-                    .userId(0L)
-                    .userIpAddress("") 
-                    .target(LogTarget.APP)
+                    .userId(suggestion.getCollecteur().getId())
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                    .target(LogTarget.SUGGESTION)
                     .build();
 
                 logServiceImpl.saveLog(successLog);                           
@@ -667,9 +673,9 @@ public class SuggestionServiceImpl implements SuggestionService {
                             .content(e.getMessage())
                             .createdAt(LocalDateTime.now())
                             .type(LogType.ERROR)
-                            .userId(0L)
-                            .userIpAddress("")
-                            .target(LogTarget.APP)
+                            .userId(suggestion.getCollecteur().getId())
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                            .target(LogTarget.SUGGESTION)
                             .build();
 
                     logServiceImpl.saveLog(log2);
@@ -797,6 +803,9 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         if (suggestionRequest.getAddress() != null) {
             suggestion.setAddress(suggestionRequest.getAddress());
+        }
+        if (suggestionRequest.getEmail() != null) {
+            suggestion.setEmail(suggestionRequest.getEmail());
         }
 
         if (suggestionRequest.getPhone() != null) {

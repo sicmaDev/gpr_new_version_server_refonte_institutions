@@ -25,6 +25,7 @@ public class SuggestionRequest {
     private String gender;
     private String address;
     private String phone;
+    private String email;
     private String crew;
      private Boolean fromWhatsapp;
     private List<InboxMessage> filesWhatsapp;

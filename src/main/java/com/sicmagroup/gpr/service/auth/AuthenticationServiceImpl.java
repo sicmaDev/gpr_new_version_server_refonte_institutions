@@ -105,7 +105,7 @@ import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
 import com.sicmagroup.gpr.utils.Utils;
-
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -132,7 +132,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final SettingServiceImpl settingServiceImpl;
     private final LogServiceImpl logServiceImpl;
     private final MailService mailService;
-
+     private HttpServletRequest httpServletRequest;
     @Override
     public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException {
         Poste poste = posteRepository.findById(request.getPosteId()).get();
@@ -261,7 +261,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                 Cet email a été généré automatiquement. Merci de ne pas y répondre.
                             </p>
                             </div>
-                        </body>
+                        </body>zz
                         </html>
                         """.formatted(userForMail.getFirstandlastname(), userForMail.getEmail(), request.getPassword());
 
@@ -275,7 +275,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.INFO)
                             .userId(0L)
-                            .userIpAddress("")
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                             .target(LogTarget.APP)
                             .build();
 
@@ -438,7 +438,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.INFO)
                             .userId(0L)
-                            .userIpAddress("")
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                             .target(LogTarget.APP)
                             .build();
 
@@ -452,7 +452,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                     .createdAt(LocalDateTime.now())
                                     .type(LogType.ERROR)
                                     .userId(0L)
-                                    .userIpAddress(null)
+                                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                     .target(LogTarget.APP)
                                     .build();
     
@@ -504,27 +504,44 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         
         if (userFirst.isDeleted()) {
+            Log log = Log.builder()
+                .libelle("Echec Authentification")
+                .content("Tentative de connexion sur un compte désactivé : " + request.getEmail())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.ERROR)
+                .userId(0L)
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.APP)
+                .build();
+            logServiceImpl.saveLog(log);
+
             return AuthenticationResponse.builder()
                 .response(ApiResponseDto.builder()
                     .status(false)
-                    .content(Map.of(
-                        "message", "Votre compte est désactivé. Veuillez contacter l’administrateur."
-                    ))
+                    .content(Map.of("message", "Votre compte est désactivé."))
                     .build())
                 .build();
-
         }
         try {
              user = userRepository.findByEmailAndIsDeleted(request.getEmail(),false).orElseThrow();
         } catch (Exception e) {
-           return AuthenticationResponse.builder()
-                .response(ApiResponseDto
-                        .builder()
-                        .status(false)
-                        .content(null)
-                        .build())
+            Log log = Log.builder()
+                .libelle("Echec Authentification")
+                .content("Tentative échouée pour : " + request.getEmail())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.ERROR)
+                .userId(0L)
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.APP)
                 .build();
+            logServiceImpl.saveLog(log);
 
+            return AuthenticationResponse.builder()
+                .response(ApiResponseDto.builder()
+                    .status(false)
+                    .content(null)
+                    .build())
+                .build();
         }
         
 
@@ -533,6 +550,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
        
         String jwtToken = jwtServiceImpl.generateToken(user);
+        Log successLog = Log.builder()
+            .libelle("Authentification")
+            .content("L'utilisateur " + user.getFirstandlastname() + " s'est authentifié avec succès.")
+            .createdAt(LocalDateTime.now())
+            .type(LogType.INFO)
+            .userId(user.getId())
+            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+            .target(LogTarget.APP)
+            .build();
+       logServiceImpl.saveLog(successLog);
 
         UserDto userDto = convertToDto(user);
         // get setting info
@@ -1358,7 +1385,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
-                    .userIpAddress("")
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                     .target(LogTarget.APP)
                     .build();
 
@@ -1372,7 +1399,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.ERROR)
                             .userId(0L)
-                            .userIpAddress(null)
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                             .target(LogTarget.APP)
                             .build();
 
@@ -1439,7 +1466,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
-                    .userIpAddress("")
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                     .target(LogTarget.APP)
                     .build();
 
@@ -1453,7 +1480,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.ERROR)
                             .userId(0L)
-                            .userIpAddress(null)
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                             .target(LogTarget.APP)
                             .build();
 
@@ -1590,7 +1617,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                 .createdAt(LocalDateTime.now())
                                 .type(LogType.INFO)
                                 .userId(0L)
-                                .userIpAddress("")
+                                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                 .target(LogTarget.APP)
                                 .build();
 
@@ -1604,7 +1631,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                         .createdAt(LocalDateTime.now())
                                         .type(LogType.ERROR)
                                         .userId(0L)
-                                        .userIpAddress(null)
+                                        .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                         .target(LogTarget.APP)
                                         .build();
             
@@ -1657,7 +1684,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                 .createdAt(LocalDateTime.now())
                                 .type(LogType.INFO)
                                 .userId(0L)
-                                .userIpAddress("")
+                                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                 .target(LogTarget.APP)
                                 .build();
 
@@ -1671,7 +1698,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                     .createdAt(LocalDateTime.now())
                                     .type(LogType.ERROR)
                                     .userId(0L)
-                                    .userIpAddress(null)
+                                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                     .target(LogTarget.APP)
                                     .build();
         
@@ -1742,7 +1769,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                     .createdAt(LocalDateTime.now())
                                     .type(LogType.INFO)
                                     .userId(0L)
-                                    .userIpAddress("")
+                                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                     .target(LogTarget.APP)
                                     .build();
 
@@ -1756,7 +1783,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                             .createdAt(LocalDateTime.now())
                                             .type(LogType.ERROR)
                                             .userId(0L)
-                                            .userIpAddress(null)
+                                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                             .target(LogTarget.APP)
                                             .build();
                 
@@ -1810,7 +1837,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                                     .createdAt(LocalDateTime.now())
                                     .type(LogType.INFO)
                                     .userId(0L)
-                                    .userIpAddress("")
+                                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                     .target(LogTarget.APP)
                                     .build();
 

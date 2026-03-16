@@ -14,6 +14,7 @@ import com.sicmagroup.gpr.domain.model.ApiKey;
 import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.ApiKeyRepository;
+import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.auth.AuthenticationService;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
@@ -48,6 +49,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import com.sicmagroup.gpr.utils.Utils;
 
+
 @RestController
 @RequestMapping("/api/v1/config/setting")
 @RequiredArgsConstructor
@@ -58,7 +60,7 @@ public class SettingController {
     private final AuthenticationService authService;
     private final PasswordEncoder passwordEncoder;
     private final ApiKeyRepository apiKeyRepository;
-
+    private final MailService mailService;
     // @PostMapping(value="/institution/save")
     // public ResponseEntity<ApiResponseDto> configInstit(@RequestBody SomeEnityData
     // entity) {
@@ -442,6 +444,39 @@ public class SettingController {
 
         }
     }
+
+    @PostMapping(value = "/others/mail/sendMailToClient")
+    public ResponseEntity<ApiResponseDto> sendMailToClient(@RequestBody EmailRequest request) {
+        System.out.println("sendMailToClient called with request: " + request);
+        try {
+           
+            mailService.sendMail(
+                request.getEmail(),
+                request.getSubject(),
+                request.getMessage(),
+                null
+            );
+
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(request)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+
+        } catch (Exception e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                        .title("Une erreur est survenue")
+                        .message(e.getMessage())
+                        .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        }
+    }
+   
 
     @PostMapping(value = "/others/mail/test")
     public ResponseEntity<ApiResponseDto> testMail(@RequestBody MailTestRequest request) {

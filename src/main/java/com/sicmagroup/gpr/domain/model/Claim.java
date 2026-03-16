@@ -53,6 +53,7 @@ public class Claim {
     private ClaimType type;
 	private String address;
 	private String tel;
+    private String email;
 	private String crew;
 	private String folderCode;
     private boolean isInChatSession;

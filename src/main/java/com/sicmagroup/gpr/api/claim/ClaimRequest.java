@@ -31,6 +31,7 @@ public class ClaimRequest {
     private List<InboxMessage> filesWhatsapp;
     private Inbox inboxWhatsapp;
     private String folderCode;
+    private String email;
     private Long collectionChannelId;
     private Long servicePointId;
     private Long productId;

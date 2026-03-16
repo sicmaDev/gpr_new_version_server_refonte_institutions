@@ -170,6 +170,7 @@ public class ClaimServiceImpl implements ClaimService {
                 .tel(claimToSave.getPhone())
                 .crew(claimToSave.getCrew())
                 .folderCode(claimToSave.getFolderCode())
+                .email(claimToSave.getEmail())
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -636,6 +637,9 @@ public class ClaimServiceImpl implements ClaimService {
         if (claimToSave.getFolderCode() != null) {
             claim.setFolderCode(claimToSave.getFolderCode());
         }
+        if (claimToSave.getEmail() != null) {
+            claim.setEmail(claimToSave.getEmail());
+        }
 
         if (claimToSave.getContent() != null) {
             claim.setContent(claimToSave.getContent());
@@ -730,7 +734,7 @@ public class ClaimServiceImpl implements ClaimService {
                 .createdAt(LocalDateTime.now())
                 .type(LogType.INFO)
                 .userId(affectedBy.getId())
-                .userIpAddress(remoteAddress)
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                 .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
                 .build();
         logServiceImpl.saveLog(log);
@@ -841,7 +845,7 @@ public class ClaimServiceImpl implements ClaimService {
                     .createdAt(LocalDateTime.now())
                     .type(LogType.ERROR)
                     .userId(0L)
-                    .userIpAddress(remoteAddress)
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                     .target(LogTarget.APP)
                     .build();
 
@@ -1078,8 +1082,8 @@ public class ClaimServiceImpl implements ClaimService {
                                     .content(e.getMessage())
                                     .createdAt(LocalDateTime.now())
                                     .type(LogType.ERROR)
-                                    .userId(0L)
-                                    .userIpAddress("")
+                                    .userId(treator.getId())
+                                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                     .target(LogTarget.APP)
                                     .build();
 
@@ -1091,6 +1095,19 @@ public class ClaimServiceImpl implements ClaimService {
 
         }
         // System.out.println("Here 7 ");
+         Log log = Log
+            .builder()
+            .libelle("Affectation de traitement")
+            .content("Une solution à la " + type + " portant le code " + claim.getCode() +
+                " a été proposée par " + treator.getFirstandlastname() +
+                " et un mail de notification a été envoyé.")
+            .createdAt(LocalDateTime.now())
+            .type(LogType.INFO)
+            .userId(treator.getId())
+            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+            .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+            .build();
+        logServiceImpl.saveLog(log);
         
         return claim;
     }
@@ -1174,8 +1191,8 @@ public class ClaimServiceImpl implements ClaimService {
                     .content("Success mail notification mesure de satisfaction réclamation")
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
-                    .userId(0L)
-                    .userIpAddress("")
+                    .userId(measurer.getId())
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                     .target(LogTarget.APP)
                     .build();
 
@@ -1189,7 +1206,7 @@ public class ClaimServiceImpl implements ClaimService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.ERROR)
                             .userId(0L)
-                            .userIpAddress("")
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest)) 
                             .target(LogTarget.APP)
                             .build();
 
@@ -1282,8 +1299,8 @@ public class ClaimServiceImpl implements ClaimService {
                         .content("Success mail notification solution désapprouvée")
                         .createdAt(LocalDateTime.now())
                         .type(LogType.INFO)
-                        .userId(0L)
-                        .userIpAddress("")
+                        .userId(unApprouver.getId())
+                        .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                         .target(LogTarget.APP)
                         .build();
 
@@ -1297,7 +1314,7 @@ public class ClaimServiceImpl implements ClaimService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.ERROR)
                             .userId(0L)
-                            .userIpAddress("")
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                             .target(LogTarget.APP)
                             .build();
     
@@ -1374,7 +1391,7 @@ public class ClaimServiceImpl implements ClaimService {
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
-                    .userIpAddress("")
+                   .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                     .target(LogTarget.APP)
                     .build();
 
@@ -1388,7 +1405,7 @@ public class ClaimServiceImpl implements ClaimService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.ERROR)
                             .userId(0L)
-                            .userIpAddress(null)
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                             .target(LogTarget.APP)
                             .build();
     
@@ -1458,7 +1475,7 @@ public class ClaimServiceImpl implements ClaimService {
                     .content("La réclamation portant le code " + finalClaim.getCode() + " a été classée"+
                                 " par " + classer.getFirstandlastname()+".")
                     .type(LogType.INFO)
-                    .userId(classer.getId())
+                     .userId(classer.getId())
                     .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                     .target(finalClaim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
                     .build();
@@ -1472,7 +1489,7 @@ public class ClaimServiceImpl implements ClaimService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.ERROR)
                             .userId(0L)
-                            .userIpAddress("")
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                             .target(LogTarget.APP)
                             .build();
 
@@ -1850,7 +1867,7 @@ public class ClaimServiceImpl implements ClaimService {
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
-                    .userIpAddress("")
+                   .userIpAddress(claimPart.getRemoteAddress())
                     .target(LogTarget.APP)
                     .build();
 
@@ -2600,7 +2617,7 @@ public class ClaimServiceImpl implements ClaimService {
                             .createdAt(LocalDateTime.now())
                             .type(LogType.INFO)
                             .userId(0L)
-                            .userIpAddress("")
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                             .target(LogTarget.APP)
                             .build();
 
@@ -2614,7 +2631,7 @@ public class ClaimServiceImpl implements ClaimService {
                                     .createdAt(LocalDateTime.now())
                                     .type(LogType.ERROR)
                                     .userId(0L)
-                                    .userIpAddress("")
+                                   .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                                     .target(LogTarget.APP)
                                     .build();
 
@@ -2804,7 +2821,7 @@ public class ClaimServiceImpl implements ClaimService {
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
                     .userId(0L)
-                    .userIpAddress("")
+                    .userIpAddress(claimPart.getRemoteAddress())
                     .target(LogTarget.APP)
                     .build();
 
@@ -2941,6 +2958,7 @@ public class ClaimServiceImpl implements ClaimService {
         
         // Enfin, supprimer la réclamation elle-même
         repository.delete(claim);
+        
     }
 
     @Transactional

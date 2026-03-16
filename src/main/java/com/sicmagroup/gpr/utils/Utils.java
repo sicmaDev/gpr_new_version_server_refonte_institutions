@@ -22,15 +22,19 @@ import java.util.Random;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.yaml.snakeyaml.util.UriEncoder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sicmagroup.gpr.api.config.setting.EmailRequest;
 import com.sicmagroup.gpr.api.config.setting.MailRequest;
 import com.sicmagroup.gpr.api.config.setting.SmsRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
@@ -46,6 +50,7 @@ import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -224,6 +229,8 @@ public class Utils {
         }
     }
 
+    
+    
     public static Boolean testMailConfig(String to, String subject, String body, String cc, String from,
             SettingServiceImpl settingServiceImpl) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -753,4 +760,10 @@ public class Utils {
 
         return ip != null ? ip : "UNKNOWN";
     }
+
+
+
+    
+
+
 }

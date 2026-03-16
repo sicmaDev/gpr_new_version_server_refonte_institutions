@@ -43,6 +43,7 @@ public class ClaimDto {
     private String tel;
     private String crew;
     private String folderCode;
+    private String email;
     private CollectionChannelResponse collectionChannel;
     private ServicePointResponse servicePoint;
     private ProductResponse product;

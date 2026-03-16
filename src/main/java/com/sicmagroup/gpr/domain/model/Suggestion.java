@@ -46,6 +46,7 @@ public class Suggestion {
 	private String tel;
 	private String crew;
 	private String folderCode;
+    private String email;
     
     @ManyToOne
     @JoinColumn()

@@ -32,6 +32,7 @@ public class SuggestionDto {
 	private String tel;
 	private String crew;
 	private String folderCode;
+	private String email;
     private CollectionChannelResponse canal;
     private ServicePointResponse serviceIndexe;
     private ProductResponse produit;
