@@ -106,5 +106,6 @@ public interface ClaimService {
         Claim saveExtra(ExtraContent extraContent, MultipartFile[] files, MultipartFile[] audios, Long id) throws Exception;
 
         public List<Claim> checkPhone(String phone, ServicePoint userAgency, boolean isPilot);
+        
         //public List<Claim> checkPhone(String phone);
 }

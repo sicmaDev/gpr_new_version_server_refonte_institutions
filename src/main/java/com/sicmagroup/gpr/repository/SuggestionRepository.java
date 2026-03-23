@@ -23,7 +23,9 @@ import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 
 public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, SuggestionRepositoryCustom {
 
+    List<Suggestion> findByIsDeletedTrue();
     List<Suggestion> findByStatus(ClaimStatus status);
+
 
     List<Suggestion> findByStatusIn(List<ClaimStatus> statuses);
 

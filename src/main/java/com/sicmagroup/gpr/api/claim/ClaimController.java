@@ -89,6 +89,7 @@ import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.service.suggestion.SuggestionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
+import com.sicmagroup.gpr.domain.dto.TrashDto;
 import com.sicmagroup.gpr.domain.dto.PhoneCheckResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -2080,6 +2081,18 @@ public class ClaimController {
         }
     }
    
+     @GetMapping("/list/deleted")
+    public ResponseEntity<ApiResponseDto> getDeletedClaim() {
+        List<TrashDto> allClaimsDtos = service.getAllDeleted();
+        // List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
+        ApiResponseDto apiResponseDto;
+        apiResponseDto = ApiResponseDto
+                .builder()
+                .status(true)
+                .content(allClaimsDtos)
+                .build();
+        return ResponseEntity.ok(apiResponseDto);
+    }
 
     @PostMapping("/delete/soft")
     public ResponseEntity<ApiResponseDto> deleteClaim(@RequestBody ClaimDeleteRequest request, HttpServletRequest request2) {
@@ -2103,7 +2116,7 @@ public class ClaimController {
             }
             Claim claim = new Claim();
             try {
-                claim = service.getByCode(request.getClaimCode());
+                claim = service.getByCodeClient(request.getClaimCode());
             } catch (Exception e) {
                 apiResponseDto = ApiResponseDto
                         .builder()

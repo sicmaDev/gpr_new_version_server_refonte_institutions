@@ -25,6 +25,8 @@ import com.sicmagroup.gpr.api.claim.SaveRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.api.denunciation.SaveDenunRequest;
 import com.sicmagroup.gpr.domain.dto.AlertDto;
+import com.sicmagroup.gpr.domain.dto.TrashDto;
+import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
@@ -94,7 +96,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
-
+import java.util.Comparator;
 @Service
 @RequiredArgsConstructor
 public class ClaimServiceImpl implements ClaimService {
@@ -3087,6 +3089,52 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         return claims;
+    }
+
+    public List<TrashDto> getAllDeleted() {
+      
+       List<TrashDto> trashList = new ArrayList<>();
+
+        // Réclamations supprimées
+        repository.findByIsDeletedTrue().forEach(c -> {
+            trashList.add(new TrashDto(
+                c.getId(),
+                c.getType(),
+                c.getCodeClient(),
+                c.getClientFirstAndLastName(),
+                c.isDeleted(),
+                new UserResponse(
+                    c.getDeletedBy().getId(),
+                    c.getDeletedBy().getCode(),
+                    c.getDeletedBy().getFirstandlastname()
+                ),
+                c.getDeletedAt(),
+                c.getDelete_reason()
+            ));
+        });
+
+        // Suggestions supprimées
+        suggestionRepository.findByIsDeletedTrue().forEach(s -> {
+            trashList.add(new TrashDto(
+                s.getId(),
+                ClaimType.SUGGESTION,
+                s.getCodeClient(),
+                s.getClientFirstAndLastName(),
+                s.isDeleted(),
+                new UserResponse(
+                    s.getDeletedBy().getId(),
+                    s.getDeletedBy().getCode(),
+                    s.getDeletedBy().getFirstandlastname()
+                ),
+                s.getDeletedAt(),
+                s.getDelete_reason()
+            ));
+        });
+
+        // Optionnel : trier par date de suppression
+        trashList.sort(Comparator.comparing(TrashDto::getDeletedAt).reversed());
+
+        return trashList;
     }
 
     

@@ -849,9 +849,50 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
     }
 
+    public void restoreById(Long id, User currentUser) throws NotFoundException {
+        Suggestion suggest = repository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Suggestion introuvable"));
+
+        if (!suggest.isDeleted()) {
+            throw new RuntimeException("La suggestion n'est pas supprimée");
+        }
+
+        // Marque la suggestion comme supprimée (soft delete)
+        suggest.setDeleted(false);
+        suggest.setDeletedAt(null);
+        suggest.setDeletedBy(null);
+        suggest.setDelete_reason(null);
+        suggest.setRestored(true); 
+        suggest.setRestoredAt(LocalDateTime.now());
+        suggest.setRestoredBy(currentUser); 
+
+        repository.save(suggest);
+
+        Log log = Log
+                .builder()
+                .content("La suggestion portant le code: " + suggest.getCode() + 
+                " a été restaurée par l'utilisateur: " + currentUser.getFirstandlastname())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(currentUser.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .build();
+       
+            log.setLibelle("Restauration de Suggestion");
+            log.setTarget(LogTarget.SUGGESTION);
+
+        logServiceImpl.saveLog(log);
+
+    }
+
+
     @Override
     public Suggestion getByCode(String code) throws Exception {
         return repository.findByCode(code).orElseThrow(() -> new Exception("Suggestion introuvable"));
+    }
+    @Override
+    public Suggestion getByCodeClient(String code) throws Exception {
+        return repository.findByCodeClient(code).orElseThrow(() -> new Exception("Suggestion introuvable"));
     }
         
     @Transactional
@@ -868,4 +909,36 @@ public class SuggestionServiceImpl implements SuggestionService {
         // Enfin, supprimer la suggestion elle-même
         repository.delete(suggestion);
     }
+
+    public void deleteById(Suggestion suggest, String reason, User currentUser) throws NotFoundException {
+        
+        // Vérifie que la suggestion n’est pas déjà supprimée
+        if (Boolean.TRUE.equals(suggest.isDeleted())) {
+            throw new IllegalStateException("Cette suggestion est déjà supprimée.");
+        }
+
+        // Marque la suggestion comme supprimée (soft delete)
+        suggest.setDeleted(true);
+        suggest.setDeletedAt(LocalDateTime.now());
+        suggest.setDeletedBy(currentUser);
+        suggest.setDelete_reason(reason);
+        suggest.setRestored(false); // par sécurité
+
+        repository.save(suggest);
+
+        Log log = Log
+                .builder()
+                .content("La suggestion portant le code: " + suggest.getCode() + 
+                " a été supprimée par l'utilisateur: " + currentUser.getFirstandlastname())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(currentUser.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .build();
+                log.setLibelle("Suppression de Suggestion");
+                log.setTarget(LogTarget.SUGGESTION);
+                
+                logServiceImpl.saveLog(log);
+    }
+
 }

@@ -49,7 +49,9 @@ public interface        ClaimRepository extends JpaRepository<Claim, Long>, Clai
 
         List<Claim> findByTypeAndIsDeletedFalseAndStatus(ClaimType type, ClaimStatus status);
 
-         List<Claim> findByTypeAndIsDeletedFalseAndStatusNot(ClaimType type, ClaimStatus status);
+        List<Claim> findByIsDeletedTrue();
+         
+        List<Claim> findByTypeAndIsDeletedFalseAndStatusNot(ClaimType type, ClaimStatus status);
         List<Claim> findByTypeAndIsDeletedFalseAndStatusNotAndReceiptDateTimeBetween(ClaimType type, ClaimStatus status, LocalDateTime start, LocalDateTime end);
         List<Claim> findByTypeAndIsDeletedFalseAndStatusInAndReceiptDateTimeBetween(ClaimType type, List<ClaimStatus> status, LocalDateTime start, LocalDateTime end);
 

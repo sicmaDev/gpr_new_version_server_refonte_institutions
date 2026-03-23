@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.api.Media.MediaResponse;
+import com.sicmagroup.gpr.api.claim.ClaimDeleteRequest;
 import com.sicmagroup.gpr.api.claimAudio.ClaimAudioResponse;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
@@ -517,6 +518,168 @@ public class SuggestionController {
             return extraContentResponse;
         }else{
             return null;
+        }
+    }
+    @PostMapping("/delete/soft")
+    public ResponseEntity<ApiResponseDto> deleteSuggestion(@RequestBody ClaimDeleteRequest request, HttpServletRequest request2) {
+        ApiResponseDto apiResponseDto;
+        try {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+            User connectedUser = User.builder().build();
+
+            try {
+                connectedUser = authService.getByEmail(collectorDetails.getUsername());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+            Suggestion suggest = new Suggestion();
+            try {
+                suggest = service.getByCodeClient(request.getClaimCode());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Suggestion non trouvée")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+             // 🔎 Vérification du statut
+            if (suggest.getStatus() != ClaimStatus.SAVED) {
+                apiResponseDto = ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder()
+                        .message("Action non autorisée : la suggestion n'est pas au statut Enregistrée.")
+                        .title("INVALID STATUS")
+                        .build())
+                    .build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+            }
+
+            if (connectedUser.getPoste().getHabilitations().contains("H12")) {
+                try {
+                   
+                    // Vérifie que la Suggestion n’est pas déjà supprimée
+                    if (Boolean.TRUE.equals(suggest.isDeleted())) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                            ApiResponseDto.builder()
+                                .status(false)
+                                .content("Cette suggestion a déjà été supprimée !!!")
+                                .build()
+                        );
+                    }else{
+                        service.deleteById(suggest,request.getReason(),connectedUser);
+                        return ResponseEntity.ok(
+                            ApiResponseDto.builder().status(true).content("Suggestion supprimée avec succès.").build()
+                        );
+                    }
+                  
+                } catch (NotFoundException e) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        ApiResponseDto.builder().status(false).content("Erreur lors de la suppression.").build()
+                    );
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    ApiResponseDto.builder()
+                        .status(false)
+                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
+                        .build()
+                );
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .build()
+            );
+        }
+    }
+
+
+     @PostMapping("/restore/{id}")
+    public ResponseEntity<ApiResponseDto> restoreClaim(@PathVariable Long id, HttpServletRequest request2) {
+        ApiResponseDto apiResponseDto;
+        try {
+            UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+            User connectedUser = User.builder().build();
+
+            try {
+                connectedUser = authService.getByEmail(collectorDetails.getUsername());
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+            Suggestion suggest = new Suggestion();
+            try {
+                suggest = service.getById(id);
+            } catch (Exception e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder().message("Suggestion non trouvée")
+                                .title("NOT FOUND EXCEPTION")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+            }
+
+            if (connectedUser.getPoste().getHabilitations().contains("H12")) {
+                try {
+                   
+                    // Vérifie que la Suggestion n’est pas déjà supprimée
+                    if (Boolean.FALSE.equals(suggest.isDeleted())) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                            ApiResponseDto.builder()
+                                .status(false)
+                                .content("Cette suggestion n'a pas été supprimée !!!")
+                                .build()
+                        );
+                    }else{
+                        service.restoreById(id,connectedUser);
+                        return ResponseEntity.ok(
+                            ApiResponseDto.builder().status(true).content("Suggestion supprimée avec succès.").build()
+                        );
+                    }
+                  
+                } catch (NotFoundException e) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                        ApiResponseDto.builder().status(false).content("Erreur lors de la suppression.").build()
+                    );
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    ApiResponseDto.builder()
+                        .status(false)
+                        .content("Vous n’êtes pas autorisé à effectuer cette action.")
+                        .build()
+                );
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .build()
+            );
         }
     }
 
