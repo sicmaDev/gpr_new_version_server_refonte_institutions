@@ -78,13 +78,13 @@ public class SuggestionServiceImpl implements SuggestionService {
 
     @Override
     public List<Suggestion> getAll() {
-        return repository.findAll();
+        return repository.findAllByIsDeletedFalse();
     }
 
 
     @Override
     public List<Suggestion> getAllByStatus(ClaimStatus status) {
-        return repository.findByStatus(status);
+        return repository.findByStatusAndIsDeletedFalse(status);
     }
 
     @Override
@@ -688,7 +688,7 @@ public class SuggestionServiceImpl implements SuggestionService {
 
     @Override
     public List<Suggestion> getAllByStatusNot(ClaimStatus status) {
-        return repository.findByStatusNot(status);
+        return repository.findByStatusNotAndIsDeletedFalse(status);
     }
 
     /**
@@ -712,13 +712,12 @@ public class SuggestionServiceImpl implements SuggestionService {
 
     @Override
     public List<Suggestion> getAllByStatusIn(List<ClaimStatus> status) {
-        return repository.findByStatusIn(status);
+        return repository.findByStatusInAndIsDeletedFalse(status);
     }
 
     @Override
     public List<Suggestion> getAllByCollectorAndStatus(User collector, ClaimStatus status) {
-        // return repository.findByCollecteurAndStatus(collector, status);
-        return repository.findByCollecteurAndStatus(collector, status);
+        return repository.findByCollecteurAndStatusAndIsDeletedFalse(collector, status);
     }
 
     @Override

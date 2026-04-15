@@ -24,13 +24,17 @@ import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, SuggestionRepositoryCustom {
 
     List<Suggestion> findByIsDeletedTrue();
+    List<Suggestion> findAllByIsDeletedFalse();
     List<Suggestion> findByStatus(ClaimStatus status);
-
+    List<Suggestion> findByStatusAndIsDeletedFalse(ClaimStatus status);
 
     List<Suggestion> findByStatusIn(List<ClaimStatus> statuses);
+    List<Suggestion> findByStatusInAndIsDeletedFalse(List<ClaimStatus> statuses);
 
     List<Suggestion> findByStatusNot(ClaimStatus status);
+    List<Suggestion> findByStatusNotAndIsDeletedFalse(ClaimStatus status);
     List<Suggestion> findByServiceIndexeInAndStatusNot(List<ServicePoint> servicePoint, ClaimStatus status);
+    List<Suggestion> findByServiceIndexeInAndStatusNotAndIsDeletedFalse(List<ServicePoint> servicePoint, ClaimStatus status);
     List<Suggestion> findByStatusNotAndReceiptDateTimeBetween(ClaimStatus status, LocalDateTime start, LocalDateTime end);
 
     Optional<Suggestion> findByCode(String code);
@@ -39,6 +43,7 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, S
     List<Suggestion> findByCodeStartsWith(String code);
 
     List<Suggestion> findByCollecteurAndStatus(User collecteur, ClaimStatus status);
+    List<Suggestion> findByCollecteurAndStatusAndIsDeletedFalse(User collecteur, ClaimStatus status);
 
     List<Suggestion> findByCollecteurAndStatusOrCodeStartsWithAndStatus(User collecteur, ClaimStatus status,String start,ClaimStatus status2);
 
