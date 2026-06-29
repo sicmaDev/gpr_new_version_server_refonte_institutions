@@ -41,8 +41,8 @@ public class SecurityConfig {
                                 .cors(cors -> corsConfigurationSource())
                                 .authorizeHttpRequests(registry -> registry
                                                 // public endpoints
-                                                .requestMatchers("/api/v1/auth/authenticate", "/api/v1/auth/essai", "/api/v1/auth/infoLicense", "/ws/**", "/api/v1/session**", "/api/v1/message/**", "/api/v1/apikey/**","/**")
-                                                
+                                                .requestMatchers("/api/v1/auth/authenticate", "/api/v1/auth/essai", "/api/v1/auth/infoLicense", "/ws/**", "/api/v1/session**", "/api/v1/message/**", "/api/v1/apikey/**", "/api/v1/config/user/publicRegister", "/**")
+
                                                 .permitAll()
                                                 
                                                 // .requestMatchers("/api/v1/auth/update",

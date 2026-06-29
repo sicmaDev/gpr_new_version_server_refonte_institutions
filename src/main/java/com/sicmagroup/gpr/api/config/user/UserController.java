@@ -438,6 +438,8 @@ public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequ
         UserDto userDto = modelMapper.map(user, UserDto.class);
         userDto.setPosteDto(convertToResponse(user.getPoste()));
         userDto.setServicePointDto(convertToResponse(user.getServicePoint()));
+        userDto.setDeleted(user.isDeleted());
+        userDto.setRattached(user.isRattached());
         return userDto;
     }
 

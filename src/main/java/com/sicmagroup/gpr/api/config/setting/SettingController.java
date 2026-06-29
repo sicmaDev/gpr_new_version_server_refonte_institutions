@@ -19,6 +19,10 @@ import com.sicmagroup.gpr.service.auth.AuthenticationService;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
 import com.sicmagroup.gpr.utils.Utils;
+import com.sicmagroup.gpr.domain.enumeration.LogTarget;
+import com.sicmagroup.gpr.domain.enumeration.LogType;
+import com.sicmagroup.gpr.domain.model.Log;
+import com.sicmagroup.gpr.service.log.LogServiceImpl;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +51,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import com.sicmagroup.gpr.utils.Utils;
 
 
 @RestController
@@ -61,6 +64,7 @@ public class SettingController {
     private final PasswordEncoder passwordEncoder;
     private final ApiKeyRepository apiKeyRepository;
     private final MailService mailService;
+    private final LogServiceImpl logService;
     // @PostMapping(value="/institution/save")
     // public ResponseEntity<ApiResponseDto> configInstit(@RequestBody SomeEnityData
     // entity) {
@@ -589,11 +593,23 @@ public class SettingController {
     @GetMapping(value = "/export/{type}")
     public ResponseEntity<ApiResponseDto> exportConfig(
             @PathVariable(name = "type", required = true) ConfigExportEnum type) {
-        ObjectMapper Obj = new ObjectMapper();
-
         try {
-
             HashMap<String, Object> settingExport = authService.exportConfig(type);
+
+            try {
+                org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                String email = auth != null ? auth.getName() : null;
+                String displayName = email != null ? authService.getUserDisplayName(email) : null;
+                logService.saveLog(Log.builder()
+                    .libelle("Exportation " + type.name().toUpperCase())
+                    .content(type.name())
+                    .target(LogTarget.EXPORT)
+                    .type(LogType.INFO)
+                    .userIpAddress(displayName)
+                    .createdAt(java.time.LocalDateTime.now())
+                    .build());
+            } catch (Exception ignored) {}
+
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
@@ -602,7 +618,6 @@ public class SettingController {
             return ResponseEntity.ok(apiResponseDto);
 
         } catch (Exception e) {
-
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
@@ -610,9 +625,7 @@ public class SettingController {
                             .build())
                     .build();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
-
         }
-
     }
 
     @GetMapping(value = "/key")

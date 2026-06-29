@@ -282,7 +282,7 @@ public class ReportServiceImpl implements ReportService {
             List<Suggestion> sugges = new ArrayList<>();
             List<Claim> claims = new ArrayList<>();
             if (RSDSelect.equals(ClaimType.SUGGESTION)) {
-                sugges = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
+                sugges = suggestionRepository.findByServiceIndexeInAndStatusNotAndIsDeletedFalse(sp, ClaimStatus.TEMP_SAVED);
             } else {
 
                 claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
@@ -362,7 +362,7 @@ public class ReportServiceImpl implements ReportService {
                 return result;
             }
 
-            if (request.getObjets() instanceof List<Long> && request.getServicePoints().size() > 0) {
+            if (request.getObjets() instanceof List<Long> && request.getObjets().size() > 0) {
                 objets = oRepository.findAllById(request.getObjets());
             } else {
                 objets = oRepository.findAll();
@@ -522,7 +522,7 @@ public class ReportServiceImpl implements ReportService {
             List<Suggestion> suggestions = new ArrayList<>();
             List<Claim> claims = new ArrayList<>();
             if (RSDSelect.equals(ClaimType.SUGGESTION)) {
-                suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
+                suggestions = suggestionRepository.findByServiceIndexeInAndStatusNotAndIsDeletedFalse(sp, ClaimStatus.TEMP_SAVED);
 
             } else {
 
@@ -614,7 +614,7 @@ public class ReportServiceImpl implements ReportService {
 
         for (ClaimType RSDSelect : RDSList) {
             List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(RSDSelect, sp, ClaimStatus.TEMP_SAVED);
-            List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
+            List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeInAndStatusNotAndIsDeletedFalse(sp, ClaimStatus.TEMP_SAVED);
 
             HashMap<String, Object> agencesHashMap = new HashMap<String, Object>();
             for (ServicePoint agence : sp) {
@@ -686,7 +686,7 @@ public class ReportServiceImpl implements ReportService {
             
 
             if (request.getCanals() instanceof List<Long> && request.getCanals().size() > 0) {
-                channels = clRepository.findAllById(request.getObjets());
+                channels = clRepository.findAllById(request.getCanals());
             } else {
                 channels = clRepository.findAll();
 
@@ -696,7 +696,7 @@ public class ReportServiceImpl implements ReportService {
             channels = clRepository.findAll();
         }
 
-        List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
+        List<Suggestion> suggestions = suggestionRepository.findByServiceIndexeInAndStatusNotAndIsDeletedFalse(sp, ClaimStatus.TEMP_SAVED);
         List<Claim> claims = claimRepository.findByServicePointInAndIsDeletedFalseAndStatusNot(sp, ClaimStatus.TEMP_SAVED);
 
         HashMap<String, String> colorList = new HashMap<>();
@@ -763,7 +763,7 @@ public class ReportServiceImpl implements ReportService {
                 return result;
             }
            
-            if (request.getObjets() instanceof List<Long> && request.getServicePoints().size() > 0) {
+            if (request.getObjets() instanceof List<Long> && request.getObjets().size() > 0) {
                 objets = oRepository.findAllById(request.getObjets());
             } else {
                 objets = oRepository.findAll();
@@ -830,7 +830,7 @@ public class ReportServiceImpl implements ReportService {
         } else {
             totalClaim = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
             totalDenun = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
-            totalSuggest = suggestionRepository.countByStatusNot(ClaimStatus.TEMP_SAVED);
+            totalSuggest = suggestionRepository.countByStatusNotAndIsDeletedFalse(ClaimStatus.TEMP_SAVED);
         }
 
         Long total = totalClaim + totalDenun + totalSuggest;

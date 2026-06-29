@@ -5,5 +5,6 @@ public enum LogTarget {
     DENUNCIACION,
     SUGGESTION,
     CONFIG,
-    APP
+    APP,
+    EXPORT
 }

@@ -57,7 +57,9 @@ public interface AuthenticationService {
 
     public void updateAccountPwdUser(UpdatePwdRequest request) throws Exception;
 
-    public HashMap<String, Object> getDashboard();
+    public HashMap<String, Object> getDashboard(String email);
+
+    public String getUserDisplayName(String email);
 
     public List<User> getEmailReceivers();
 

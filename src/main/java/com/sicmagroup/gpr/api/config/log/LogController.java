@@ -28,5 +28,15 @@ public class LogController {
             .build();
         return ResponseEntity.ok(responseDto);
     }
-    
+
+    @GetMapping(value="/exports")
+    public ResponseEntity<ApiResponseDto> getExportLogs() {
+        ApiResponseDto responseDto = ApiResponseDto
+            .builder()
+            .status(true)
+            .content(service.getExportLogs())
+            .build();
+        return ResponseEntity.ok(responseDto);
+    }
+
 }

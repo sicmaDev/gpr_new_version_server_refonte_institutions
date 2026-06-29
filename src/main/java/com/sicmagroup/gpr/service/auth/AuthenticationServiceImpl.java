@@ -10,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -504,9 +505,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         
         if (userFirst.isDeleted()) {
+            String logMsg = userFirst.isRattached()
+                ? "Tentative de connexion sur un compte en attente de validation : " + request.getEmail()
+                : "Tentative de connexion sur un compte désactivé : " + request.getEmail();
+            String userMsg = userFirst.isRattached()
+                ? "Votre compte est en attente de validation par un administrateur."
+                : "Votre compte est désactivé. Veuillez contacter votre administrateur.";
+
             Log log = Log.builder()
                 .libelle("Echec Authentification")
-                .content("Tentative de connexion sur un compte désactivé : " + request.getEmail())
+                .content(logMsg)
                 .createdAt(LocalDateTime.now())
                 .type(LogType.ERROR)
                 .userId(0L)
@@ -518,7 +526,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             return AuthenticationResponse.builder()
                 .response(ApiResponseDto.builder()
                     .status(false)
-                    .content(Map.of("message", "Votre compte est désactivé."))
+                    .content(Map.of("message", userMsg))
                     .build())
                 .build();
         }
@@ -1954,7 +1962,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .claimCodeClient(claim.getCodeClient())
                             .claimCode(claim.getCode())
                             .claimId(claim.getId())
+                            .objetLibelle(claim.getObjet() != null ? claim.getObjet().getLibelle() : null)
+                            .gravity(claim.getObjet() != null ? claim.getObjet().getRisqueLevel() : null)
                             .retardDay(days + " jr(s) " + hours + " heure(s)")
+                            .retardDayNumber(days)
                             .declenchedDate(calculateDate)
                             .receiptDateTime(claim.getReceiptDateTime())
                             .status(claim.getStatus())
@@ -1969,69 +1980,162 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public HashMap<String, Object> getDashboard() {
-        List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
-        List<Claim> denuns = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
-        List<Suggestion> suggestions = suggestionRepository
-                .findByStatusNot(ClaimStatus.TEMP_SAVED);
+    public HashMap<String, Object> getDashboard(String email) {
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        boolean isPilote = Role.PILOTE.equals(currentUser.getAdditionalrole());
+        boolean isRA = currentUser.isRa();
+
+        List<Claim> claims;
+        List<Claim> denuns;
+        List<Suggestion> suggestions;
+        List<AlertDto> retardClaims;
+
+        if (isPilote) {
+            // Pilote → toutes les données (comportement actuel)
+            claims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            denuns = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+            suggestions = suggestionRepository.findByStatusNot(ClaimStatus.TEMP_SAVED);
+            retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
+            retardClaims.addAll(alertClaimAndDenun(ClaimType.DENUNCIACION));
+
+        } else if (isRA) {
+            // RA → filtre par point de service
+            List<ServicePoint> spList = Collections.singletonList(currentUser.getServicePoint());
+            claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(ClaimType.CLAIM, spList, ClaimStatus.TEMP_SAVED);
+            denuns = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(ClaimType.DENUNCIACION, spList, ClaimStatus.TEMP_SAVED);
+            suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(spList, ClaimStatus.TEMP_SAVED);
+
+            Long spId = currentUser.getServicePoint().getId();
+            List<Claim> claimsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                            ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED))
+                    .stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId))
+                    .collect(Collectors.toList());
+            List<Claim> denunsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.DENUNCIACION,
+                    Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                            ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT))
+                    .stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId))
+                    .collect(Collectors.toList());
+            retardClaims = computeAlerts(claimsForAlert, ClaimType.CLAIM);
+            retardClaims.addAll(computeAlerts(denunsForAlert, ClaimType.DENUNCIACION));
+
+        } else {
+            // User simple → filtre par collecteur ou affecté au traitement
+            Long userId = currentUser.getId();
+            List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            List<Claim> allDenuns = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
+            List<Suggestion> allSuggestions = suggestionRepository.findByStatusNot(ClaimStatus.TEMP_SAVED);
+
+            claims = allClaims.stream()
+                    .filter(c -> (c.getCollector() != null && c.getCollector().getId().equals(userId))
+                              || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId)))
+                    .collect(Collectors.toList());
+            denuns = allDenuns.stream()
+                    .filter(d -> (d.getCollector() != null && d.getCollector().getId().equals(userId))
+                              || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId)))
+                    .collect(Collectors.toList());
+            suggestions = allSuggestions.stream()
+                    .filter(s -> s.getCollecteur() != null && s.getCollecteur().getId().equals(userId))
+                    .collect(Collectors.toList());
+
+            List<Claim> claimsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.CLAIM,
+                    Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                            ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED))
+                    .stream().filter(c -> (c.getCollector() != null && c.getCollector().getId().equals(userId))
+                                      || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId)))
+                    .collect(Collectors.toList());
+            List<Claim> denunsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.DENUNCIACION,
+                    Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                            ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT))
+                    .stream().filter(d -> (d.getCollector() != null && d.getCollector().getId().equals(userId))
+                                      || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId)))
+                    .collect(Collectors.toList());
+            retardClaims = computeAlerts(claimsForAlert, ClaimType.CLAIM);
+            retardClaims.addAll(computeAlerts(denunsForAlert, ClaimType.DENUNCIACION));
+        }
+
+        // ── Calcul des KPI communs à partir des listes filtrées ──
         List<ClaimStatus> treatClaimStatus = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED,
                 ClaimStatus.UNSATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION, ClaimStatus.PARTIAL_SATISFIED);
-        HashMap<String, Object> dashboard = new HashMap<String, Object>();
+
+        HashMap<String, Object> dashboard = new HashMap<>();
         dashboard.put("claims", claims.size());
         dashboard.put("denuns", denuns.size());
         dashboard.put("suggest", suggestions.size());
         dashboard.put("claimsAffected", 0);
         dashboard.put("claimsTreat", 0);
-        // TOTAL Claim + DEnun + Suggest
         dashboard.put("plainteSuggest", claims.size() + denuns.size() + suggestions.size());
-        // nombre de claim affecté
+
         int value = 0;
-        int totalSatisfied = 0;
         for (Claim claim : claims) {
-            if (claim.getStatus().equals(ClaimStatus.AFFECTED)) { // claim affected
+            if (claim.getStatus().equals(ClaimStatus.AFFECTED)) {
                 value = (int) dashboard.get("claimsAffected");
                 dashboard.replace("claimsAffected", value + 1);
-            } else if (treatClaimStatus.contains(claim.getStatus())) { // claimtreat
+            } else if (treatClaimStatus.contains(claim.getStatus())) {
                 value = (int) dashboard.get("claimsTreat");
                 dashboard.replace("claimsTreat", value + 1);
-                if (claim.getStatus().equals(ClaimStatus.SATISFIED)) {
-                    totalSatisfied++;
-                }
             }
         }
-        // taux satisfaction
-        List<ClaimStatus> status = Arrays.asList(ClaimStatus.SATISFIED);
-       
-        List<Claim> claimsTreat = new ArrayList<>();
-        claimsTreat = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, status);
-    
 
+        // Taux de satisfaction
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-                ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
-        List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+                ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION);
+        long claimsSatisfied = claims.stream().filter(c -> c.getStatus().equals(ClaimStatus.SATISFIED)).count();
+        long claimsForSatisfaction = claims.stream().filter(c -> allSatisfaction.contains(c.getStatus())).count();
 
-        // dashboard.put("tauxSatisfaction",
-        //        Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
-        
-        // Formater le résultat avec deux chiffres après la virgule
         String tauxSatisfactionFormate;
-        if (claimsTreat.size() == 0) {
+        if (claimsSatisfied == 0) {
             tauxSatisfactionFormate = "0";
         } else {
             DecimalFormat df = new DecimalFormat("#.00");
-            tauxSatisfactionFormate = df.format(Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size())));
+            tauxSatisfactionFormate = df.format(Utils.percentCalculator(claimsSatisfied, claimsForSatisfaction));
         }
-       
-        // Ajout au dashboard
         dashboard.put("tauxSatisfaction", tauxSatisfactionFormate);
 
-        
-            List<AlertDto> retardClaims = alertClaimAndDenun(ClaimType.CLAIM);
-        retardClaims.addAll(alertClaimAndDenun(ClaimType.DENUNCIACION));
         dashboard.put("claimDenunRetard", retardClaims);
         dashboard.put("TotalclaimDenunRetard", retardClaims.size());
 
         return dashboard;
+    }
+
+    private List<AlertDto> computeAlerts(List<Claim> claims, ClaimType type) {
+        List<AlertDto> alertDtos = new ArrayList<>();
+        for (Claim claim : claims) {
+            boolean isOneSolutionMeasured = false;
+            if (!claim.getSolutions().isEmpty() && type == ClaimType.CLAIM) {
+                for (Solution solution : claim.getSolutions()) {
+                    if (solution.getSatisfactionMeasure() != null) {
+                        isOneSolutionMeasured = true;
+                        break;
+                    }
+                }
+            }
+            if (!isOneSolutionMeasured) {
+                LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+                if (LocalDateTime.now().isAfter(calculateDate)) {
+                    Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
+                    Long days = hoursRetard / 24;
+                    Long hours = hoursRetard % 24;
+                    alertDtos.add(AlertDto.builder()
+                            .claimClient(claim.getClientFirstAndLastName())
+                            .claimCodeClient(claim.getCodeClient())
+                            .claimCode(claim.getCode())
+                            .claimId(claim.getId())
+                            .objetLibelle(claim.getObjet() != null ? claim.getObjet().getLibelle() : null)
+                            .gravity(claim.getObjet() != null ? claim.getObjet().getRisqueLevel() : null)
+                            .retardDay(days + " jr(s) " + hours + " heure(s)")
+                            .retardDayNumber(days)
+                            .declenchedDate(calculateDate)
+                            .receiptDateTime(claim.getReceiptDateTime())
+                            .status(claim.getStatus())
+                            .type(type)
+                            .build());
+                }
+            }
+        }
+        return alertDtos;
     }
 
     @Override
@@ -2114,5 +2218,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public User findRaByServicePoint(Long servicePoint) {
         return userRepository.findRaByServicePointId(servicePoint)
                 .orElse(null);  // Retourne null si aucun RA n'est trouvé
+    }
+
+    @Override
+    public String getUserDisplayName(String email) {
+        try {
+            User user = userRepository.findByEmailAndIsDeleted(email, false).orElse(null);
+            if (user != null && user.getFirstandlastname() != null && !user.getFirstandlastname().isBlank()) {
+                return user.getFirstandlastname();
+            }
+        } catch (Exception ignored) {}
+        return email;
     }
 }

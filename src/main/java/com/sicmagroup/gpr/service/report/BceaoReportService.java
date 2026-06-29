@@ -69,7 +69,7 @@ public class BceaoReportService {
         bceaoReport.setTotalDenun(denuns.size());
         // total suggest
         List<Suggestion> suggestions = suggestionRepository
-                .findByStatusNotAndReceiptDateTimeBetween(ClaimStatus.TEMP_SAVED, start, end);
+                .findByStatusNotAndIsDeletedFalseAndReceiptDateTimeBetween(ClaimStatus.TEMP_SAVED, start, end);
         bceaoReport.setTotalSuggest(suggestions.size());
         //
         List<ClaimStatus> treatClaimStatus = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED,
