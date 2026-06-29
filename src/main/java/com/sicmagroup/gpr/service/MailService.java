@@ -48,12 +48,23 @@ public class MailService {
                     impl.setUsername(mailRequest.getUser());
                     impl.setPassword(mailRequest.getPwd());
 
+                    int port = Integer.parseInt(mailRequest.getPort());
+                    boolean useSSL = (port == 465);
+
                     Properties props = impl.getJavaMailProperties();
                     props.put("mail.transport.protocol", "smtp");
                     props.put("mail.smtp.auth", "true");
-                    props.put("mail.smtp.ssl.enable", "true");
-                    props.put("mail.smtp.starttls.enable", "true");
-                    props.put("mail.debug", "true");
+                    props.put("mail.smtp.ssl.enable", String.valueOf(useSSL));
+                    props.put("mail.smtp.starttls.enable", String.valueOf(!useSSL));
+                    props.put("mail.smtp.starttls.required", String.valueOf(!useSSL));
+                    props.put("mail.smtp.ssl.trust", mailRequest.getHost());
+                    // Timeouts pour éviter les connexions mortes après longue inactivité
+                    props.put("mail.smtp.connectiontimeout", "10000");
+                    props.put("mail.smtp.timeout", "10000");
+                    props.put("mail.smtp.writetimeout", "10000");
+                    // Désactiver le cache SSL pour éviter les sessions expirées
+                    props.put("mail.smtp.ssl.sessioncachetime", "0");
+                    props.put("mail.debug", "false");
                 }
 
                 // Création du mail HTML
@@ -96,12 +107,22 @@ public class MailService {
                     impl.setUsername(mailRequest.getUser());
                     impl.setPassword(mailRequest.getPwd());
 
+                    int port2 = (mailRequest.getPort() != null && !mailRequest.getPort().isEmpty())
+                            ? Integer.parseInt(mailRequest.getPort()) : 587;
+                    boolean useSSL2 = (port2 == 465);
+
                     Properties props = impl.getJavaMailProperties();
                     props.put("mail.transport.protocol", "smtp");
                     props.put("mail.smtp.auth", "true");
-                    props.put("mail.smtp.ssl.enable", "true");
-                    props.put("mail.smtp.starttls.enable", "true");
-                    props.put("mail.debug", "true");
+                    props.put("mail.smtp.ssl.enable", String.valueOf(useSSL2));
+                    props.put("mail.smtp.starttls.enable", String.valueOf(!useSSL2));
+                    props.put("mail.smtp.starttls.required", String.valueOf(!useSSL2));
+                    props.put("mail.smtp.ssl.trust", mailRequest.getHost());
+                    props.put("mail.smtp.connectiontimeout", "10000");
+                    props.put("mail.smtp.timeout", "10000");
+                    props.put("mail.smtp.writetimeout", "10000");
+                    props.put("mail.smtp.ssl.sessioncachetime", "0");
+                    props.put("mail.debug", "false");
                     impl.setJavaMailProperties(props);
                 }
 

@@ -13,6 +13,8 @@ import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
 
+import java.io.File;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -452,8 +454,48 @@ public class ReportController {
 			}
 		}
 	}
+	@GetMapping(value = "/system-performance")
+	public ResponseEntity<HashMap<String, Object>> getSystemPerformance() {
+		HashMap<String, Object> result = new HashMap<>();
+		try {
+			com.sun.management.OperatingSystemMXBean osBean =
+				(com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
+			double cpuLoad = osBean.getSystemCpuLoad();
+			int cpu = (cpuLoad < 0) ? 0 : (int) Math.round(cpuLoad * 100);
+
+			long totalRam = osBean.getTotalPhysicalMemorySize();
+			long freeRam  = osBean.getFreePhysicalMemorySize();
+			long usedRam  = totalRam - freeRam;
+			double ramTotalGo = Math.round(totalRam / 1e9 * 10.0) / 10.0;
+			double ramUsedGo  = Math.round(usedRam  / 1e9 * 10.0) / 10.0;
+
+			long totalDisk = 0, usableDisk = 0;
+			for (File root : File.listRoots()) {
+				totalDisk  += root.getTotalSpace();
+				usableDisk += root.getUsableSpace();
+			}
+			long usedDisk = totalDisk - usableDisk;
+			double diskTotalGo = Math.round(totalDisk / 1e9 * 10.0) / 10.0;
+			double diskUsedGo  = Math.round(usedDisk  / 1e9 * 10.0) / 10.0;
+
+			result.put("cpu",        cpu);
+			result.put("ramUsedGo",  ramUsedGo);
+			result.put("ramTotalGo", ramTotalGo);
+			result.put("diskUsedGo", diskUsedGo);
+			result.put("diskTotalGo",diskTotalGo);
+		} catch (Exception e) {
+			result.put("cpu",        0);
+			result.put("ramUsedGo",  0);
+			result.put("ramTotalGo", 0);
+			result.put("diskUsedGo", 0);
+			result.put("diskTotalGo",0);
+		}
+		return ResponseEntity.ok(result);
+	}
+
 	@DeleteMapping(value="/templates/{id}")
-	
+
 	public ResponseEntity<ApiResponseDto> deleteTemplate(@PathVariable(name = "id") Long id) {
 		ApiResponseDto apiResponseDto;
 		try {

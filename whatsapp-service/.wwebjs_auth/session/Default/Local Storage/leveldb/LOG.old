@@ -1,0 +1,9 @@
+2026/06/05-08:17:34.477 2d84 Reusing MANIFEST C:\xampp\htdocs\GPR\gpr_server_sicma_new_version\whatsapp-service\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2026/06/05-08:17:34.490 2d84 Recovering log #4
+2026/06/05-08:17:34.496 2d84 Reusing old log C:\xampp\htdocs\GPR\gpr_server_sicma_new_version\whatsapp-service\.wwebjs_auth\session\Default\Local Storage\leveldb/000004.log 
+2026/06/05-10:38:22.122 2d84 Level-0 table #8: started
+2026/06/05-10:38:22.137 2d84 Level-0 table #8: 14621 bytes OK
+2026/06/05-10:38:22.140 2d84 Delete type=0 #4
+2026/06/05-14:08:04.635 2d84 Level-0 table #10: started
+2026/06/05-14:08:04.642 2d84 Level-0 table #10: 18932 bytes OK
+2026/06/05-14:08:04.646 2d84 Delete type=0 #7

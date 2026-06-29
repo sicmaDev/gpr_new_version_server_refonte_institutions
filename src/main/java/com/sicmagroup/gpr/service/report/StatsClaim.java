@@ -609,11 +609,13 @@ public class StatsClaim {
                 ClaimStatus.LITIGATION
         );
     
-        // Récupération de toutes les réclamations
-        List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+        // Récupération des réclamations selon le filtre
+        List<Claim> allClaims = (request != null)
+                ? claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.CLAIM)
+                : claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
         List<Claim> allExpiredClaims = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
-    
+
         // Filtrage des réclamations échues
         for (Claim claim : allClaims) {
             LocalDateTime supposedFinalTreatmentDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
@@ -658,8 +660,10 @@ public class StatsClaim {
         LocalDateTime now = LocalDateTime.now();
     
         try {
-            // Récupération de toutes les réclamations
-            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+            // Récupération des réclamations selon le filtre
+            allClaims = (request != null)
+                    ? claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.CLAIM)
+                    : claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
     
             // Filtrage des réclamations échues
             for (Claim claim : allClaims) {

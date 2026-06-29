@@ -53,6 +53,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         List<Predicate> predicates = new ArrayList<>();
 
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
 
         predicates.addAll(predicateBasedOnFilter(request, cb, query, claim));
 
@@ -82,6 +83,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         List<Predicate> predicates = new ArrayList<>();
 
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         predicates.add(cb.equal(servicePoint.get("id"), joinServiceClaim.get("id")));
 
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
@@ -162,6 +164,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
     private List<Predicate> predicateBasedOnFilter(FilterRequest request, CriteriaBuilder cb,
             CriteriaQuery<Claim> query, Root<Claim> claim) {
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
             Subquery<Objet> subquery = query.subquery(Objet.class);
@@ -241,6 +244,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
                 cb.count(claim.get("code")).alias("total"));
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
             Subquery<Objet> subquery = query.subquery(Objet.class);
@@ -331,6 +335,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         predicates.add(cb.equal(collectionChannel.get("id"), joinClaimCollect.get("id")));
 
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
@@ -417,6 +422,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         Root<ServicePoint> servicePoint = query.from(ServicePoint.class);
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
 
         query.multiselect(
                 collectionChannel.get("id").alias("canalId"),
@@ -516,6 +522,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         Root<Objet> objet = query.from(Objet.class);
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
 
         query.multiselect(
                 objet.get("id").alias("id"),
@@ -611,6 +618,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
                 cb.count(claim.get("code")).alias("total"));
         Join<Claim, Objet> joinClaimObj = claim.join("objet");
         predicates.add(cb.equal(objet.get("id"), joinClaimObj.get("id")));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
             Subquery<Objet> subquery = query.subquery(Objet.class);
@@ -702,6 +710,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
                 cb.count(claim.get("code")).alias("total"));
         Join<Claim, Objet> joinClaimObj = claim.join("objet");
         predicates.add(cb.equal(objet.get("id"), joinClaimObj.get("id")));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         Join<Claim, ServicePoint> joinServiceClaim = claim.join("servicePoint");
         predicates.add(cb.equal(servicePoint.get("id"), joinServiceClaim.get("id")));
 
@@ -789,6 +798,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         Root<ServicePoint> servicePoint = query.from(ServicePoint.class);
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         query.multiselect(
                 objet.get("id").alias("idObj"),
                 objet.get("libelle").alias("libelleObj"),
@@ -882,6 +892,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         Root<Claim> claim = query.from(Claim.class);
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), ClaimType.CLAIM));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         query.multiselect(
                 claim.get("gender").alias("gender"),
                 cb.count(claim.get("code")).alias("total"));
@@ -968,6 +979,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         Root<ServicePoint> servicePoint = query.from(ServicePoint.class);
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), ClaimType.CLAIM));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         query.multiselect(
                 servicePoint.get("id").alias("id"),
                 servicePoint.get("libelle").alias("libelle"),
@@ -1058,6 +1070,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         Root<Objet> objet = query.from(Objet.class);
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
 
         Join<Claim, Objet> joinClaimObj = claim.join("objet");
         predicates.add(cb.equal(objet.get("id"), joinClaimObj.get("id")));
@@ -1153,6 +1166,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         Root<ServicePoint> servicePoint = query.from(ServicePoint.class);
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
 
         Join<Claim, Objet> joinClaimObj = claim.join("objet");
         predicates.add(cb.equal(objet.get("id"), joinClaimObj.get("id")));
@@ -1253,6 +1267,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
                 cb.count(claim.get("code")).alias("total"));
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), ClaimType.CLAIM));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
             Subquery<Objet> subquery = query.subquery(Objet.class);
@@ -1335,6 +1350,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), ClaimType.CLAIM));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
             Subquery<Objet> subquery = query.subquery(Objet.class);
@@ -1411,6 +1427,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
             Subquery<Objet> subquery = query.subquery(Objet.class);
@@ -1487,6 +1504,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
             Subquery<Objet> subquery = query.subquery(Objet.class);
@@ -1567,6 +1585,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
                 servicePoint.get("libelle").alias("spLib"));
 
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
         if (request != null) {
             if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
@@ -1651,6 +1670,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         List<Predicate> predicates = new ArrayList<>();
 
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
 
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
@@ -1735,6 +1755,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         List<Predicate> predicates = new ArrayList<>();
 
         predicates.add(cb.equal(claim.get("type"), type));
+        predicates.add(cb.isFalse(claim.get("isDeleted")));
 
         if (request.getObjets() != null && !request.getObjets().isEmpty()) {
 
@@ -1812,3 +1833,5 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
     }
 
 }
+
+

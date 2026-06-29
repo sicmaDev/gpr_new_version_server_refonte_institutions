@@ -3,6 +3,7 @@ package com.sicmagroup.gpr.api.auth;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -91,9 +92,9 @@ public class AuthenticationController {
     }
 
     @GetMapping(value = "/dashboard")
-    public ResponseEntity<ApiResponseDto> getDashboard() {
+    public ResponseEntity<ApiResponseDto> getDashboard(Authentication authentication) {
         ApiResponseDto apiResponseDto = new ApiResponseDto();
-        apiResponseDto.setContent(authenticationServiceImpl.getDashboard());
+        apiResponseDto.setContent(authenticationServiceImpl.getDashboard(authentication.getName()));
         apiResponseDto.setStatus(true);
         return ResponseEntity.ok(apiResponseDto);
     }
