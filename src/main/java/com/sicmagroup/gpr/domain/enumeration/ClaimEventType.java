@@ -1,0 +1,21 @@
+package com.sicmagroup.gpr.domain.enumeration;
+
+public enum ClaimEventType {
+    SAVED,
+    AFFECTED,
+    SOLUTION_PROPOSED,
+    APPROVED,
+    REJECTED,
+    SATISFIED,
+    UNSATISFIED,
+    PARTIAL_SATISFIED,
+    CLASSED,
+    LITIGATION,
+    TRANSMITTED,
+    CONVERTED,
+    MAIL_SENT_AGENT,
+    SMS_SENT_AGENT,
+    MAIL_SENT_CLIENT,
+    SMS_SENT_CLIENT,
+    SESSION_STARTED
+}

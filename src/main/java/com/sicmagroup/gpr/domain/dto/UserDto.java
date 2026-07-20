@@ -32,4 +32,6 @@ public class UserDto {
     private PosteResponse posteDto;
     private LocalDateTime createdAt;
     private boolean isRattached;
+    private String sidebarColor;
+    private String topbarColor;
 }

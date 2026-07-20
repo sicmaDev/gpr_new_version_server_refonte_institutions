@@ -36,7 +36,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.api.auth.AuthenticationRequest;
 import com.sicmagroup.gpr.api.auth.AuthenticationResponse;
 import com.sicmagroup.gpr.api.auth.UpdatePwdRequest;
+import com.sicmagroup.gpr.api.auth.ThemeRequest;
 import com.sicmagroup.gpr.api.auth.UpdateRequest;
+import com.sicmagroup.gpr.api.config.setting.AppearanceRequest;
 import com.sicmagroup.gpr.api.config.setting.BotRequest;
 import com.sicmagroup.gpr.api.config.setting.InstitutionRequest;
 import com.sicmagroup.gpr.api.config.setting.MailRequest;
@@ -71,6 +73,7 @@ import com.sicmagroup.gpr.domain.enumeration.LogTarget;
 import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.enumeration.SatisfactionStatus;
+import com.sicmagroup.gpr.domain.enumeration.ServicePointEnum;
 import com.sicmagroup.gpr.domain.model.CategorieObjet;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
@@ -224,6 +227,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .isRa(user.isRa())
                         .posteDto(convertToResponse(poste))
                         .servicePointDto(convertToResponse(servicePoint))
+                        .sidebarColor(user.getSidebarColor())
+                        .topbarColor(user.getTopbarColor())
                         .build();
                 HashMap<String, Object> content = new HashMap<String, Object>();
                 content.put("user", userDto);
@@ -641,15 +646,41 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             e.printStackTrace();
         }
         try {
-        
             Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
             settings.put("bot", botRequest);
-
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
+        }
+
+        // Apparence (couleurs institution — module payant)
+        try {
+            Setting appearance = settingServiceImpl.getbySlug(Constante.APPEARANCE_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            AppearanceRequest appearanceRequest = objectMapper.readValue(appearance.getValue(), AppearanceRequest.class);
+            settings.put("appearance", appearanceRequest);
+        } catch (Exception e) {
+            // Pas encore configuré — normal au premier démarrage
+        }
+
+        // Modules actifs depuis la licence (data.txt)
+        try {
+            File licenseFile = new File("data.txt");
+            if (licenseFile.exists()) {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode licenseNode = mapper.readTree(licenseFile);
+                JsonNode modulesNode = licenseNode.get("modules");
+                java.util.List<String> moduleList = new java.util.ArrayList<>();
+                if (modulesNode != null && modulesNode.isArray()) {
+                    modulesNode.forEach(m -> moduleList.add(m.asText()));
+                }
+                settings.put("modules", moduleList);
+            } else {
+                settings.put("modules", new java.util.ArrayList<>());
+            }
+        } catch (Exception e) {
+            settings.put("modules", new java.util.ArrayList<>());
         }
 
         settings.put("servicePoints", allServicePointDtos);
@@ -792,15 +823,41 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             e.printStackTrace();
         }
         try {
-        
             Setting bot = settingServiceImpl.getbySlug(Constante.BOT_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             BotRequest botRequest = objectMapper.readValue(bot.getValue(), BotRequest.class);
             settings.put("bot", botRequest);
-
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
+        }
+
+        // Apparence (couleurs institution — module payant)
+        try {
+            Setting appearance = settingServiceImpl.getbySlug(Constante.APPEARANCE_SLUG);
+            ObjectMapper objectMapper = new ObjectMapper();
+            AppearanceRequest appearanceRequest = objectMapper.readValue(appearance.getValue(), AppearanceRequest.class);
+            settings.put("appearance", appearanceRequest);
+        } catch (Exception e) {
+            // Pas encore configuré — normal au premier démarrage
+        }
+
+        // Modules actifs depuis la licence (data.txt)
+        try {
+            File licenseFile = new File("data.txt");
+            if (licenseFile.exists()) {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode licenseNode = mapper.readTree(licenseFile);
+                JsonNode modulesNode = licenseNode.get("modules");
+                java.util.List<String> moduleList = new java.util.ArrayList<>();
+                if (modulesNode != null && modulesNode.isArray()) {
+                    modulesNode.forEach(m -> moduleList.add(m.asText()));
+                }
+                settings.put("modules", moduleList);
+            } else {
+                settings.put("modules", new java.util.ArrayList<>());
+            }
+        } catch (Exception e) {
+            settings.put("modules", new java.util.ArrayList<>());
         }
 
         settings.put("servicePoints", allServicePointDtos);
@@ -1893,6 +1950,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
+    public void updateTheme(ThemeRequest request) throws Exception {
+        User user = userRepository.findById(request.getId())
+                .orElseThrow(() -> new Exception("Utilisateur introuvable"));
+        user.setSidebarColor(request.getSidebarColor());
+        user.setTopbarColor(request.getTopbarColor());
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+    }
+
+    @Override
     public void updateAccountUser(UpdateRequest request) throws Exception {
         User user = userRepository.findById(request.getId())
                 .orElseThrow(() -> new Exception("Utilisateur introuvable"));
@@ -1992,6 +2059,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         List<Suggestion> suggestions;
         List<AlertDto> retardClaims;
 
+        String scopeType = null;
+        String scopeLabel = null;
+        int subAgencesCount = 0;
+
         if (isPilote) {
             // Pilote → toutes les données (comportement actuel)
             claims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
@@ -2001,59 +2072,87 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             retardClaims.addAll(alertClaimAndDenun(ClaimType.DENUNCIACION));
 
         } else if (isRA) {
-            // RA → filtre par point de service
-            List<ServicePoint> spList = Collections.singletonList(currentUser.getServicePoint());
+            // RA → filtre par point de service (direction + agences rattachées si type DIRECTION)
+            ServicePoint raServicePoint = currentUser.getServicePoint();
+            List<ServicePoint> spList;
+            boolean isDirection = ServicePointEnum.DIRECTION.equals(raServicePoint.getType());
+            if (isDirection) {
+                List<ServicePoint> subAgences = servicePointRepository.findByDirectionId(raServicePoint.getId());
+                spList = new ArrayList<>();
+                spList.add(raServicePoint);
+                spList.addAll(subAgences);
+                scopeType = "DIRECTION";
+                subAgencesCount = subAgences.size();
+            } else {
+                spList = Collections.singletonList(raServicePoint);
+                scopeType = "AGENCE";
+            }
+            scopeLabel = raServicePoint.getLibelle();
+
             claims = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(ClaimType.CLAIM, spList, ClaimStatus.TEMP_SAVED);
             denuns = claimRepository.findByTypeAndIsDeletedFalseAndServicePointInAndStatusNot(ClaimType.DENUNCIACION, spList, ClaimStatus.TEMP_SAVED);
             suggestions = suggestionRepository.findByServiceIndexeInAndStatusNot(spList, ClaimStatus.TEMP_SAVED);
 
-            Long spId = currentUser.getServicePoint().getId();
+            List<Long> raSpIds = spList.stream().map(ServicePoint::getId).collect(Collectors.toList());
             List<Claim> claimsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED))
-                    .stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId))
+                    .stream().filter(c -> c.getServicePoint() != null && raSpIds.contains(c.getServicePoint().getId()))
                     .collect(Collectors.toList());
             List<Claim> denunsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.DENUNCIACION,
                     Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT))
-                    .stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId))
+                    .stream().filter(c -> c.getServicePoint() != null && raSpIds.contains(c.getServicePoint().getId()))
                     .collect(Collectors.toList());
             retardClaims = computeAlerts(claimsForAlert, ClaimType.CLAIM);
             retardClaims.addAll(computeAlerts(denunsForAlert, ClaimType.DENUNCIACION));
 
         } else {
-            // User simple → filtre par collecteur ou affecté au traitement
+            // User simple → filtre par (collector OU treatmentAffectedTo) ET point de service
             Long userId = currentUser.getId();
+            ServicePoint userSp = currentUser.getServicePoint();
+            Long spId = userSp != null ? userSp.getId() : null;
+
             List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
             List<Claim> allDenuns = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
             List<Suggestion> allSuggestions = suggestionRepository.findByStatusNot(ClaimStatus.TEMP_SAVED);
 
             claims = allClaims.stream()
-                    .filter(c -> (c.getCollector() != null && c.getCollector().getId().equals(userId))
-                              || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId)))
+                    .filter(c -> ((c.getCollector() != null && c.getCollector().getId().equals(userId))
+                               || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId)))
+                            && (spId == null || (c.getServicePoint() != null && c.getServicePoint().getId().equals(spId))))
                     .collect(Collectors.toList());
             denuns = allDenuns.stream()
-                    .filter(d -> (d.getCollector() != null && d.getCollector().getId().equals(userId))
-                              || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId)))
+                    .filter(d -> ((d.getCollector() != null && d.getCollector().getId().equals(userId))
+                               || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId)))
+                            && (spId == null || (d.getServicePoint() != null && d.getServicePoint().getId().equals(spId))))
                     .collect(Collectors.toList());
             suggestions = allSuggestions.stream()
-                    .filter(s -> s.getCollecteur() != null && s.getCollecteur().getId().equals(userId))
+                    .filter(s -> (s.getCollecteur() != null && s.getCollecteur().getId().equals(userId))
+                            && (spId == null || (s.getServiceIndexe() != null && s.getServiceIndexe().getId().equals(spId))))
                     .collect(Collectors.toList());
 
             List<Claim> claimsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED))
-                    .stream().filter(c -> (c.getCollector() != null && c.getCollector().getId().equals(userId))
-                                      || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId)))
+                    .stream().filter(c -> ((c.getCollector() != null && c.getCollector().getId().equals(userId))
+                                       || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId)))
+                            && (spId == null || (c.getServicePoint() != null && c.getServicePoint().getId().equals(spId))))
                     .collect(Collectors.toList());
             List<Claim> denunsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.DENUNCIACION,
                     Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT))
-                    .stream().filter(d -> (d.getCollector() != null && d.getCollector().getId().equals(userId))
-                                      || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId)))
+                    .stream().filter(d -> ((d.getCollector() != null && d.getCollector().getId().equals(userId))
+                                       || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId)))
+                            && (spId == null || (d.getServicePoint() != null && d.getServicePoint().getId().equals(spId))))
                     .collect(Collectors.toList());
             retardClaims = computeAlerts(claimsForAlert, ClaimType.CLAIM);
             retardClaims.addAll(computeAlerts(denunsForAlert, ClaimType.DENUNCIACION));
+
+            if (userSp != null) {
+                scopeType = "AGENCE";
+                scopeLabel = userSp.getLibelle();
+            }
         }
 
         // ── Calcul des KPI communs à partir des listes filtrées ──
@@ -2096,6 +2195,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         dashboard.put("claimDenunRetard", retardClaims);
         dashboard.put("TotalclaimDenunRetard", retardClaims.size());
+
+        if (scopeType != null) {
+            dashboard.put("scopeType", scopeType);
+            dashboard.put("scopeLabel", scopeLabel);
+            if ("DIRECTION".equals(scopeType)) {
+                dashboard.put("subAgencesCount", subAgencesCount);
+            }
+        }
 
         return dashboard;
     }

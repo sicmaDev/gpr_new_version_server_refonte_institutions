@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.sicmagroup.gpr.api.config.user.ForgetPasswordRequest;
+import com.sicmagroup.gpr.api.auth.ThemeRequest;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.Client;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
@@ -71,6 +72,21 @@ public class AuthenticationController {
 
         return ResponseEntity.ok(apiResponseDto);
 
+    }
+
+    @PutMapping("/update/theme")
+    public ResponseEntity<ApiResponseDto> updateTheme(@RequestBody ThemeRequest request) {
+        ApiResponseDto apiResponseDto = new ApiResponseDto();
+        try {
+            authenticationServiceImpl.updateTheme(request);
+            apiResponseDto.setContent("Success");
+            apiResponseDto.setStatus(true);
+        } catch (Exception e) {
+            apiResponseDto.setContent(ErrorResponse.builder().message(e.getMessage()).title("Une erreur est survenue").build());
+            apiResponseDto.setStatus(false);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponseDto);
+        }
+        return ResponseEntity.ok(apiResponseDto);
     }
 
     @PutMapping("/update_pwd")

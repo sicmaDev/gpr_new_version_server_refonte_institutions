@@ -124,6 +124,17 @@ public class Claim {
     private User transmittedBy;
 
 
+    @Lob
+    @Column(columnDefinition = "TEXT", name = "draft_solution", nullable = true)
+    private String draftSolution;
+    @Lob
+    @Column(columnDefinition = "TEXT", name = "draft_commentaire", nullable = true)
+    private String draftCommentaire;
+    @Column(name = "draft_user_id", nullable = true)
+    private Long draftUserId;
+    @Column(name = "draft_saved_at", nullable = true)
+    private LocalDateTime draftSavedAt;
+
     @Column(name = "is_deleted",columnDefinition = "boolean default false")
 	private boolean isDeleted;
     @Column(name = "is_restored",columnDefinition = "boolean default false")
