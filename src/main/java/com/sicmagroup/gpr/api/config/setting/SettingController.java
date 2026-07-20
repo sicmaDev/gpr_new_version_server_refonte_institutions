@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
+import com.sicmagroup.gpr.domain.enumeration.ClaimEventType;
 import com.sicmagroup.gpr.domain.enumeration.ConfigExportEnum;
 import com.sicmagroup.gpr.domain.model.ApiKey;
 import com.sicmagroup.gpr.domain.model.Setting;
@@ -16,6 +17,7 @@ import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.ApiKeyRepository;
 import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.auth.AuthenticationService;
+import com.sicmagroup.gpr.service.claimEvent.ClaimEventServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
 import com.sicmagroup.gpr.utils.Utils;
@@ -65,6 +67,7 @@ public class SettingController {
     private final ApiKeyRepository apiKeyRepository;
     private final MailService mailService;
     private final LogServiceImpl logService;
+    private final ClaimEventServiceImpl claimEventServiceImpl;
     // @PostMapping(value="/institution/save")
     // public ResponseEntity<ApiResponseDto> configInstit(@RequestBody SomeEnityData
     // entity) {
@@ -419,7 +422,10 @@ public class SettingController {
             if (!isSuccess) {
                 throw new Exception("SMS non envoyé");
             }
-            
+            if (request.getClaimId() != null && request.getClaimCode() != null && request.getClaimType() != null) {
+                claimEventServiceImpl.log(request.getClaimId(), request.getClaimCode(), request.getClaimType(),
+                        ClaimEventType.SMS_SENT_CLIENT, request.getSenderName(), request.getSenderEmail(), request.getClientName());
+            }
             System.out.println("sendSmsToClient2 called with request: " + request);
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
@@ -453,14 +459,16 @@ public class SettingController {
     public ResponseEntity<ApiResponseDto> sendMailToClient(@RequestBody EmailRequest request) {
         System.out.println("sendMailToClient called with request: " + request);
         try {
-           
             mailService.sendMail(
                 request.getEmail(),
                 request.getSubject(),
                 request.getMessage(),
                 null
             );
-
+            if (request.getClaimId() != null && request.getClaimCode() != null && request.getClaimType() != null) {
+                claimEventServiceImpl.log(request.getClaimId(), request.getClaimCode(), request.getClaimType(),
+                        ClaimEventType.MAIL_SENT_CLIENT, request.getSenderName(), request.getSenderEmail(), request.getClientName());
+            }
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
@@ -588,6 +596,58 @@ public class SettingController {
 
         }
 
+    }
+
+    @PostMapping(value = "/others/appearance/create")
+    public ResponseEntity<ApiResponseDto> configAppearance(@RequestBody AppearanceRequest request) {
+        ObjectMapper obj = new ObjectMapper();
+        try {
+            serviceImpl.getbySlug(Constante.APPEARANCE_SLUG);
+            String jsonStr = obj.writeValueAsString(request);
+            UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
+                    .libelle(Constante.APPEARANCE_SLUG)
+                    .value(jsonStr)
+                    .build();
+            serviceImpl.update(majSettingRequest);
+            ApiResponseDto apiResponseDto = ApiResponseDto.builder()
+                    .status(true)
+                    .content(request)
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+        } catch (IOException e) {
+            ApiResponseDto apiResponseDto = ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().equals("The choosen setting doesn't exist")) {
+                try {
+                    String jsonStr = obj.writeValueAsString(request);
+                    AddSettingRequest addSettingRequest = AddSettingRequest.builder()
+                            .libelle(Constante.APPEARANCE_SLUG)
+                            .value(jsonStr)
+                            .build();
+                    serviceImpl.save(addSettingRequest);
+                    ApiResponseDto apiResponseDto = ApiResponseDto.builder()
+                            .status(true)
+                            .content(request)
+                            .build();
+                    return ResponseEntity.ok(apiResponseDto);
+                } catch (JsonProcessingException e1) {
+                    ApiResponseDto apiResponseDto = ApiResponseDto.builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().title("Une erreur est survenue").message(e1.getMessage()).build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
+            }
+            ApiResponseDto apiResponseDto = ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Une erreur est survenue").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        }
     }
 
     @GetMapping(value = "/export/{type}")

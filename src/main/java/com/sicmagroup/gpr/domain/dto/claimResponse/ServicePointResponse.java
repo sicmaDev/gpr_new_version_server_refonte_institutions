@@ -14,5 +14,6 @@ public class ServicePointResponse {
     private String uuid;
     private String libelle;
     private String description;
-    private String type; 
+    private String type;
+    private Long directionId;
 }

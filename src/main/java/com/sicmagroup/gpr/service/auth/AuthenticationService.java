@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.sicmagroup.gpr.api.auth.AuthenticationRequest;
 import com.sicmagroup.gpr.api.auth.AuthenticationResponse;
+import com.sicmagroup.gpr.api.auth.ThemeRequest;
 import com.sicmagroup.gpr.api.auth.UpdatePwdRequest;
 import com.sicmagroup.gpr.api.auth.UpdateRequest;
 import com.sicmagroup.gpr.api.config.user.AddEmailReceiver;
@@ -56,6 +57,8 @@ public interface AuthenticationService {
     public void updateAccountUser(UpdateRequest request) throws Exception;
 
     public void updateAccountPwdUser(UpdatePwdRequest request) throws Exception;
+
+    public void updateTheme(ThemeRequest request) throws Exception;
 
     public HashMap<String, Object> getDashboard(String email);
 

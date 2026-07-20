@@ -135,6 +135,12 @@ public class User implements UserDetails {
 	private boolean isRa;
 	private String titre;
 
+	@Column(columnDefinition = "VARCHAR(7) DEFAULT '#005081'")
+	private String sidebarColor;
+
+	@Column(columnDefinition = "VARCHAR(7) DEFAULT '#005081'")
+	private String topbarColor;
+
 	@OneToMany(mappedBy = "deletedBy")
 	private List<Claim> deletedClaims;
 

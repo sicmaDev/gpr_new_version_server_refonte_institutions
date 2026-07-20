@@ -32,6 +32,9 @@ import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.InboxMessageRepository;
+import com.sicmagroup.gpr.domain.enumeration.ClaimEventType;
+import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.service.claimEvent.ClaimEventServiceImpl;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
@@ -73,7 +76,8 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final ClaimAudioRepository claimAudioRepository;
     private final ExtraContentRepository extraContentRepository;
     private final MailService mailService;
-    private HttpServletRequest httpServletRequest; 
+    private final ClaimEventServiceImpl claimEventServiceImpl;
+    private HttpServletRequest httpServletRequest;
 
 
     @Override
@@ -219,6 +223,8 @@ public class SuggestionServiceImpl implements SuggestionService {
             suggestion.setReceiptDateTime(Utils.convertStrToLocalDateTime(suggestionRequest.getReceiptDateTime()));
         }
         suggestion = repository.save(suggestion);
+        claimEventServiceImpl.log(suggestion.getId(), suggestion.getCodeClient(), ClaimType.SUGGESTION,
+                ClaimEventType.SAVED, collector.getFirstandlastname(), collector.getEmail(), null);
 
         if (request.getFiles() != null && request.getFiles().length != 0) {
             // System.out.println("test");
@@ -290,7 +296,10 @@ public class SuggestionServiceImpl implements SuggestionService {
         
             try {
                 mailService.sendMail(pilotes.get(0).getEmail(), "Nouvelle suggestion enregistrée - GPR", message, null);
-                
+                claimEventServiceImpl.log(suggestion.getId(), suggestion.getCodeClient(), ClaimType.SUGGESTION,
+                        ClaimEventType.MAIL_SENT_AGENT, collector.getFirstandlastname(), collector.getEmail(),
+                        "Pilote Principal " +pilotes.get(0).getFirstandlastname());
+
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'enregistrement de suggestion")
                     .content("Success mail notification suggestion enregistrée")
@@ -323,6 +332,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         try {
             Utils.sendSms(pilotes.get(0).getTel(),
                     "Nouvelle suggestion enregistrée sur la plateforme GPR.", settingServiceImpl);
+            claimEventServiceImpl.log(suggestion.getId(), suggestion.getCodeClient(), ClaimType.SUGGESTION,
+                    ClaimEventType.SMS_SENT_AGENT, collector.getFirstandlastname(), collector.getEmail(),
+                    "Pilote Principal " +pilotes.get(0).getFirstandlastname());
         } catch (Exception e) {
             Log log2 = Log
                     .builder()
@@ -338,7 +350,7 @@ public class SuggestionServiceImpl implements SuggestionService {
             logServiceImpl.saveLog(log2);
         }
 
-        
+
         return suggestion;
     }
    
@@ -610,6 +622,10 @@ public class SuggestionServiceImpl implements SuggestionService {
         suggestion.setTreatAt(LocalDateTime.now());
 
         suggestion = repository.save(suggestion);
+        claimEventServiceImpl.log(suggestion.getId(), suggestion.getCodeClient(), ClaimType.SUGGESTION,
+                request.isAccepted() ? ClaimEventType.APPROVED : ClaimEventType.REJECTED,
+                treator.getFirstandlastname(), treator.getEmail(),
+                request.isAccepted() ? "Suggestion prise en compte" : "Suggestion non prise en compte");
 
         final Suggestion finalSuggestion = suggestion;
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
@@ -653,7 +669,10 @@ public class SuggestionServiceImpl implements SuggestionService {
         
             try {
                 mailService.sendMail(pilotes.get(0).getEmail(), "Traitement de suggestion - GPR", messageHtml, null);
-                                                
+                claimEventServiceImpl.log(finalSuggestion.getId(), finalSuggestion.getCodeClient(), ClaimType.SUGGESTION,
+                        ClaimEventType.MAIL_SENT_AGENT, treator.getFirstandlastname(), treator.getEmail(),
+                        "Pilote Principal " +pilotes.get(0).getFirstandlastname());
+
                 Log successLog = Log.builder()
                     .libelle("Mail notification suggestion traité")
                     .content("Success mail notification suggestion traité")
