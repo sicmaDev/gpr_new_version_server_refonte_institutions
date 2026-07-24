@@ -273,29 +273,33 @@ public class DenunciationController {
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.SAVED,
             ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
-            
             List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION,
                     Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
                             ClaimStatus.CLASSED));
             allClaims.addAll(moreClaim);
             // Récupérer le point de service de l'utilisateur
             ServicePoint servicePoint = connectedUser.getServicePoint();
-            
+            Long raId = connectedUser.getId();
+
             // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
             List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
-            
+
             if (!relatedServicePoints.isEmpty()) {
                 // Ajouter le point de service de l'utilisateur à la liste des points de service liés
                 relatedServicePoints.add(servicePoint);
-        
+
                 // Filtrer les Dénonciations pour tous ces points de service
                 allClaims = allClaims.stream()
-                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint())
+                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
+                    || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             } else {
                 // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
                 allClaims = allClaims.stream()
-                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
+                    .filter(claim -> claim.getServicePoint().equals(servicePoint)
+                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
+                    || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             }
         }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)

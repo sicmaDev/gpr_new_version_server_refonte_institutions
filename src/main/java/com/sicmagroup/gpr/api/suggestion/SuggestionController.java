@@ -99,6 +99,28 @@ public class SuggestionController {
         return ResponseEntity.ok(apiResponseDto);
     }
 
+    @GetMapping("/{code}/details")
+    public ResponseEntity<ApiResponseDto> getSuggestionDetails(@PathVariable String code) {
+        ApiResponseDto apiResponseDto;
+        Suggestion suggestion;
+        try {
+            suggestion = service.getByCode(code);
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(true)
+                    .content(convertToDto(suggestion))
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Suggestion not found").title("NOT FOUND EXCEPTION").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+    }
+
     @GetMapping(value = "/list/{status}")
     public ResponseEntity<ApiResponseDto> getTreaTableList(@PathVariable ClaimStatus status) {
         ApiResponseDto apiResponseDto = ApiResponseDto.builder().build();

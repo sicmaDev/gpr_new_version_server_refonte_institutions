@@ -29,8 +29,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByIdAndIsDeleted(Long id, boolean deleted);
 
     List<User> findByAdditionalroleIn(List<Role> roles);
+    List<User> findByAdditionalroleInAndIsDeleted(List<Role> roles, boolean isDeleted);
 
     List<User> findByIsEmailReceiver(boolean isEmailReceiver);
+    List<User> findByIsEmailReceiverAndIsDeleted(boolean isEmailReceiver, boolean isDeleted);
     Optional<User> findByIsEmailReceiverAndIsRaAndServicePoint(boolean isEmailReceiver, boolean isRa, ServicePoint servicePoint);
 
     List<User> findByPosteAndIsDeleted(Poste poste,boolean isDeleted);
@@ -41,6 +43,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByServicePointAndIsRaTrue(ServicePoint servicePoint);
 
     List<User> findByServicePoint(ServicePoint servicePoint);
-    @Query("SELECT u FROM User u WHERE u.servicePoint.id = :servicePointId AND u.isRa = true")
+    @Query("SELECT u FROM User u WHERE u.servicePoint.id = :servicePointId AND u.isRa = true AND u.isDeleted = false")
     Optional<User> findRaByServicePointId(@Param("servicePointId") Long servicePointId);
 }

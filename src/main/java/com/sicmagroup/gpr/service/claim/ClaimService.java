@@ -6,6 +6,7 @@ import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.sicmagroup.gpr.api.claim.AffectTreatmentRequest;
+import com.sicmagroup.gpr.api.claim.ClaimDraftRequest;
 import com.sicmagroup.gpr.api.claim.ProposedSolutionRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
@@ -106,6 +107,8 @@ public interface ClaimService {
         Claim saveExtra(ExtraContent extraContent, MultipartFile[] files, MultipartFile[] audios, Long id) throws Exception;
 
         public List<Claim> checkPhone(String phone, ServicePoint userAgency, boolean isPilot);
-        
+
+        public Claim saveDraft(Long claimId, ClaimDraftRequest request) throws Exception;
+
         //public List<Claim> checkPhone(String phone);
 }

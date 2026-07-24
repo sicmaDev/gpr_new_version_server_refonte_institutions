@@ -466,6 +466,74 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         }
     
                     }
+
+                // Notification aux administrateurs (H12)
+                try {
+                    List<Poste> h12Postes = posteRepository.findByHabilitationsContaining(Habilitation.H12.name());
+                    List<User> adminUsers = new java.util.ArrayList<>();
+                    for (Poste h12Poste : h12Postes) {
+                        adminUsers.addAll(userRepository.findByPosteAndIsDeleted(h12Poste, false));
+                    }
+                    if (!adminUsers.isEmpty()) {
+                        String adminMessage = """
+                            <html>
+                                <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                                    <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                                        <h2 style="color: #004080; text-align: center;">Nouvelle demande de création de compte - GPR</h2>
+                                        <p>Bonjour,</p>
+                                        <p>
+                                            Un nouvel utilisateur vient de soumettre une demande de création de compte sur la plateforme <strong>GPR</strong>.
+                                            Ce compte est en attente de votre validation.
+                                        </p>
+                                        <div style="margin-top: 20px; background-color: #f0f8ff; border-left: 4px solid #004080; padding: 10px 15px;">
+                                            <p style="margin: 0;"><strong>Informations du demandeur :</strong></p>
+                                            <p style="margin: 5px 0;">👤 <strong>Nom et Prénom(s) :</strong> %s</p>
+                                            <p style="margin: 5px 0;">✉️ <strong>Email :</strong> %s</p>
+                                            <p style="margin: 5px 0;">📞 <strong>Téléphone :</strong> %s</p>
+                                            <p style="margin: 5px 0;">💼 <strong>Poste :</strong> %s</p>
+                                            <p style="margin: 5px 0;">🏢 <strong>Point de service :</strong> %s</p>
+                                        </div>
+                                        <p style="margin-top: 20px;">
+                                            Veuillez vous connecter à la plateforme afin de valider ou rejeter cette demande.
+                                        </p>
+                                        <p style="margin-top: 30px;">Cordialement,<br>L'équipe GPR</p>
+                                        <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                            Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                                        </p>
+                                    </div>
+                                </body>
+                            </html>
+                        """.formatted(
+                            user.getFirstandlastname(),
+                            user.getEmail(),
+                            user.getTel(),
+                            poste.getLibelle(),
+                            servicePoint.getLibelle()
+                        );
+                        mailService.sendMail(adminUsers, "Nouvelle demande de création de compte - GPR", adminMessage, null);
+                        Log adminLog = Log.builder()
+                            .libelle("Mail notification admin - nouvelle demande de compte")
+                            .content("Notification envoyée à " + adminUsers.size() + " administrateur(s)")
+                            .createdAt(LocalDateTime.now())
+                            .type(LogType.INFO)
+                            .userId(0L)
+                            .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                            .target(LogTarget.APP)
+                            .build();
+                        logServiceImpl.saveLog(adminLog);
+                    }
+                } catch (Exception e) {
+                    Log log2 = Log.builder()
+                        .libelle("Echec mail notification admin - nouvelle demande de compte")
+                        .content(e.getMessage())
+                        .createdAt(LocalDateTime.now())
+                        .type(LogType.ERROR)
+                        .userId(0L)
+                        .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                        .target(LogTarget.APP)
+                        .build();
+                    logServiceImpl.saveLog(log2);
+                }
                 // });
 
                 return AuthenticationResponse.builder()
@@ -664,21 +732,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             // Pas encore configuré — normal au premier démarrage
         }
 
-        // Modules actifs depuis la licence (data.txt)
+        // Modules actifs — lus depuis app-modules en BDD (même pattern que app-mail)
         try {
-            File licenseFile = new File("data.txt");
-            if (licenseFile.exists()) {
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode licenseNode = mapper.readTree(licenseFile);
-                JsonNode modulesNode = licenseNode.get("modules");
-                java.util.List<String> moduleList = new java.util.ArrayList<>();
-                if (modulesNode != null && modulesNode.isArray()) {
-                    modulesNode.forEach(m -> moduleList.add(m.asText()));
-                }
-                settings.put("modules", moduleList);
-            } else {
-                settings.put("modules", new java.util.ArrayList<>());
-            }
+            Setting modulesSetting = settingServiceImpl.getbySlug(Constante.MODULES_SLUG);
+            ObjectMapper modulesMapper = new ObjectMapper();
+            java.util.List<String> moduleList = modulesMapper.readValue(
+                modulesSetting.getValue(),
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {}
+            );
+            settings.put("modules", moduleList);
         } catch (Exception e) {
             settings.put("modules", new java.util.ArrayList<>());
         }
@@ -841,21 +903,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             // Pas encore configuré — normal au premier démarrage
         }
 
-        // Modules actifs depuis la licence (data.txt)
+        // Modules actifs — lus depuis app-modules en BDD (même pattern que app-mail)
         try {
-            File licenseFile = new File("data.txt");
-            if (licenseFile.exists()) {
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode licenseNode = mapper.readTree(licenseFile);
-                JsonNode modulesNode = licenseNode.get("modules");
-                java.util.List<String> moduleList = new java.util.ArrayList<>();
-                if (modulesNode != null && modulesNode.isArray()) {
-                    modulesNode.forEach(m -> moduleList.add(m.asText()));
-                }
-                settings.put("modules", moduleList);
-            } else {
-                settings.put("modules", new java.util.ArrayList<>());
-            }
+            Setting modulesSetting = settingServiceImpl.getbySlug(Constante.MODULES_SLUG);
+            ObjectMapper modulesMapper = new ObjectMapper();
+            java.util.List<String> moduleList = modulesMapper.readValue(
+                modulesSetting.getValue(),
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {}
+            );
+            settings.put("modules", moduleList);
         } catch (Exception e) {
             settings.put("modules", new java.util.ArrayList<>());
         }
@@ -1941,7 +1997,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public List<User> getUsersByRoles(List<Role> roles) {
-        return userRepository.findByAdditionalroleIn(roles);
+        return userRepository.findByAdditionalroleInAndIsDeleted(roles, false);
     }
 
     @Override
@@ -2037,6 +2093,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .receiptDateTime(claim.getReceiptDateTime())
                             .status(claim.getStatus())
                             .type(type)
+                            .servicePointLibelle(claim.getServicePoint() != null ? claim.getServicePoint().getLibelle() : null)
                             .build();
                     claimAlertDtos.add(alertDto);
                 }
@@ -2062,6 +2119,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         String scopeType = null;
         String scopeLabel = null;
         int subAgencesCount = 0;
+        List<Map<String, Object>> agencesStats = null;
 
         if (isPilote) {
             // Pilote → toutes les données (comportement actuel)
@@ -2106,6 +2164,33 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .collect(Collectors.toList());
             retardClaims = computeAlerts(claimsForAlert, ClaimType.CLAIM);
             retardClaims.addAll(computeAlerts(denunsForAlert, ClaimType.DENUNCIACION));
+
+            if (isDirection) {
+                agencesStats = new ArrayList<>();
+                for (ServicePoint sp : spList) {
+                    Long spId = sp.getId();
+                    long spClaims        = claims.stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId)).count();
+                    long spClaimsTrait   = claims.stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId) && ClaimStatus.TREAT.equals(c.getStatus())).count();
+                    long spClaimsSatisf  = claims.stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId) && ClaimStatus.SATISFIED.equals(c.getStatus())).count();
+                    long spDenuns        = denuns.stream().filter(d -> d.getServicePoint() != null && d.getServicePoint().getId().equals(spId)).count();
+                    long spDenunsTrait   = denuns.stream().filter(d -> d.getServicePoint() != null && d.getServicePoint().getId().equals(spId) && ClaimStatus.TREAT.equals(d.getStatus())).count();
+                    long spSuggests      = suggestions.stream().filter(s -> s.getServiceIndexe() != null && s.getServiceIndexe().getId().equals(spId)).count();
+                    long spSuggestsTrait = suggestions.stream().filter(s -> s.getServiceIndexe() != null && s.getServiceIndexe().getId().equals(spId) && ClaimStatus.TREAT.equals(s.getStatus())).count();
+                    long spRetard        = claimsForAlert.stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId)).count()
+                                        + denunsForAlert.stream().filter(d -> d.getServicePoint() != null && d.getServicePoint().getId().equals(spId)).count();
+                    Map<String, Object> stat = new HashMap<>();
+                    stat.put("agenceLabel",     sp.getLibelle());
+                    stat.put("claims",          spClaims);
+                    stat.put("claimsTrait",     spClaimsTrait);
+                    stat.put("claimsSatisfait", spClaimsSatisf);
+                    stat.put("denuns",          spDenuns);
+                    stat.put("denunsTrait",     spDenunsTrait);
+                    stat.put("suggests",        spSuggests);
+                    stat.put("suggestsTrait",   spSuggestsTrait);
+                    stat.put("retard",          spRetard);
+                    agencesStats.add(stat);
+                }
+            }
 
         } else {
             // User simple → filtre par (collector OU treatmentAffectedTo) ET point de service
@@ -2204,6 +2289,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             }
         }
 
+        if (agencesStats != null) {
+            dashboard.put("agencesStats", agencesStats);
+        }
+
         return dashboard;
     }
 
@@ -2238,6 +2327,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                             .receiptDateTime(claim.getReceiptDateTime())
                             .status(claim.getStatus())
                             .type(type)
+                            .servicePointLibelle(claim.getServicePoint() != null ? claim.getServicePoint().getLibelle() : null)
                             .build());
                 }
             }
@@ -2247,7 +2337,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public List<User> getEmailReceivers() {
-        return userRepository.findByIsEmailReceiver(true);
+        return userRepository.findByIsEmailReceiverAndIsDeleted(true, false);
     }
 
     @Override

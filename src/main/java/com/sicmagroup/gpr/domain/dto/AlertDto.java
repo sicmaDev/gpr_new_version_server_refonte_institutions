@@ -30,4 +30,5 @@ public class AlertDto {
     private LocalDateTime declenchedDate;
     private ClaimStatus status;
     private ClaimType type;
+    private String servicePointLibelle;
 }
