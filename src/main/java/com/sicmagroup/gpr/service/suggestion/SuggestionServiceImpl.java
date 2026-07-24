@@ -298,7 +298,7 @@ public class SuggestionServiceImpl implements SuggestionService {
                 mailService.sendMail(pilotes.get(0).getEmail(), "Nouvelle suggestion enregistrée - GPR", message, null);
                 claimEventServiceImpl.log(suggestion.getId(), suggestion.getCodeClient(), ClaimType.SUGGESTION,
                         ClaimEventType.MAIL_SENT_AGENT, collector.getFirstandlastname(), collector.getEmail(),
-                        "Pilote Principal " +pilotes.get(0).getFirstandlastname());
+                        "Pilote Principal " +pilotes.get(0).getFirstandlastname() + "|" + pilotes.get(0).getEmail());
 
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'enregistrement de suggestion")
@@ -334,7 +334,7 @@ public class SuggestionServiceImpl implements SuggestionService {
                     "Nouvelle suggestion enregistrée sur la plateforme GPR.", settingServiceImpl);
             claimEventServiceImpl.log(suggestion.getId(), suggestion.getCodeClient(), ClaimType.SUGGESTION,
                     ClaimEventType.SMS_SENT_AGENT, collector.getFirstandlastname(), collector.getEmail(),
-                    "Pilote Principal " +pilotes.get(0).getFirstandlastname());
+                    "Pilote Principal " +pilotes.get(0).getFirstandlastname() + "|" + pilotes.get(0).getTel());
         } catch (Exception e) {
             Log log2 = Log
                     .builder()
@@ -671,7 +671,7 @@ public class SuggestionServiceImpl implements SuggestionService {
                 mailService.sendMail(pilotes.get(0).getEmail(), "Traitement de suggestion - GPR", messageHtml, null);
                 claimEventServiceImpl.log(finalSuggestion.getId(), finalSuggestion.getCodeClient(), ClaimType.SUGGESTION,
                         ClaimEventType.MAIL_SENT_AGENT, treator.getFirstandlastname(), treator.getEmail(),
-                        "Pilote Principal " +pilotes.get(0).getFirstandlastname());
+                        "Pilote Principal " +pilotes.get(0).getFirstandlastname() + "|" + pilotes.get(0).getEmail());
 
                 Log successLog = Log.builder()
                     .libelle("Mail notification suggestion traité")

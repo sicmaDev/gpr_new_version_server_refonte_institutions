@@ -83,6 +83,11 @@ public class ClaimDto {
     private String convertedAt;
     private UserResponse convertedBy;
 
+    private String draftSolution;
+    private String draftCommentaire;
+    private Long draftUserId;
+    private String draftSavedAt;
+
     public String convertDate(LocalDateTime dateTime){
         
         return Utils.convertLocalDateTimeToString(dateTime);

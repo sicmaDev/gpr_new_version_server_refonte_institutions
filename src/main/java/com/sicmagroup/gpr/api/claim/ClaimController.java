@@ -212,22 +212,23 @@ public class ClaimController {
             Long raId = connectedUser.getId();
             // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
             List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
-            
+
             if (!relatedServicePoints.isEmpty()) {
                 // Ajouter le point de service de l'utilisateur à la liste des points de service liés
                 relatedServicePoints.add(servicePoint);
-        
+
                 // Filtrer les réclamations pour tous ces points de service
                 allClaims = allClaims.stream()
-                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()) 
-                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
+                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint())
+                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
+                    || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             } else {
                 // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
                 allClaims = allClaims.stream()
                     .filter(claim -> claim.getServicePoint().equals(servicePoint)
-                      || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
-                
+                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
+                    || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             }
         }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
@@ -362,31 +363,29 @@ public class ClaimController {
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.CLAIM, Arrays.asList(ClaimStatus.SAVED,
             ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
             Long raId = connectedUser.getId();
-            
-            // List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.CLAIM,
-            //         Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
-            //                 ClaimStatus.CLASSED));
-            // allClaims.addAll(moreClaim);
+
             // Récupérer le point de service de l'utilisateur
             ServicePoint servicePoint = connectedUser.getServicePoint();
-            
+
             // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
             List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
-            
+
             if (!relatedServicePoints.isEmpty()) {
                 // Ajouter le point de service de l'utilisateur à la liste des points de service liés
                 relatedServicePoints.add(servicePoint);
-        
+
                 // Filtrer les réclamations pour tous ces points de service
                 allClaims = allClaims.stream()
                     .filter(claim -> relatedServicePoints.contains(claim.getServicePoint())
-                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
+                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
+                    || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             } else {
                 // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
                 allClaims = allClaims.stream()
                     .filter(claim -> claim.getServicePoint().equals(servicePoint)
-                   || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
+                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
+                    || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             }
         }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
@@ -1892,6 +1891,10 @@ public class ClaimController {
             }
         }
 
+        if (claim.getDraftSavedAt() != null) {
+            claimDto.setDraftSavedAt(claimDto.convertDate(claim.getDraftSavedAt()));
+        }
+
         // if (claim.getAffectedAt() != null) {
         // claimDto.setAffectedAt(claimDto.convertDate(claim.getAffectedAt()));
         // }
@@ -1933,6 +1936,7 @@ public class ClaimController {
 
     private ServicePointResponse convertToResponse(ServicePoint servicepoint1) {
         ServicePointResponse servicePointResponse = modelMapper.map(servicepoint1, ServicePointResponse.class);
+        servicePointResponse.setDirectionId(servicepoint1.getDirection_id());
         return servicePointResponse;
     }
 
@@ -2253,6 +2257,27 @@ public class ClaimController {
                     .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
                     .build()
             );
+        }
+    }
+
+    @PutMapping("/{id}/draft")
+    public ResponseEntity<ApiResponseDto> saveDraft(
+            @PathVariable Long id,
+            @RequestBody ClaimDraftRequest request) {
+        ApiResponseDto apiResponseDto;
+        try {
+            Claim claim = service.saveDraft(id, request);
+            apiResponseDto = ApiResponseDto.builder()
+                    .status(true)
+                    .content(convertToDto(claim))
+                    .build();
+            return ResponseEntity.ok(apiResponseDto);
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message(e.getMessage()).title("DRAFT SAVE ERROR").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         }
     }
 

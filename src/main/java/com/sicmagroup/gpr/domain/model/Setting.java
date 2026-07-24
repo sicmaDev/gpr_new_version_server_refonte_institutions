@@ -30,7 +30,7 @@ public class Setting {
     private String libelle;
 
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String value;
 
     private LocalDateTime createdAt;

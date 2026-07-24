@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.sicmagroup.gpr.api.claim.AffectTreatmentRequest;
+import com.sicmagroup.gpr.api.claim.ClaimDraftRequest;
 import com.sicmagroup.gpr.api.claim.ClaimRequest;
 import com.sicmagroup.gpr.api.claim.ProposedSolutionRequest;
 import com.sicmagroup.gpr.api.claim.SaveRequest;
@@ -377,8 +378,10 @@ public class ClaimServiceImpl implements ClaimService {
        
             try {
                 mailService.sendMail(usersToContact, "Nouvelle réclamation enregistrée - GPR", message, null);
-                claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), type, ClaimEventType.MAIL_SENT_AGENT,
-                        collector.getFirstandlastname(), collector.getEmail(), usersToContact.size() + " agent(s)/pilote(s) notifié(s)");
+                for (User u : usersToContact) {
+                    claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), type, ClaimEventType.MAIL_SENT_AGENT,
+                            collector.getFirstandlastname(), collector.getEmail(), u.getFirstandlastname() + "|" + u.getEmail());
+                }
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'enregistrement de réclamation")
                     .content("Success mail notification réclamation enregistrée")
@@ -412,8 +415,10 @@ public class ClaimServiceImpl implements ClaimService {
             Utils.sendSms(usersToContact,
                     "Nouvelle réclamation enregistrée de niveau de gravité "
                             + claim.getObjet().getRisqueLevel().name(), settingServiceImpl);
-            claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), type, ClaimEventType.SMS_SENT_AGENT,
-                    collector.getFirstandlastname(), collector.getEmail(), usersToContact.size() + " agent(s)/pilote(s) notifié(s)");
+            for (User u : usersToContact) {
+                claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), type, ClaimEventType.SMS_SENT_AGENT,
+                        collector.getFirstandlastname(), collector.getEmail(), u.getFirstandlastname() + "|" + u.getTel());
+            }
         } catch (Exception e) {
             Log log2 = Log
                     .builder()
@@ -816,7 +821,7 @@ public class ClaimServiceImpl implements ClaimService {
             try {
                 mailService.sendMail(affectedTo.getEmail(), "Nouvelle "+finalType+" affectée - GPR", finalMessage, null);
                 claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                        affectedBy.getFirstandlastname(), affectedBy.getEmail(), affectedTo.getEmail());
+                        affectedBy.getFirstandlastname(), affectedBy.getEmail(), affectedTo.getFirstandlastname() + "|" + affectedTo.getEmail());
                 Log successLog = Log.builder()
                     .libelle("Mail notification d'affectation de "+finalType)
                     .content("Success mail notification "+finalType+" affectée")
@@ -851,7 +856,7 @@ public class ClaimServiceImpl implements ClaimService {
             Utils.sendSms(Arrays.asList(affectedTo), "Le traitement de la réclamation portant le code "+claim.getCodeClient()+" de niveau de gravité "
                     + claim.getObjet().getRisqueLevel().name() + " vous a été affecté.", settingServiceImpl);
             claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.SMS_SENT_AGENT,
-                    affectedBy.getFirstandlastname(), affectedBy.getEmail(), affectedTo.getTel());
+                    affectedBy.getFirstandlastname(), affectedBy.getEmail(), affectedTo.getFirstandlastname() + "|" + affectedTo.getTel());
         } catch (Exception e) {
             Log log2 = Log
                     .builder()
@@ -928,6 +933,12 @@ public class ClaimServiceImpl implements ClaimService {
         // oldSolutions.add(solution2);
         claim.getSolutions().add(solution2);
 
+        // Clear draft on treatment
+        claim.setDraftSolution(null);
+        claim.setDraftCommentaire(null);
+        claim.setDraftUserId(null);
+        claim.setDraftSavedAt(null);
+
         claim.setUpdatedAt(LocalDateTime.now());
         System.out.println("Here 8 ");
         claim = repository.save(claim);
@@ -995,7 +1006,7 @@ public class ClaimServiceImpl implements ClaimService {
                 try {
                     mailService.sendMail(finalClaim.getTreatmentAffectedBy().getEmail(), finalType+ " traitée - GPR ",message, null);
                     claimEventServiceImpl.log(finalClaim.getId(), finalClaim.getCodeClient(), finalClaim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                            treator.getFirstandlastname(), treator.getEmail(), finalClaim.getTreatmentAffectedBy().getEmail());
+                            treator.getFirstandlastname(), treator.getEmail(), finalClaim.getTreatmentAffectedBy().getFirstandlastname() + "|" + finalClaim.getTreatmentAffectedBy().getEmail());
                     Log successLog = Log.builder()
                         .libelle("Mail notification  proposition de solution")
                         .content("Success mail notification proposition de solution")
@@ -1027,7 +1038,7 @@ public class ClaimServiceImpl implements ClaimService {
                     Utils.sendSms(Arrays.asList(finalClaim.getTreatmentAffectedBy()),
                             "La " + finalType + " portant le code " + finalClaim.getCodeClient() + " a été traitée. Une solution a été proposée.", settingServiceImpl);
                     claimEventServiceImpl.log(finalClaim.getId(), finalClaim.getCodeClient(), finalClaim.getType(), ClaimEventType.SMS_SENT_AGENT,
-                            treator.getFirstandlastname(), treator.getEmail(), finalClaim.getTreatmentAffectedBy().getFirstandlastname());
+                            treator.getFirstandlastname(), treator.getEmail(), finalClaim.getTreatmentAffectedBy().getFirstandlastname() + "|" + finalClaim.getTreatmentAffectedBy().getTel());
                 } catch (Exception ignored) {}
 
         } else {
@@ -1086,7 +1097,7 @@ public class ClaimServiceImpl implements ClaimService {
                     try {
                         mailService.sendMail(pilote.get(0).getEmail(), "" + finalType + " traitée",message, null);
                         claimEventServiceImpl.log(finalClaim.getId(), finalClaim.getCodeClient(), finalClaim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                                treator.getFirstandlastname(), treator.getEmail(), "Pilote Principal " +pilote.get(0).getFirstandlastname());
+                                treator.getFirstandlastname(), treator.getEmail(), "Pilote Principal " +pilote.get(0).getFirstandlastname() + "|" + pilote.get(0).getEmail());
                         Log successLog = Log.builder()
                             .libelle("Mail notification notification " + finalType + " traitée")
                             .content("Success mail notification notification " + finalType + " traitée")
@@ -1118,7 +1129,7 @@ public class ClaimServiceImpl implements ClaimService {
                         Utils.sendSms(pilote,
                                 "La " + finalType + " portant le code " + finalClaim.getCodeClient() + " a été traitée. Une solution a été proposée.", settingServiceImpl);
                         claimEventServiceImpl.log(finalClaim.getId(), finalClaim.getCodeClient(), finalClaim.getType(), ClaimEventType.SMS_SENT_AGENT,
-                                treator.getFirstandlastname(), treator.getEmail(), "Pilote Principal " +pilote.get(0).getFirstandlastname());
+                                treator.getFirstandlastname(), treator.getEmail(), "Pilote Principal " +pilote.get(0).getFirstandlastname() + "|" + pilote.get(0).getTel());
                     } catch (Exception ignored) {}
 
             }
@@ -1216,7 +1227,7 @@ public class ClaimServiceImpl implements ClaimService {
             try {
                 mailService.sendMail(pilotes.get(0).getEmail(), "Notification de satisfaction client - GPR", messageHtml, null);
                 claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                        measurer.getFirstandlastname(), measurer.getEmail(), "Pilote Principal " +pilotes.get(0).getFirstandlastname());
+                        measurer.getFirstandlastname(), measurer.getEmail(), "Pilote Principal " +pilotes.get(0).getFirstandlastname() + "|" + pilotes.get(0).getEmail());
                 Log successLog = Log.builder()
                     .libelle("Mail notification mesure de satisfaction réclamation")
                     .content("Success mail notification mesure de satisfaction réclamation")
@@ -1332,7 +1343,7 @@ public class ClaimServiceImpl implements ClaimService {
             try {
                 mailService.sendMail(finalClaim.getTreatBy().getEmail(), "Solution désapprouvée - GPR",messageHtml, null);
                 claimEventServiceImpl.log(finalClaim.getId(), finalClaim.getCodeClient(), finalClaim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                        unApprouver.getFirstandlastname(), unApprouver.getEmail(), finalClaim.getTreatBy().getEmail());
+                        unApprouver.getFirstandlastname(), unApprouver.getEmail(), finalClaim.getTreatBy().getFirstandlastname() + "|" + finalClaim.getTreatBy().getEmail());
                     Log successLog = Log.builder()
                         .libelle("Mail notification solution désapprouvée")
                         .content("Success mail notification solution désapprouvée")
@@ -1426,7 +1437,7 @@ public class ClaimServiceImpl implements ClaimService {
             try {
                 mailService.sendMail(finalClaim.getTreatmentAffectedTo().getEmail(), "Solution approuvée - GPR",messageHtml, null);
                 claimEventServiceImpl.log(finalClaim.getId(), finalClaim.getCodeClient(), finalClaim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                        approuver.getFirstandlastname(), approuver.getEmail(), finalClaim.getTreatmentAffectedTo().getEmail());
+                        approuver.getFirstandlastname(), approuver.getEmail(), finalClaim.getTreatmentAffectedTo().getFirstandlastname() + "|" + finalClaim.getTreatmentAffectedTo().getEmail());
                 Log successLog = Log.builder()
                     .libelle("Mail notification solution approuvée")
                     .content("Success mail notification solution approuvée")
@@ -1513,7 +1524,7 @@ public class ClaimServiceImpl implements ClaimService {
                 // Envoi du mail à tous les pilotes
                 mailService.sendMail(pilotes.get(0).getEmail(),"Réclamation classée - GPR",messageHtml,null);
                 claimEventServiceImpl.log(finalClaim.getId(), finalClaim.getCodeClient(), finalClaim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                        classer.getFirstandlastname(), classer.getEmail(), "Pilote Principal " +pilotes.get(0).getFirstandlastname());
+                        classer.getFirstandlastname(), classer.getEmail(), "Pilote Principal " +pilotes.get(0).getFirstandlastname() + "|" + pilotes.get(0).getEmail());
                 Log log = Log
                     .builder()
                     .libelle("Classification de réclamation")
@@ -1615,7 +1626,7 @@ public class ClaimServiceImpl implements ClaimService {
                 // Envoi du mail à tous les responsables/pilotes
                 mailService.sendMail(pilotes.get(0).getEmail(),"Réclamation au statut Contentieux - GPR",messageHtml,null);
                 claimEventServiceImpl.log(finalClaim.getId(), finalClaim.getCodeClient(), finalClaim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                        litigator.getFirstandlastname(), litigator.getEmail(), "Pilote Principal " +pilotes.get(0).getFirstandlastname());
+                        litigator.getFirstandlastname(), litigator.getEmail(), "Pilote Principal " +pilotes.get(0).getFirstandlastname() + "|" + pilotes.get(0).getEmail());
                 Log log = Log
                     .builder()
                     .libelle("Classification de réclamation")
@@ -1910,8 +1921,10 @@ public class ClaimServiceImpl implements ClaimService {
        
             try {
                 mailService.sendMail(usersToContact,"Nouvelle Dénonciation enregistrée - GPR", messageHtml, null);
-                claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), type, ClaimEventType.MAIL_SENT_AGENT,
-                        collector.getFirstandlastname(), collector.getEmail(), usersToContact.size() + " agent(s)/pilote(s) notifié(s)");
+                for (User u : usersToContact) {
+                    claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), type, ClaimEventType.MAIL_SENT_AGENT,
+                            collector.getFirstandlastname(), collector.getEmail(), u.getFirstandlastname() + "|" + u.getEmail());
+                }
 
                 Log successLog = Log.builder()
                     .libelle("Mail notification nouvelle dénonciation")
@@ -2603,8 +2616,13 @@ public class ClaimServiceImpl implements ClaimService {
             claim.setTransmittedBy(connectedUser);
             // Sauvegarder la réclamation mise à jour
             claim = repository.save(claim);
+            String transmittedRoleLabel = transmittedTo.isRa() ? "RA"
+                    : (transmittedTo.getAdditionalrole() != null ? transmittedTo.getAdditionalrole().toString()
+                    : (transmittedTo.getPoste() != null ? transmittedTo.getPoste().getLibelle() : ""));
+            String transmittedSpLabel = transmittedTo.getServicePoint() != null ? transmittedTo.getServicePoint().getLibelle() : "";
             claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.TRANSMITTED,
-                    connectedUser.getFirstandlastname(), connectedUser.getEmail(), transmittedTo.getFirstandlastname());
+                    connectedUser.getFirstandlastname(), connectedUser.getEmail(),
+                    transmittedTo.getFirstandlastname() + "|" + transmittedRoleLabel + "|" + transmittedSpLabel);
             final Claim finalClaim = claim;
             final User finalTransmittedTo = transmittedTo;
 
@@ -2953,8 +2971,10 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         repository.save(claim);
+        claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.CONVERTED,
+                connectedUser.getFirstandlastname(), connectedUser.getEmail(), "Converti en dénonciation");
     }
-    
+
     @Transactional
     @Override
     public void convertClaimToSuggestion(Long idClaim, Long idSuggestion) throws NotFoundException {
@@ -3189,5 +3209,16 @@ public class ClaimServiceImpl implements ClaimService {
         return trashList;
     }
 
-    
+    @Override
+    public Claim saveDraft(Long claimId, ClaimDraftRequest request) throws Exception {
+        Claim claim = repository.findById(claimId)
+                .orElseThrow(() -> new Exception("Réclamation introuvable : " + claimId));
+        claim.setDraftSolution(request.getDraftSolution());
+        claim.setDraftCommentaire(request.getDraftCommentaire());
+        claim.setDraftUserId(request.getUserId());
+        claim.setDraftSavedAt(LocalDateTime.now());
+        return repository.save(claim);
+    }
+
+
 }
