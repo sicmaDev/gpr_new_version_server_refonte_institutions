@@ -450,6 +450,9 @@ public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequ
 
     private ServicePointResponse convertToResponse(ServicePoint servicepoint1) {
         ServicePointResponse servicePointResponse = modelMapper.map(servicepoint1, ServicePointResponse.class);
+        if (servicepoint1 != null) {
+            servicePointResponse.setDirectionId(servicepoint1.getDirection_id());
+        }
         return servicePointResponse;
     }
 

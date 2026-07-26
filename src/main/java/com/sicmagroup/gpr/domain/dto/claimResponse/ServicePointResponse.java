@@ -16,4 +16,5 @@ public class ServicePointResponse {
     private String description;
     private String type;
     private Long directionId;
+    private String directionLibelle;
 }
