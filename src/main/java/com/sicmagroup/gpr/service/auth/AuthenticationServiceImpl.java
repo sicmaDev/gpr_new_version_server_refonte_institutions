@@ -1278,6 +1278,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     private ServicePointResponse convertToResponse(ServicePoint servicepoint1) {
         ServicePointResponse servicePointResponse = modelMapper.map(servicepoint1, ServicePointResponse.class);
+        if (servicepoint1 != null) {
+            servicePointResponse.setDirectionId(servicepoint1.getDirection_id());
+            if (servicepoint1.getDirection_id() != null) {
+                servicePointRepository.findById(servicepoint1.getDirection_id())
+                    .ifPresent(parent -> servicePointResponse.setDirectionLibelle(parent.getLibelle()));
+            }
+        }
         return servicePointResponse;
     }
 

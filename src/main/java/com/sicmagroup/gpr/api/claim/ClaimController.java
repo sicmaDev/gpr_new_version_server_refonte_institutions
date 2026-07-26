@@ -1936,7 +1936,13 @@ public class ClaimController {
 
     private ServicePointResponse convertToResponse(ServicePoint servicepoint1) {
         ServicePointResponse servicePointResponse = modelMapper.map(servicepoint1, ServicePointResponse.class);
-        servicePointResponse.setDirectionId(servicepoint1.getDirection_id());
+        if (servicepoint1 != null) {
+            servicePointResponse.setDirectionId(servicepoint1.getDirection_id());
+            if (servicepoint1.getDirection_id() != null) {
+                spRepository.findById(servicepoint1.getDirection_id())
+                    .ifPresent(parent -> servicePointResponse.setDirectionLibelle(parent.getLibelle()));
+            }
+        }
         return servicePointResponse;
     }
 
@@ -2085,6 +2091,41 @@ public class ClaimController {
         }
     }
    
+    @GetMapping("/checkPhoneCrossAgency/{phone}")
+    public ResponseEntity<ApiResponseDto> checkPhoneCrossAgency(@PathVariable String phone) {
+        ApiResponseDto apiResponseDto;
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User connectedUser;
+        try {
+            connectedUser = authService.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto.builder().status(false)
+                    .content(ErrorResponse.builder().message("Utilisateur introuvable").title("NOT FOUND").build()).build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
+        ServicePoint userAgency = connectedUser.getServicePoint();
+        if (userAgency == null) {
+            apiResponseDto = ApiResponseDto.builder().status(true)
+                    .content(PhoneCheckResponseDto.builder().exists(false).claims(Collections.emptyList()).build()).build();
+            return ResponseEntity.ok(apiResponseDto);
+        }
+        try {
+            List<Claim> crossClaims = service.checkPhoneCrossAgency(phone, userAgency);
+            PhoneCheckResponseDto content = crossClaims != null && !crossClaims.isEmpty()
+                    ? PhoneCheckResponseDto.builder().exists(true)
+                        .message("Ce numéro est associé à une réclamation dans une autre agence.")
+                        .claims(crossClaims.stream().sorted((a, b) -> b.getReceiptDateTime().compareTo(a.getReceiptDateTime()))
+                            .map(this::convertToDto).collect(Collectors.toList())).build()
+                    : PhoneCheckResponseDto.builder().exists(false).claims(Collections.emptyList()).build();
+            apiResponseDto = ApiResponseDto.builder().status(true).content(content).build();
+            return ResponseEntity.ok(apiResponseDto);
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto.builder().status(false)
+                    .content(ErrorResponse.builder().message("Erreur lors de la vérification inter-agences.").title("INTERNAL SERVER ERROR").build()).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponseDto);
+        }
+    }
+
      @GetMapping("/list/deleted")
     public ResponseEntity<ApiResponseDto> getDeletedClaim() {
         List<TrashDto> allClaimsDtos = service.getAllDeleted();

@@ -3135,6 +3135,17 @@ public class ClaimServiceImpl implements ClaimService {
 
 
     @Override
+    public List<Claim> checkPhoneCrossAgency(String phone, ServicePoint userAgency) {
+        List<ClaimStatus> nonTerminatedStatuses = Arrays.asList(
+                ClaimStatus.SAVED, ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED,
+                ClaimStatus.DESAPPROUVED, ClaimStatus.TREAT, ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION, ClaimStatus.TRANSMITTED
+        );
+        if (phone == null || phone.isEmpty() || userAgency == null) return Collections.emptyList();
+        return repository.findByTelAndServicePointNotAndStatusInAndIsDeletedFalse(phone, userAgency, nonTerminatedStatuses);
+    }
+
+    @Override
     public List<Claim> checkPhone(String phone, ServicePoint userAgency, boolean isPilot) {
         List<ClaimStatus> nonTerminatedStatuses = Arrays.asList(
                 ClaimStatus.SAVED,
