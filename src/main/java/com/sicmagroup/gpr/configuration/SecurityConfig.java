@@ -44,7 +44,15 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/auth/authenticate", "/api/v1/auth/essai", "/api/v1/auth/infoLicense", "/ws/**", "/api/v1/session**", "/api/v1/message/**", "/api/v1/apikey/**", "/api/v1/config/user/publicRegister", "/**")
 
                                                 .permitAll()
-                                                
+                                                // Appels serveur→serveur Node.js → Spring Boot, protégés par le header X-WhatGPR-Secret
+                                                // (pas de JWT car il n'y a pas d'utilisateur connecté côté Node)
+                                                .requestMatchers("/api/whatgpr/internal/**")
+                                                .permitAll()
+                                                // Médias WhatsApp : noms de fichiers non devinables (timestamp + hash),
+                                                // servis via <img>/<audio>/<video> qui ne peuvent pas porter de header Authorization
+                                                .requestMatchers("/api/whatgpr/uploads/**")
+                                                .permitAll()
+
                                                 // .requestMatchers("/api/v1/auth/update",
                                                 // "/api/v1/auth/update_pwd").permitAll()
                                                 .requestMatchers("/api/v1/config/**").hasAnyAuthority("H12")

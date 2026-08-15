@@ -85,8 +85,10 @@ import com.sicmagroup.gpr.service.satisfactionMeasure.SatifactionMeasureServiceI
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
+import com.sicmagroup.gpr.service.wgpr.WgprWhatsappBridgeService;
 import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.utils.Utils;
+import org.springframework.context.annotation.Lazy;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -134,6 +136,10 @@ public class ClaimServiceImpl implements ClaimService {
     private final MailService mailService;
     @Autowired
     private HttpServletRequest httpServletRequest;
+
+    @Lazy
+    @Autowired
+    private WgprWhatsappBridgeService wgprBridgeService;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -330,11 +336,22 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         claim = repository.save(claim);
-       
+
+        // Accusé de réception WhatsApp — asynchrone, non bloquant
+        final String clientTel = claim.getTel();
+        final String codeClient = claim.getCodeClient();
+        final String clientName = claim.getClientFirstAndLastName();
+        if (clientTel != null && !clientTel.isBlank()) {
+            CompletableFuture.runAsync(() -> {
+                try { wgprBridgeService.sendAcknowledgment(clientTel, codeClient, clientName, "reclamation"); }
+                catch (Exception e) { System.err.println("[WhatGPR] Accusé réclamation non envoyé → " + clientTel + " : " + e.getMessage()); }
+            });
+        }
+
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
         List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         usersToContact.addAll(pilote);
-       
+
         String message = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
