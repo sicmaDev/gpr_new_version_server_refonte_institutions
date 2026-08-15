@@ -51,7 +51,10 @@ import com.sicmagroup.gpr.service.objet.ObjetServcieImpl;
 import com.sicmagroup.gpr.service.product.ProductServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
+import com.sicmagroup.gpr.service.wgpr.WgprWhatsappBridgeService;
 import com.sicmagroup.gpr.utils.Utils;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import lombok.RequiredArgsConstructor;
 
@@ -79,6 +82,9 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final ClaimEventServiceImpl claimEventServiceImpl;
     private HttpServletRequest httpServletRequest;
 
+    @Lazy
+    @Autowired
+    private WgprWhatsappBridgeService wgprBridgeService;
 
     @Override
     public List<Suggestion> getAll() {
@@ -253,12 +259,23 @@ public class SuggestionServiceImpl implements SuggestionService {
             }
         }
 
+        // Accusé de réception WhatsApp — asynchrone, non bloquant
+        final String suggTel = suggestion.getTel();
+        final String suggCode = suggestion.getCodeClient();
+        final String suggName = suggestion.getClientFirstAndLastName();
+        if (suggTel != null && !suggTel.isBlank()) {
+            CompletableFuture.runAsync(() -> {
+                try { wgprBridgeService.sendAcknowledgment(suggTel, suggCode, suggName, "suggestion"); }
+                catch (Exception e) { System.err.println("[WhatGPR] Accusé suggestion non envoyé → " + suggTel + " : " + e.getMessage()); }
+            });
+        }
+
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-       
+
         String message = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
-            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
                         box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
 
             <h2 style="color: #004080; text-align: center;">Nouvelle suggestion enregistrée - GPR</h2>

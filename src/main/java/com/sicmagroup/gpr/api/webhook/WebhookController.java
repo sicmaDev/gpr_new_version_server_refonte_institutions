@@ -67,10 +67,10 @@ public class WebhookController {
         try {
             System.out.println("SAVE");
 
-            // Boolean isAuth = service.checkApiKeyBoolean(request);
-            // if (isAuth == false) {
-            // throw new Exception("Vous n'etes pas authentifier");
-            // }
+            Boolean isAuth = service.checkApiKeyBoolean(request);
+            if (isAuth == false) {
+                throw new Exception("Vous n'etes pas authentifier");
+            }
 
             if (data != null && !data.get("from").equals("status@broadcast")) {
                 String event = (String) data.get("event");
