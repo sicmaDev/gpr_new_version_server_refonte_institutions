@@ -24,6 +24,7 @@ import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
+import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.ClaimAudioRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.service.media.FileStorageException;
@@ -118,6 +119,25 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
     public ClaimAudio getAudio(Long id) throws FileNotFoundException {
         return repository.findById(id).orElseThrow(() -> new FileNotFoundException("File not found with id " + id));
 
+    }
+
+    @Override
+    public void deleteAudio(Long id, User connectedUser) throws Exception {
+        ClaimAudio audio = repository.findById(id)
+                .orElseThrow(() -> new FileNotFoundException("File not found with id " + id));
+
+        if (audio.getExtraContent() == null || audio.getExtraContent().getUser() == null
+                || !audio.getExtraContent().getUser().getId().equals(connectedUser.getId())) {
+            throw new Exception("Vous n'êtes pas autorisé à supprimer cet audio");
+        }
+
+        try {
+            Files.deleteIfExists(Paths.get(audio.getPath()));
+        } catch (IOException e) {
+            System.out.println("Impossible de supprimer le fichier audio physique : " + e.getMessage());
+        }
+
+        repository.delete(audio);
     }
 
     // @Override

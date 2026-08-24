@@ -762,6 +762,12 @@ public class SuggestionServiceImpl implements SuggestionService {
         } else {
             if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
                 suggestion.setCode(suggestionRequest.getCode());
+                if (suggestionRequest.getCodeClient() == null || suggestionRequest.getCodeClient().isEmpty()) {
+                    String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
+                    suggestion.setCodeClient(codeClient);
+                } else {
+                    suggestion.setCodeClient(suggestionRequest.getCodeClient());
+                }
             } else {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
                 suggestion.setCode(code);

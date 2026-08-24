@@ -25,6 +25,7 @@ import com.sicmagroup.gpr.domain.model.Inbox;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
+import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.InboxMessageRepository;
 import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
@@ -287,6 +288,24 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
+    public void deleteMedia(Long id, User connectedUser) throws Exception {
+        Media media = repository.findById(id).orElseThrow(() -> new FileNotFoundException("File not found with id " + id));
+
+        if (media.getExtraContent() == null || media.getExtraContent().getUser() == null
+                || !media.getExtraContent().getUser().getId().equals(connectedUser.getId())) {
+            throw new Exception("Vous n'êtes pas autorisé à supprimer ce fichier");
+        }
+
+        try {
+            Files.deleteIfExists(Paths.get(media.getPath()));
+        } catch (IOException e) {
+            System.out.println("Impossible de supprimer le fichier physique : " + e.getMessage());
+        }
+
+        repository.delete(media);
+    }
+
+    @Override
     public List<Media> storeFromString(List<String> files, Claim claim) {
         List<Media> medias = new ArrayList<>();
         // for (String file : files) {
@@ -303,6 +322,9 @@ public class MediaServiceImpl implements MediaService {
     }
     @Override
     public Boolean attachFileToClaim(Claim claim, List<InboxMessage> inboxMessages) {
+        if (inboxMessages == null || inboxMessages.isEmpty()) {
+            return true;
+        }
         for (InboxMessage message : inboxMessages) {
             Optional<Media> media =  repository.findByName(message.getContent());
             if(media.isPresent()){
@@ -312,11 +334,14 @@ public class MediaServiceImpl implements MediaService {
             }
 
         }
-    
+
         return true;
     }
     @Override
     public Boolean attachFileToClaim(Suggestion suggestion, List<InboxMessage> inboxMessages) {
+        if (inboxMessages == null || inboxMessages.isEmpty()) {
+            return true;
+        }
         for (InboxMessage message : inboxMessages) {
             Optional<Media> media =  repository.findByName(message.getContent());
             if(media.isPresent()){
@@ -326,7 +351,7 @@ public class MediaServiceImpl implements MediaService {
             }
 
         }
-    
+
         return true;
     }
 

@@ -13,6 +13,7 @@ import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
+import com.sicmagroup.gpr.domain.model.User;
 
 public interface MediaService {
 
@@ -37,6 +38,7 @@ public interface MediaService {
 
     Media getFile(Long id) throws FileNotFoundException;
     Media getFileByPath(String path) throws FileNotFoundException;
+    void deleteMedia(Long id, User connectedUser) throws Exception;
 
     List<Media> getFileByClaim(Claim claim);
 

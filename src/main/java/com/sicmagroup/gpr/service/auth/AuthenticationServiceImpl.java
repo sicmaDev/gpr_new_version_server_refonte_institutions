@@ -211,6 +211,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 }
 
                 user = userRepository.save(user);
+                notifyUserQuotaIfCrossed(totalActuUser, totalUser);
                 final User userForMail = user;
                 // HashMap<String, Object> extras = new HashMap<>();
                 // extras.put("additionalRole", user.getAdditionalrole());
@@ -405,6 +406,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .build();
 
                 userRepository.save(user);
+                notifyUserQuotaIfCrossed(totalActuUser, totalUser);
 
                 // Envoi de mail en parallèle
                 // CompletableFuture.runAsync(() -> {
@@ -570,6 +572,102 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
 
+    // Alerte admin (H12) quand la création d'un compte fait franchir le seuil de 80%
+    // du quota de comptes autorisé par la licence (déclenchée une seule fois, au
+    // moment précis où le seuil est franchi, pas à chaque compte créé au-delà).
+    private void notifyUserQuotaIfCrossed(long countBeforeCreation, int totalUser) {
+        if (totalUser <= 0) {
+            return;
+        }
+        long countAfterCreation = countBeforeCreation + 1;
+        double pctBefore = (countBeforeCreation * 100.0) / totalUser;
+        double pctAfter = (countAfterCreation * 100.0) / totalUser;
+        if (pctBefore >= 80 || pctAfter < 80) {
+            return;
+        }
+        try {
+            List<Poste> h12Postes = posteRepository.findByHabilitationsContaining(Habilitation.H12.name());
+            List<User> adminUsers = new ArrayList<>();
+            for (Poste h12Poste : h12Postes) {
+                adminUsers.addAll(userRepository.findByPosteAndIsDeleted(h12Poste, false));
+            }
+            if (adminUsers.isEmpty()) {
+                return;
+            }
+            String message = """
+                <html>
+                    <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+                        <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
+                            <h2 style="color: #b45309; text-align: center;">⚠ Quota de comptes utilisateurs bientôt atteint - GPR</h2>
+                            <p>Bonjour,</p>
+                            <p>
+                                Le nombre de comptes utilisateurs créés sur votre plateforme <strong>GPR</strong> a atteint
+                                <strong>%d%%</strong> de la limite autorisée par votre licence.
+                            </p>
+                            <div style="margin-top: 20px; background-color: #fffbeb; border-left: 4px solid #d97706; padding: 10px 15px;">
+                                <p style="margin: 0;"><strong>Comptes créés :</strong> %d / %d</p>
+                            </div>
+                            <p style="margin-top: 20px;">
+                                Veuillez contacter SICMA (info@sicmagroup.com) si vous souhaitez augmenter cette limite.
+                            </p>
+                            <p style="margin-top: 30px;">Cordialement,<br>L'équipe GPR</p>
+                            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
+                                Cet email a été généré automatiquement. Merci de ne pas y répondre.
+                            </p>
+                        </div>
+                    </body>
+                </html>
+            """.formatted((int) Math.round(pctAfter), countAfterCreation, totalUser);
+            mailService.sendMail(adminUsers, "Alerte : quota de comptes utilisateurs bientôt atteint - GPR", message, null);
+            Log adminLog = Log.builder()
+                .libelle("Mail notification admin - quota utilisateurs 80%")
+                .content("Notification envoyée à " + adminUsers.size() + " administrateur(s) (" + countAfterCreation + "/" + totalUser + ")")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.WARNING)
+                .userId(0L)
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.APP)
+                .build();
+            logServiceImpl.saveLog(adminLog);
+        } catch (Exception e) {
+            Log log2 = Log.builder()
+                .libelle("Echec mail notification admin - quota utilisateurs 80%")
+                .content(e.getMessage())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.ERROR)
+                .userId(0L)
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.APP)
+                .build();
+            logServiceImpl.saveLog(log2);
+        }
+    }
+
+    private int getMaxUsersFromLicense() {
+        try {
+            File file = new File("data.txt");
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            StringBuffer sb = new StringBuffer();
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            br.close();
+            String license = sb.toString();
+            if (!license.isEmpty()) {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode licenseObj = mapper.readTree(license);
+                String activationRequest = licenseObj.get("activationRequest").asText();
+                String[] splitARequest = activationRequest.split(",");
+                String[] splitInfo = splitARequest[1].split(":");
+                return Integer.parseInt(splitInfo[1]);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         User user;
@@ -722,17 +820,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             e.printStackTrace();
         }
 
-        // Apparence (couleurs institution — module payant)
+        // Apparence (couleurs institution - module payant)
         try {
             Setting appearance = settingServiceImpl.getbySlug(Constante.APPEARANCE_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             AppearanceRequest appearanceRequest = objectMapper.readValue(appearance.getValue(), AppearanceRequest.class);
             settings.put("appearance", appearanceRequest);
         } catch (Exception e) {
-            // Pas encore configuré — normal au premier démarrage
+            // Pas encore configuré - normal au premier démarrage
         }
 
-        // Modules actifs — lus depuis app-modules en BDD (même pattern que app-mail)
+        // Modules actifs - lus depuis app-modules en BDD (même pattern que app-mail)
         try {
             Setting modulesSetting = settingServiceImpl.getbySlug(Constante.MODULES_SLUG);
             ObjectMapper modulesMapper = new ObjectMapper();
@@ -893,17 +991,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             e.printStackTrace();
         }
 
-        // Apparence (couleurs institution — module payant)
+        // Apparence (couleurs institution - module payant)
         try {
             Setting appearance = settingServiceImpl.getbySlug(Constante.APPEARANCE_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             AppearanceRequest appearanceRequest = objectMapper.readValue(appearance.getValue(), AppearanceRequest.class);
             settings.put("appearance", appearanceRequest);
         } catch (Exception e) {
-            // Pas encore configuré — normal au premier démarrage
+            // Pas encore configuré - normal au premier démarrage
         }
 
-        // Modules actifs — lus depuis app-modules en BDD (même pattern que app-mail)
+        // Modules actifs - lus depuis app-modules en BDD (même pattern que app-mail)
         try {
             Setting modulesSetting = settingServiceImpl.getbySlug(Constante.MODULES_SLUG);
             ObjectMapper modulesMapper = new ObjectMapper();
@@ -2299,6 +2397,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (agencesStats != null) {
             dashboard.put("agencesStats", agencesStats);
         }
+
+        // Quota de comptes utilisateurs (licence) - alimente la bannière d'alerte 80% du dashboard admin
+        int maxUsers = getMaxUsersFromLicense();
+        long currentUsers = userRepository.count();
+        dashboard.put("userQuotaTotal", maxUsers);
+        dashboard.put("userQuotaUsed", currentUsers);
+        dashboard.put("userQuotaPct", maxUsers > 0 ? Math.round((currentUsers * 100.0) / maxUsers) : 0);
 
         return dashboard;
     }

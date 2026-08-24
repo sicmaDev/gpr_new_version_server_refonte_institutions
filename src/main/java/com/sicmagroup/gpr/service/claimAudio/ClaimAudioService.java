@@ -14,11 +14,12 @@ import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
+import com.sicmagroup.gpr.domain.model.User;
 
 public interface ClaimAudioService {
-    
+
     List<ClaimAudio> store(MultipartFile[] files, Claim claim);
-    List<ClaimAudio> store(MultipartFile[] files, Claim claim,ExtraContent extraContent);    
+    List<ClaimAudio> store(MultipartFile[] files, Claim claim,ExtraContent extraContent);
 
     List<ClaimAudio> store(MultipartFile[] files, Suggestion suggestion);
 
@@ -29,4 +30,6 @@ public interface ClaimAudioService {
     List<ClaimAudioResponse> getAudioByClaim(Claim claim);
 
     List<ClaimAudioResponse> getAudiosBySuggestion(Suggestion suggestion);
+
+    void deleteAudio(Long id, User connectedUser) throws Exception;
 }

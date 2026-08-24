@@ -114,6 +114,53 @@ public class ClaimController {
 
     private final ServicePointRepository spRepository;
 
+    // Limites d'ajout de pièces jointes à l'enregistrement d'une réclamation.
+    private static final int MAX_FILES_COUNT = 5;
+    private static final int MAX_AUDIOS_COUNT = 3;
+    private static final long MAX_DOC_FILE_SIZE = 10L * 1024 * 1024; // 10 Mo (documents/images)
+    private static final long MAX_AV_FILE_SIZE = 20L * 1024 * 1024; // 20 Mo (audio/vidéo)
+    private static final long MAX_TOTAL_ATTACHMENTS_SIZE = 100L * 1024 * 1024; // 100 Mo cumulés
+
+    private void validateAttachments(MultipartFile[] files, MultipartFile[] audios) throws Exception {
+        int filesCount = files != null ? files.length : 0;
+        int audiosCount = audios != null ? audios.length : 0;
+
+        if (filesCount > MAX_FILES_COUNT) {
+            throw new Exception("Vous ne pouvez pas joindre plus de " + MAX_FILES_COUNT + " fichiers.");
+        }
+        if (audiosCount > MAX_AUDIOS_COUNT) {
+            throw new Exception("Vous ne pouvez pas joindre plus de " + MAX_AUDIOS_COUNT + " enregistrements audio.");
+        }
+
+        long totalSize = 0;
+        if (files != null) {
+            for (MultipartFile file : files) {
+                String contentType = file.getContentType();
+                boolean isAudioVideo = contentType != null
+                        && (contentType.startsWith("audio/") || contentType.startsWith("video/"));
+                long maxSize = isAudioVideo ? MAX_AV_FILE_SIZE : MAX_DOC_FILE_SIZE;
+                if (file.getSize() > maxSize) {
+                    throw new Exception("Le fichier \"" + file.getOriginalFilename()
+                            + "\" dépasse la taille maximale autorisée (" + (maxSize / (1024 * 1024)) + " Mo).");
+                }
+                totalSize += file.getSize();
+            }
+        }
+        if (audios != null) {
+            for (MultipartFile audio : audios) {
+                if (audio.getSize() > MAX_AV_FILE_SIZE) {
+                    throw new Exception("Un enregistrement audio dépasse la taille maximale autorisée ("
+                            + (MAX_AV_FILE_SIZE / (1024 * 1024)) + " Mo).");
+                }
+                totalSize += audio.getSize();
+            }
+        }
+        if (totalSize > MAX_TOTAL_ATTACHMENTS_SIZE) {
+            throw new Exception("La taille totale des pièces jointes dépasse la limite autorisée ("
+                    + (MAX_TOTAL_ATTACHMENTS_SIZE / (1024 * 1024)) + " Mo).");
+        }
+    }
+
     @GetMapping("/list/all")
     public ResponseEntity<ApiResponseDto> getAllClaim() {
         List<Claim> allClaims = service.getAll(ClaimType.CLAIM);
@@ -602,6 +649,7 @@ public class ClaimController {
                 ClaimRequest claimRequest2 = mapper.readValue(claimRequest, ClaimRequest.class);
 
                 try {
+                    validateAttachments(files, audios);
                     boolean servicePointIsActif = spServiceImpl.isActif(claimRequest2.getServicePointId());
                     boolean userIsActif = authService.isActif(claimRequest2.getCollectorId());
                     if(!userIsActif || !servicePointIsActif){
@@ -665,6 +713,7 @@ public class ClaimController {
             LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
             if (lc.isActif()) {
                 try {
+                    validateAttachments(files, audios);
                     SaveRequest saveRequest = SaveRequest.builder().claimRequest(claimRequest2).files(files)
                             .audios(audios)
                             .remoteAddress(request.getRemoteAddr()).build();

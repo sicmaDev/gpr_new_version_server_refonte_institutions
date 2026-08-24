@@ -454,24 +454,44 @@ public class ClaimServiceImpl implements ClaimService {
         // Ajout du contenu au Claim
         claim.getExtraContents().add(extraContentSave);
 
-        if (extraContentSave.isFile()) { 
+        int filesCount = 0;
+        int audiosCount = 0;
+        if (extraContentSave.isFile()) {
             if (files != null && files.length != 0) {
                 List<Media> medias = mediaServiceImpl.store(files, claim, extraContentSave);
+                filesCount = files.length;
                 // claim.setUpdatedAt(LocalDateTime.now());
-                
+
                 // return repository.save(claim);
             }
             if (audios != null && audios.length != 0) {
                 List<ClaimAudio> audio = claimAudioServiceImpl.store(audios, claim, extraContentSave);
+                audiosCount = audios.length;
                 // claim.setUpdatedAt(LocalDateTime.now());
-                
+
                 // return repository.save(claim);
             }
         }
 
         claim.setUpdatedAt(LocalDateTime.now());
-        
-        return repository.save(claim);
+
+        Claim savedClaim = repository.save(claim);
+
+        // Trace l'ajout dans l'historique du dossier - sans ça, un fichier/audio/contenu
+        // ajouté en cours de traitement n'apparaissait jamais dans l'onglet Historique.
+        User currentUser = userAuth.getUser();
+        List<String> parts = new ArrayList<>();
+        if (extraContent.getContenu() != null && !extraContent.getContenu().isBlank()) parts.add("un commentaire");
+        if (filesCount > 0) parts.add(filesCount + " fichier(s)");
+        if (audiosCount > 0) parts.add(audiosCount + " audio(s)");
+        String metadata = parts.isEmpty() ? "Ajout au dossier" : "Ajout de " + String.join(", ", parts);
+        claimEventServiceImpl.log(savedClaim.getId(), savedClaim.getCodeClient(), savedClaim.getType(),
+                ClaimEventType.EXTRA_ADDED,
+                currentUser != null ? currentUser.getFirstandlastname() : null,
+                currentUser != null ? currentUser.getEmail() : null,
+                metadata);
+
+        return savedClaim;
     }
 
     @Override
@@ -1265,7 +1285,7 @@ public class ClaimServiceImpl implements ClaimService {
                 : status == SatisfactionStatus.UNSATISFIED ? ClaimEventType.UNSATISFIED
                 : ClaimEventType.PARTIAL_SATISFIED;
         claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), satisfactionEventType,
-                measurer.getFirstandlastname(), measurer.getEmail(), null);
+                measurer.getFirstandlastname(), measurer.getEmail(), commentaire);
 
         return claim;
 
@@ -1570,8 +1590,13 @@ public class ClaimServiceImpl implements ClaimService {
         claim.setUpdatedAt(LocalDateTime.now());
 
         claim = repository.save(claim);
+        String recoursesLabel = externalRecour.stream()
+                .map(ExternalRecourse::getLibelle)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.joining(", "));
         claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.LITIGATION,
-                litigator.getFirstandlastname(), litigator.getEmail(), null);
+                litigator.getFirstandlastname(), litigator.getEmail(),
+                recoursesLabel.isEmpty() ? null : "Recours externe(s) : " + recoursesLabel);
         LocalDateTime majDate = LocalDateTime.now();
         for (ExternalRecourse externalRecourse : externalRecour) {
             externalRecourse.setUpdatedAt(majDate);
@@ -2038,7 +2063,6 @@ public class ClaimServiceImpl implements ClaimService {
 
         // }
 
-        //String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
         Claim claim = Claim
                 .builder()
                 .clientFirstAndLastName(claimToSave.getClientFirstAndLastName())
@@ -2076,7 +2100,12 @@ public class ClaimServiceImpl implements ClaimService {
             Claim oldClaim = repository.findById(claimToSave.getId())
             .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
 
-            //claim.setCodeClient(oldClaim.getCodeClient());
+            if (oldClaim.getCodeClient() == null || oldClaim.getCodeClient() == "") {
+                String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
+            } else {
+                claim.setCodeClient(oldClaim.getCodeClient());
+            }
 
             // if (oldClaim.getStatus() != ClaimStatus.TEMP_SAVED) {
             // throw new ClaimException(
@@ -2088,8 +2117,19 @@ public class ClaimServiceImpl implements ClaimService {
             if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
                 claim.setCode(code);
+                String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
             } else {
                 claim.setCode(claimToSave.getCode());
+                // Le codeClient a déjà été généré côté client au moment de la création
+                // hors-ligne (pour affichage immédiat) : on le conserve tel quel pour
+                // que la synchro n'en génère pas un second différent.
+                if (claimToSave.getCodeClient() == null || claimToSave.getCodeClient().isEmpty()) {
+                    String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+                    claim.setCodeClient(codeClient);
+                } else {
+                    claim.setCodeClient(claimToSave.getCodeClient());
+                }
             }
         }
         // if(claimToSave.getCode() == null || claimToSave.getCode()== "") {
@@ -2337,7 +2377,6 @@ public class ClaimServiceImpl implements ClaimService {
                 .builder()
 
                 .type(type)
-                // .codeClient(codeClient)
                 .content(claimToSave.getContent())
                 .collector(collector).status(ClaimStatus.SAVED)
                 .createdAt(LocalDateTime.now())
@@ -2349,15 +2388,28 @@ public class ClaimServiceImpl implements ClaimService {
             // Only TEMP_SAVED can be saved
             Claim oldClaim = repository.findById(claimToSave.getId())
                     .orElseThrow(() -> new ClaimException("Claim with this code doesn't exist"));
-                    // claim.setCodeClient(oldClaim.getCodeClient());
-            
+
+            if (oldClaim.getCodeClient() == null || oldClaim.getCodeClient() == "") {
+                String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
+            } else {
+                claim.setCodeClient(oldClaim.getCodeClient());
+            }
 
         } else {
             if (claimToSave.getCode() == null || claimToSave.getCode() == "") {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
                 claim.setCode(code);
+                String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+                claim.setCodeClient(codeClient);
             } else {
                 claim.setCode(claimToSave.getCode());
+                if (claimToSave.getCodeClient() == null || claimToSave.getCodeClient().isEmpty()) {
+                    String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+                    claim.setCodeClient(codeClient);
+                } else {
+                    claim.setCodeClient(claimToSave.getCodeClient());
+                }
             }
         }
 
@@ -3017,6 +3069,14 @@ public class ClaimServiceImpl implements ClaimService {
             audio.setSuggestion(suggestion);
             claimAudioRepository.save(audio);
         }
+
+        // Tracé côté suggestion (pas côté réclamation, qui va être supprimée juste après
+        // et deviendrait donc introuvable) - sans ça, rien ne permettait de savoir qu'une
+        // suggestion provient de la conversion d'une réclamation.
+        String originLabel = claim.getType() == ClaimType.DENUNCIACION ? "une dénonciation" : "une réclamation";
+        claimEventServiceImpl.log(suggestion.getId(), suggestion.getCodeClient(), ClaimType.SUGGESTION,
+                ClaimEventType.CONVERTED, connectedUser.getFirstandlastname(), connectedUser.getEmail(),
+                "Converti depuis " + originLabel + " (code " + claim.getCode() + ")");
 
         repository.delete(claim);
     }

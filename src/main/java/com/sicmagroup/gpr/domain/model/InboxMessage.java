@@ -59,4 +59,20 @@ public class InboxMessage {
 
     private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
+
+	// ── Champs ajoutés pour le module WhatGPR (Baileys) ──
+	// Réutilisation de gps_inbox_messages comme stockage des messages WhatsApp entrants,
+	// au lieu de créer une nouvelle entité/table dédiée.
+	@Column(columnDefinition = "boolean default false")
+	private boolean isRead;
+
+	@Column(columnDefinition = "varchar(20) default 'new'")
+	private String status;
+
+	private String mediaType;
+
+	@Column(length = 500)
+	private String mediaPath;
+
+	private String connectedNumber;
 }
