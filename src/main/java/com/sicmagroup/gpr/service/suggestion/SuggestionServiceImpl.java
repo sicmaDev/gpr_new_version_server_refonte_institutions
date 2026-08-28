@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -23,6 +24,7 @@ import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
+import com.sicmagroup.gpr.domain.model.Inbox;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.domain.model.Log;
@@ -35,6 +37,7 @@ import com.sicmagroup.gpr.repository.InboxMessageRepository;
 import com.sicmagroup.gpr.domain.enumeration.ClaimEventType;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.service.claimEvent.ClaimEventServiceImpl;
+import com.sicmagroup.gpr.service.wgpr.WgprWhatsappBridgeService;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
@@ -77,6 +80,7 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final ExtraContentRepository extraContentRepository;
     private final MailService mailService;
     private final ClaimEventServiceImpl claimEventServiceImpl;
+    private final WgprWhatsappBridgeService wgprBridgeService;
     private HttpServletRequest httpServletRequest;
 
 
@@ -241,24 +245,42 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         //Whatsapp
-        if(suggestionRequest.getFromWhatsapp()){
+        if(suggestionRequest.getFromWhatsapp() != null && suggestionRequest.getFromWhatsapp()){
             System.out.println("From Whatsapp");
             Boolean isOk = mediaServiceImpl.attachFileToClaim(suggestion, suggestionRequest.getFilesWhatsapp());
-            if(isOk && suggestionRequest.getInboxWhatsapp() != null){
-                List<InboxMessage> messages = messageRepository.findByInbox(suggestionRequest.getInboxWhatsapp());
-                for (InboxMessage message : messages) {
-                    messageRepository.delete(message);
+            // On recharge l'entité Inbox réelle par son id plutôt que d'utiliser directement
+            // l'objet désérialisé du JSON (voir ClaimServiceImpl pour le détail du problème).
+            if(isOk && suggestionRequest.getInboxWhatsapp() != null && suggestionRequest.getInboxWhatsapp().getId() != null){
+                Optional<Inbox> inboxToDelete = inboxRepository.findById(suggestionRequest.getInboxWhatsapp().getId());
+                if (inboxToDelete.isPresent()) {
+                    List<InboxMessage> messages = messageRepository.findByInbox(inboxToDelete.get());
+                    messageRepository.deleteAll(messages);
+                    inboxRepository.delete(inboxToDelete.get());
                 }
-                inboxRepository.delete(suggestionRequest.getInboxWhatsapp());
             }
         }
 
+        // Accusé de réception WhatsApp — asynchrone, non bloquant : un échec d'envoi
+        // ne doit jamais empêcher l'enregistrement de la suggestion.
+        final String suggTel  = suggestion.getTel();
+        final String suggCode = suggestion.getCodeClient();
+        final String suggName = suggestion.getClientFirstAndLastName();
+        if (suggTel != null && !suggTel.isBlank()) {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    wgprBridgeService.sendAcknowledgment(suggTel, suggCode, suggName, "suggestion");
+                } catch (Exception e) {
+                    System.err.println("[WhatGPR] Accusé suggestion non envoyé → " + suggTel + " : " + e.getMessage());
+                }
+            });
+        }
+
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
-       
+
         String message = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
-            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; 
+            <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px;
                         box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 20px;">
 
             <h2 style="color: #004080; text-align: center;">Nouvelle suggestion enregistrée - GPR</h2>
@@ -595,15 +617,18 @@ public class SuggestionServiceImpl implements SuggestionService {
         }
 
         //Whatsapp
-        if(suggestionRequest.getFromWhatsapp()){
+        if(suggestionRequest.getFromWhatsapp() != null && suggestionRequest.getFromWhatsapp()){
             System.out.println("From Whatsapp");
             Boolean isOk = mediaServiceImpl.attachFileToClaim(suggestion, suggestionRequest.getFilesWhatsapp());
-            if(isOk && suggestionRequest.getInboxWhatsapp() != null){
-                List<InboxMessage> messages = messageRepository.findByInbox(suggestionRequest.getInboxWhatsapp());
-                for (InboxMessage message : messages) {
-                    messageRepository.delete(message);
+            // On recharge l'entité Inbox réelle par son id plutôt que d'utiliser directement
+            // l'objet désérialisé du JSON (voir ClaimServiceImpl pour le détail du problème).
+            if(isOk && suggestionRequest.getInboxWhatsapp() != null && suggestionRequest.getInboxWhatsapp().getId() != null){
+                Optional<Inbox> inboxToDelete = inboxRepository.findById(suggestionRequest.getInboxWhatsapp().getId());
+                if (inboxToDelete.isPresent()) {
+                    List<InboxMessage> messages = messageRepository.findByInbox(inboxToDelete.get());
+                    messageRepository.deleteAll(messages);
+                    inboxRepository.delete(inboxToDelete.get());
                 }
-                inboxRepository.delete(suggestionRequest.getInboxWhatsapp());
             }
         }
 

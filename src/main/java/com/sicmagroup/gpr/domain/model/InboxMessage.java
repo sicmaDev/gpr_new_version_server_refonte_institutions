@@ -18,12 +18,19 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
-@Data 
-@AllArgsConstructor 
+@Data
+@AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @Table(name = "gps_inbox_messages")
+// Cette entité sert aussi de cible de désérialisation directe pour le JSON envoyé par le
+// frontend (ex. ClaimRequest.filesWhatsapp) — des champs comme "url" (lien de téléchargement
+// affiché côté client) n'ont pas de colonne correspondante ici. Sans ignoreUnknown, Jackson
+// rejette toute la requête (UnrecognizedPropertyException) dès qu'un tel champ est présent.
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class InboxMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

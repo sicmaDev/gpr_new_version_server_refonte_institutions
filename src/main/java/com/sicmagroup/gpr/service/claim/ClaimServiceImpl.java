@@ -75,6 +75,7 @@ import com.sicmagroup.gpr.service.existingSolution.ExistingSolutionServiceImpl;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
 import com.sicmagroup.gpr.service.extra.ExtraContentServiceImpl;
 import com.sicmagroup.gpr.service.claimEvent.ClaimEventServiceImpl;
+import com.sicmagroup.gpr.service.wgpr.WgprWhatsappBridgeService;
 import com.sicmagroup.gpr.service.historiqueAffectation.HistoriqueAffectationServiceImpl;
 import com.sicmagroup.gpr.service.language.LanguageServiceImpl;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
@@ -132,6 +133,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final CurrentUserUtils userAuth;
     private final SuggestionRepository suggestionRepository;
     private final MailService mailService;
+    private final WgprWhatsappBridgeService wgprBridgeService;
     @Autowired
     private HttpServletRequest httpServletRequest;
 
@@ -317,20 +319,40 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         //Whatsapp
-        if(claimToSave.getFromWhatsapp()){
+        if(claimToSave.getFromWhatsapp() != null && claimToSave.getFromWhatsapp()){
             System.out.println("From Whatsapp");
             Boolean isOk = mediaServiceImpl.attachFileToClaim(claim, claimToSave.getFilesWhatsapp());
-            if(isOk && claimToSave.getInboxWhatsapp() != null){
-                List<InboxMessage> messages = messageRepository.findByInbox(claimToSave.getInboxWhatsapp());
-                for (InboxMessage message : messages) {
-                    messageRepository.delete(message);
+            // On ne réutilise jamais directement claimToSave.getInboxWhatsapp() pour les opérations
+            // repository : c'est un objet désérialisé du JSON (id + quelques champs), pas une entité
+            // gérée par Hibernate — le passer tel quel à delete() plantait (entité transiente/détachée
+            // incomplète). On recharge l'entité réelle par son id avant de la supprimer.
+            if(isOk && claimToSave.getInboxWhatsapp() != null && claimToSave.getInboxWhatsapp().getId() != null){
+                Optional<Inbox> inboxToDelete = inboxRepository.findById(claimToSave.getInboxWhatsapp().getId());
+                if (inboxToDelete.isPresent()) {
+                    List<InboxMessage> messages = messageRepository.findByInbox(inboxToDelete.get());
+                    messageRepository.deleteAll(messages);
+                    inboxRepository.delete(inboxToDelete.get());
                 }
-                inboxRepository.delete(claimToSave.getInboxWhatsapp());
             }
         }
 
         claim = repository.save(claim);
-       
+
+        // Accusé de réception WhatsApp — asynchrone, non bloquant : un échec d'envoi
+        // ne doit jamais empêcher l'enregistrement de la réclamation.
+        final String clientTel  = claim.getTel();
+        final String codeClient = claim.getCodeClient();
+        final String clientName = claim.getClientFirstAndLastName();
+        if (clientTel != null && !clientTel.isBlank()) {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    wgprBridgeService.sendAcknowledgment(clientTel, codeClient, clientName, "reclamation");
+                } catch (Exception e) {
+                    System.err.println("[WhatGPR] Accusé réclamation non envoyé → " + clientTel + " : " + e.getMessage());
+                }
+            });
+        }
+
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
         List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         usersToContact.addAll(pilote);
@@ -1886,15 +1908,20 @@ public class ClaimServiceImpl implements ClaimService {
         }
 
         //Whatsapp
-        if(claimToSave.getFromWhatsapp()){
+        if(claimToSave.getFromWhatsapp() != null && claimToSave.getFromWhatsapp()){
             System.out.println("From Whatsapp");
             Boolean isOk = mediaServiceImpl.attachFileToClaim(claim, claimToSave.getFilesWhatsapp());
-            if(isOk && claimToSave.getInboxWhatsapp() != null){
-                List<InboxMessage> messages = messageRepository.findByInbox(claimToSave.getInboxWhatsapp());
-                for (InboxMessage message : messages) {
-                    messageRepository.delete(message);
+            // On ne réutilise jamais directement claimToSave.getInboxWhatsapp() pour les opérations
+            // repository : c'est un objet désérialisé du JSON (id + quelques champs), pas une entité
+            // gérée par Hibernate — le passer tel quel à delete() plantait (entité transiente/détachée
+            // incomplète). On recharge l'entité réelle par son id avant de la supprimer.
+            if(isOk && claimToSave.getInboxWhatsapp() != null && claimToSave.getInboxWhatsapp().getId() != null){
+                Optional<Inbox> inboxToDelete = inboxRepository.findById(claimToSave.getInboxWhatsapp().getId());
+                if (inboxToDelete.isPresent()) {
+                    List<InboxMessage> messages = messageRepository.findByInbox(inboxToDelete.get());
+                    messageRepository.deleteAll(messages);
+                    inboxRepository.delete(inboxToDelete.get());
                 }
-                inboxRepository.delete(claimToSave.getInboxWhatsapp());
             }
         }
 

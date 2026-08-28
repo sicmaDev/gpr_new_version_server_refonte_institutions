@@ -724,10 +724,29 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
         
 
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        try {
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        } catch (Exception e) {
+            Log log = Log.builder()
+                .libelle("Echec Authentification")
+                .content("Mot de passe incorrect pour : " + request.getEmail())
+                .createdAt(LocalDateTime.now())
+                .type(LogType.ERROR)
+                .userId(0L)
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.APP)
+                .build();
+            logServiceImpl.saveLog(log);
 
-       
+            return AuthenticationResponse.builder()
+                .response(ApiResponseDto.builder()
+                    .status(false)
+                    .content(Map.of("message", "Email ou mot de passe incorrect."))
+                    .build())
+                .build();
+        }
+
         String jwtToken = jwtServiceImpl.generateToken(user);
         Log successLog = Log.builder()
             .libelle("Authentification")

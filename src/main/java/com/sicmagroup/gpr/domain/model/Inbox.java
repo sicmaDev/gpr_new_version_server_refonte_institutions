@@ -18,12 +18,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
-@Data 
-@AllArgsConstructor 
+@Data
+@AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @Table(name = "gps_inboxs")
+// Désérialisé directement depuis le JSON du frontend (ClaimRequest.inboxWhatsapp) — voir
+// InboxMessage pour le détail du problème que ça pose sans ignoreUnknown.
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Inbox {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
