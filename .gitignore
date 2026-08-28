@@ -34,3 +34,5 @@ build/
 
 backend-img.tar
 /src/ressources/application.properties
+### Logs ### 
+*.log
