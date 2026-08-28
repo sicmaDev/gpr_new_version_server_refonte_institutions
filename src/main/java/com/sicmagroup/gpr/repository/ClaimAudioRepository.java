@@ -1,6 +1,7 @@
 package com.sicmagroup.gpr.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,6 +15,8 @@ import com.sicmagroup.gpr.domain.model.Suggestion;
 
 public interface ClaimAudioRepository extends JpaRepository<ClaimAudio, Long>{
      List<ClaimAudio> findByClaim(Claim claim);
+
+    Optional<ClaimAudio> findByName(String name);
 
     List<ClaimAudio> findBySuggestion(Suggestion suggestion);
 

@@ -20,12 +20,14 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.sicmagroup.gpr.domain.model.Claim;
+import com.sicmagroup.gpr.domain.model.ClaimAudio;
 import com.sicmagroup.gpr.domain.model.ExtraContent;
 import com.sicmagroup.gpr.domain.model.Inbox;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
+import com.sicmagroup.gpr.repository.ClaimAudioRepository;
 import com.sicmagroup.gpr.repository.InboxMessageRepository;
 import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
@@ -41,6 +43,38 @@ public class MediaServiceImpl implements MediaService {
     private final MediaRepository repository;
     private final InboxMessageRepository messageRepository;
     private final InboxRepository inboxRepository;
+    private final ClaimAudioRepository claimAudioRepository;
+
+    // Extensions générées par storeOneFile(InboxMessage, mimeType) pour les types
+    // WhatsApp "audio"/"ptt" (voir WebhookController.traitementMessage) : ces fichiers
+    // doivent vivre dans gps_claim_audio (lecteur) plutôt que gps_media (téléchargement).
+    private static boolean isAudioFileName(String fileName) {
+        if (fileName == null) return false;
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".mp3") || lower.endsWith(".ogg") || lower.endsWith(".oga")
+                || lower.endsWith(".wav") || lower.endsWith(".m4a") || lower.endsWith(".opus")
+                || lower.endsWith(".aac") || lower.endsWith(".amr");
+    }
+
+    // ClaimAudioServiceImpl.loadAsResource() reconstruit toujours le chemin à partir du
+    // nom + du dossier audio courant (TEST_PATH_AUDIO/PROD_PATH_AUDIO) — il ne se fie pas
+    // au champ "path" stocké. Il faut donc physiquement déplacer le fichier là où il est
+    // attendu, pas seulement recréer une ligne ClaimAudio pointant vers l'ancien chemin
+    // (sous PIECE_JOINTES), sinon la lecture échoue silencieusement (fichier introuvable).
+    private String moveMediaToAudioDir(Media orphan) {
+        Path audioDir = Paths.get(Constante.DEVMODE ? Constante.TEST_PATH_AUDIO : Constante.PROD_PATH_AUDIO)
+                .toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(audioDir);
+            Path source = Paths.get(orphan.getPath());
+            Path target = audioDir.resolve(orphan.getName());
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+            return target.toAbsolutePath().toFile().getAbsolutePath();
+        } catch (IOException e) {
+            System.out.println("Impossible de déplacer l'audio WhatsApp vers le dossier audio : " + e.getMessage());
+            return orphan.getPath();
+        }
+    }
 
     @Override
     public List<Media> store(MultipartFile[] files, Claim claim) {
@@ -326,6 +360,29 @@ public class MediaServiceImpl implements MediaService {
             return true;
         }
         for (InboxMessage message : inboxMessages) {
+            if (isAudioFileName(message.getContent())) {
+                Optional<ClaimAudio> existingAudio = claimAudioRepository.findByName(message.getContent());
+                if (existingAudio.isPresent()) {
+                    ClaimAudio audio = existingAudio.get();
+                    audio.setClaim(claim);
+                    claimAudioRepository.save(audio);
+                    continue;
+                }
+                Optional<Media> media = repository.findByName(message.getContent());
+                if (media.isPresent()) {
+                    Media orphan = media.get();
+                    String newPath = moveMediaToAudioDir(orphan);
+                    ClaimAudio audio = ClaimAudio.builder()
+                            .name(orphan.getName())
+                            .path(newPath)
+                            .size(orphan.getSize())
+                            .claim(claim)
+                            .build();
+                    claimAudioRepository.save(audio);
+                    repository.delete(orphan);
+                }
+                continue;
+            }
             Optional<Media> media =  repository.findByName(message.getContent());
             if(media.isPresent()){
                 Media median = media.get();
@@ -343,6 +400,29 @@ public class MediaServiceImpl implements MediaService {
             return true;
         }
         for (InboxMessage message : inboxMessages) {
+            if (isAudioFileName(message.getContent())) {
+                Optional<ClaimAudio> existingAudio = claimAudioRepository.findByName(message.getContent());
+                if (existingAudio.isPresent()) {
+                    ClaimAudio audio = existingAudio.get();
+                    audio.setSuggestion(suggestion);
+                    claimAudioRepository.save(audio);
+                    continue;
+                }
+                Optional<Media> media = repository.findByName(message.getContent());
+                if (media.isPresent()) {
+                    Media orphan = media.get();
+                    String newPath = moveMediaToAudioDir(orphan);
+                    ClaimAudio audio = ClaimAudio.builder()
+                            .name(orphan.getName())
+                            .path(newPath)
+                            .size(orphan.getSize())
+                            .suggestion(suggestion)
+                            .build();
+                    claimAudioRepository.save(audio);
+                    repository.delete(orphan);
+                }
+                continue;
+            }
             Optional<Media> media =  repository.findByName(message.getContent());
             if(media.isPresent()){
                 Media median = media.get();
