@@ -54,7 +54,10 @@ import com.sicmagroup.gpr.service.objet.ObjetServcieImpl;
 import com.sicmagroup.gpr.service.product.ProductServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
+import com.sicmagroup.gpr.service.wgpr.WgprWhatsappBridgeService;
 import com.sicmagroup.gpr.utils.Utils;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import lombok.RequiredArgsConstructor;
 
@@ -80,9 +83,12 @@ public class SuggestionServiceImpl implements SuggestionService {
     private final ExtraContentRepository extraContentRepository;
     private final MailService mailService;
     private final ClaimEventServiceImpl claimEventServiceImpl;
-    private final WgprWhatsappBridgeService wgprBridgeService;
+    //private final WgprWhatsappBridgeService wgprBridgeService;
     private HttpServletRequest httpServletRequest;
 
+    @Lazy
+    @Autowired
+    private WgprWhatsappBridgeService wgprBridgeService;
 
     @Override
     public List<Suggestion> getAll() {
@@ -262,7 +268,8 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         // Accusé de réception WhatsApp — asynchrone, non bloquant : un échec d'envoi
         // ne doit jamais empêcher l'enregistrement de la suggestion.
-        final String suggTel  = suggestion.getTel();
+        // Accusé de réception WhatsApp — asynchrone, non bloquant
+        final String suggTel = suggestion.getTel();
         final String suggCode = suggestion.getCodeClient();
         final String suggName = suggestion.getClientFirstAndLastName();
         if (suggTel != null && !suggTel.isBlank()) {

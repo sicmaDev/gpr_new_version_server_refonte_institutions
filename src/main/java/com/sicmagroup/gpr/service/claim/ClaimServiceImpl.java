@@ -86,8 +86,10 @@ import com.sicmagroup.gpr.service.satisfactionMeasure.SatifactionMeasureServiceI
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
+import com.sicmagroup.gpr.service.wgpr.WgprWhatsappBridgeService;
 import com.sicmagroup.gpr.utils.CurrentUserUtils;
 import com.sicmagroup.gpr.utils.Utils;
+import org.springframework.context.annotation.Lazy;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -136,6 +138,10 @@ public class ClaimServiceImpl implements ClaimService {
     private final WgprWhatsappBridgeService wgprBridgeService;
     @Autowired
     private HttpServletRequest httpServletRequest;
+
+    @Lazy
+    @Autowired
+    private WgprWhatsappBridgeService wgprBridgeService;
 
     @Override
     public List<Claim> getAll(ClaimType type) {
@@ -340,7 +346,8 @@ public class ClaimServiceImpl implements ClaimService {
 
         // Accusé de réception WhatsApp — asynchrone, non bloquant : un échec d'envoi
         // ne doit jamais empêcher l'enregistrement de la réclamation.
-        final String clientTel  = claim.getTel();
+        // Accusé de réception WhatsApp — asynchrone, non bloquant
+        final String clientTel = claim.getTel();
         final String codeClient = claim.getCodeClient();
         final String clientName = claim.getClientFirstAndLastName();
         if (clientTel != null && !clientTel.isBlank()) {
@@ -356,7 +363,7 @@ public class ClaimServiceImpl implements ClaimService {
         List<User> usersToContact = authServiceImpl.getEmailReceiversForNotif(claim.getServicePoint());
         List<User> pilote = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         usersToContact.addAll(pilote);
-       
+
         String message = """
         <html>
         <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
