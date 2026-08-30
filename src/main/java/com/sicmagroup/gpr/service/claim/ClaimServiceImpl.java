@@ -135,7 +135,6 @@ public class ClaimServiceImpl implements ClaimService {
     private final CurrentUserUtils userAuth;
     private final SuggestionRepository suggestionRepository;
     private final MailService mailService;
-    private final WgprWhatsappBridgeService wgprBridgeService;
     @Autowired
     private HttpServletRequest httpServletRequest;
 
