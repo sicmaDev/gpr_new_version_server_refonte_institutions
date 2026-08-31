@@ -17,5 +17,6 @@ public enum ClaimEventType {
     SMS_SENT_AGENT,
     MAIL_SENT_CLIENT,
     SMS_SENT_CLIENT,
-    SESSION_STARTED
+    SESSION_STARTED,
+    EXTRA_ADDED
 }

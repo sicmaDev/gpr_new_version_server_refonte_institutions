@@ -839,7 +839,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             e.printStackTrace();
         }
 
-²        // Apparence (couleurs institution — module payant)
+  // Apparence (couleurs institution — module payant)
         try {
             Setting appearance = settingServiceImpl.getbySlug(Constante.APPEARANCE_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
