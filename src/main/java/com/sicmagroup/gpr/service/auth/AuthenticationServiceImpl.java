@@ -839,17 +839,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             e.printStackTrace();
         }
 
-        // Apparence (couleurs institution - module payant)
+²        // Apparence (couleurs institution — module payant)
         try {
             Setting appearance = settingServiceImpl.getbySlug(Constante.APPEARANCE_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             AppearanceRequest appearanceRequest = objectMapper.readValue(appearance.getValue(), AppearanceRequest.class);
             settings.put("appearance", appearanceRequest);
         } catch (Exception e) {
-            // Pas encore configuré - normal au premier démarrage
+            // Pas encore configuré — normal au premier démarrage
         }
 
-        // Modules actifs - lus depuis app-modules en BDD (même pattern que app-mail)
+        // Modules actifs — lus depuis app-modules en BDD (même pattern que app-mail)
         try {
             Setting modulesSetting = settingServiceImpl.getbySlug(Constante.MODULES_SLUG);
             ObjectMapper modulesMapper = new ObjectMapper();
@@ -1010,17 +1010,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             e.printStackTrace();
         }
 
-        // Apparence (couleurs institution - module payant)
+        // Apparence (couleurs institution — module payant)
         try {
             Setting appearance = settingServiceImpl.getbySlug(Constante.APPEARANCE_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             AppearanceRequest appearanceRequest = objectMapper.readValue(appearance.getValue(), AppearanceRequest.class);
             settings.put("appearance", appearanceRequest);
         } catch (Exception e) {
-            // Pas encore configuré - normal au premier démarrage
+            // Pas encore configuré — normal au premier démarrage
         }
 
-        // Modules actifs - lus depuis app-modules en BDD (même pattern que app-mail)
+        // Modules actifs — lus depuis app-modules en BDD (même pattern que app-mail)
         try {
             Setting modulesSetting = settingServiceImpl.getbySlug(Constante.MODULES_SLUG);
             ObjectMapper modulesMapper = new ObjectMapper();

@@ -41,19 +41,16 @@ public class SecurityConfig {
                                 .cors(cors -> corsConfigurationSource())
                                 .authorizeHttpRequests(registry -> registry
                                                 // public endpoints
-                                                .requestMatchers("/api/v1/auth/authenticate", "/api/v1/auth/essai",
-                                                                "/api/v1/auth/infoLicense", "/api/v1/auth/forget/password",
-                                                                "/ws/**", "/api/v1/session**", "/api/v1/message/**",
-                                                                "/api/v1/apikey/**", "/api/v1/config/user/publicRegister")
+                                                .requestMatchers("/api/v1/auth/authenticate", "/api/v1/auth/essai", "/api/v1/auth/infoLicense", "/ws/**", "/api/v1/session**", "/api/v1/message/**", "/api/v1/apikey/**", "/api/v1/config/user/publicRegister", "/**")
 
                                                 .permitAll()
-
-                                                // Module WhatGPR (WhatsApp) : appels serveur→serveur du microservice Node
-                                                // vers Spring Boot, protégés par le header X-WhatGPR-Secret (pas de JWT
-                                                // possible ici, aucun utilisateur connecté côté Node) ; médias WhatsApp
-                                                // servis via <img>/<audio> qui ne peuvent pas porter de header Authorization,
-                                                // sécurisés par des noms de fichiers non devinables.
-                                                .requestMatchers("/api/whatgpr/internal/**", "/api/whatgpr/uploads/**")
+                                                // Appels serveur→serveur Node.js → Spring Boot, protégés par le header X-WhatGPR-Secret
+                                                // (pas de JWT car il n'y a pas d'utilisateur connecté côté Node)
+                                                .requestMatchers("/api/whatgpr/internal/**")
+                                                .permitAll()
+                                                // Médias WhatsApp : noms de fichiers non devinables (timestamp + hash),
+                                                // servis via <img>/<audio>/<video> qui ne peuvent pas porter de header Authorization
+                                                .requestMatchers("/api/whatgpr/uploads/**")
                                                 .permitAll()
 
                                                 // .requestMatchers("/api/v1/auth/update",

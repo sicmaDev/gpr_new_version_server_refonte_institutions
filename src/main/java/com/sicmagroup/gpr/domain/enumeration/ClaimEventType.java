@@ -13,7 +13,6 @@ public enum ClaimEventType {
     LITIGATION,
     TRANSMITTED,
     CONVERTED,
-    EXTRA_ADDED,
     MAIL_SENT_AGENT,
     SMS_SENT_AGENT,
     MAIL_SENT_CLIENT,
