@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
@@ -26,6 +27,7 @@ import com.sicmagroup.gpr.api.claim.SaveRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.api.denunciation.SaveDenunRequest;
 import com.sicmagroup.gpr.domain.dto.AlertDto;
+import com.sicmagroup.gpr.domain.dto.HistoriqueTransmissionDto;
 import com.sicmagroup.gpr.domain.dto.TrashDto;
 import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimEventType;
@@ -44,6 +46,7 @@ import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.domain.model.ExistingSolution;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
 import com.sicmagroup.gpr.domain.model.ExtraContent;
+import com.sicmagroup.gpr.domain.model.HistoriqueTransmission;
 import com.sicmagroup.gpr.domain.model.Inbox;
 import com.sicmagroup.gpr.domain.model.InboxMessage;
 import com.sicmagroup.gpr.domain.model.Language;
@@ -59,6 +62,7 @@ import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
 import com.sicmagroup.gpr.repository.ClaimAudioRepository;
 import com.sicmagroup.gpr.repository.ExtraContentRepository;
+import com.sicmagroup.gpr.repository.HistoriqueTransmissionRepository;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ExistingSolutionRepository;
 import com.sicmagroup.gpr.repository.ExternalRecourseRepository;
@@ -135,6 +139,7 @@ public class ClaimServiceImpl implements ClaimService {
     private final CurrentUserUtils userAuth;
     private final SuggestionRepository suggestionRepository;
     private final MailService mailService;
+    private final HistoriqueTransmissionRepository historiqueTransmissionRepository;
     @Autowired
     private HttpServletRequest httpServletRequest;
 
@@ -159,6 +164,16 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public Claim saveClaim(SaveRequest claimPart, ClaimType type) throws Exception {
         ClaimRequest claimToSave = claimPart.getClaimRequest();
+        // Idempotence : si ce code (généré côté client au moment de la capture
+        // hors-ligne) a déjà été synchronisé lors d'une tentative précédente
+        // (ex: coupure réseau juste après la réponse serveur, le client
+        // retente), on ne le recrée pas en double — on renvoie l'existant.
+        if (claimToSave.getId() == null && claimToSave.getCode() != null && !claimToSave.getCode().isEmpty()) {
+            Optional<Claim> existing = repository.findByCode(claimToSave.getCode());
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
         User collector;
         try {
             collector = authServiceImpl.getById(claimToSave.getCollectorId());
@@ -230,7 +245,15 @@ public class ClaimServiceImpl implements ClaimService {
                 claim.setCodeClient(codeClient);
             } else {
                 claim.setCode(claimToSave.getCode());
-                claim.setCodeClient(claimToSave.getCodeClient());
+                // Le code a déjà été généré côté client au moment de la création
+                // hors-ligne : le codeClient, lui, doit toujours être attribué ici
+                // (jamais côté client), sinon la synchro laisse un codeClient null.
+                if (claimToSave.getCodeClient() == null || claimToSave.getCodeClient().isEmpty()) {
+                    String codeClient = "REC-" + UUID.randomUUID().toString().substring(0, 4);
+                    claim.setCodeClient(codeClient);
+                } else {
+                    claim.setCodeClient(claimToSave.getCodeClient());
+                }
             }
         }
         // if(claimToSave.getCode() == null || claimToSave.getCode()== "") {
@@ -525,6 +548,14 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public Claim saveTempClaim(SaveRequest claimPart, ClaimType type) throws Exception {
         ClaimRequest claimToSave = claimPart.getClaimRequest();
+        // Idempotence (cf. saveClaim) : un retry sur un brouillon offline déjà
+        // synchronisé ne doit pas en créer un second avec le même code.
+        if (claimToSave.getId() == null && claimToSave.getCode() != null && !claimToSave.getCode().isEmpty()) {
+            Optional<Claim> existing = repository.findByCode(claimToSave.getCode());
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
         Log log = Log
                 .builder().build();
         Claim claim = Claim
@@ -1802,6 +1833,15 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public Claim saveClaim(SaveDenunRequest claimPart, ClaimType type) throws Exception {
         DenunRequest claimToSave = claimPart.getClaimRequest();
+        // Idempotence (cf. saveClaim(SaveRequest,...)) : un retry sur une
+        // dénonciation offline déjà synchronisée ne doit pas en créer une
+        // seconde avec le même code.
+        if (claimToSave.getId() == null && claimToSave.getCode() != null && !claimToSave.getCode().isEmpty()) {
+            Optional<Claim> existing = repository.findByCode(claimToSave.getCode());
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
         User collector;
         try {
             collector = authServiceImpl.getById(claimToSave.getCollectorId());
@@ -1839,6 +1879,13 @@ public class ClaimServiceImpl implements ClaimService {
                 // claim.setCodeClient(claimToSave.getCodeClient());
             }
 
+        } else if (claimToSave.getCode() != null && !claimToSave.getCode().isEmpty()) {
+            // Code déjà généré côté client au moment de la création hors-ligne : on le
+            // conserve tel quel (sinon la garde d'idempotence findByCode ne retrouve
+            // jamais l'entrée lors d'un retry) et on attribue le codeClient ici.
+            claim.setCode(claimToSave.getCode());
+            String codeClient = "DEN-" + UUID.randomUUID().toString().substring(0, 4);
+            claim.setCodeClient(codeClient);
         } else {
             String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode(), type);
             claim.setCode(code);
@@ -2629,7 +2676,10 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
     @Override
-    public Claim transmitClaim(Claim claim) throws Exception {
+    public Claim transmitClaim(Claim claim, String comment) throws Exception {
+        if (comment == null || comment.trim().isEmpty()) {
+            throw new Exception("Un commentaire est obligatoire pour transmettre cette plainte");
+        }
         UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         User connectedUser = User.builder().build();
         connectedUser = authServiceImpl.getByEmail(collectorDetails.getUsername());  // Assure-toi que ce service retourne l'utilisateur complet
@@ -2699,6 +2749,7 @@ public class ClaimServiceImpl implements ClaimService {
             // Transmettre la réclamation à l'utilisateur trouvé
             claim.setTransmittedTo(transmittedTo);
             claim.setTransmittedBy(connectedUser);
+            claim.setTransmissionComment(comment);
             // Sauvegarder la réclamation mise à jour
             claim = repository.save(claim);
             String transmittedRoleLabel = transmittedTo.isRa() ? "RA"
@@ -2710,6 +2761,24 @@ public class ClaimServiceImpl implements ClaimService {
                     transmittedTo.getFirstandlastname() + "|" + transmittedRoleLabel + "|" + transmittedSpLabel);
             final Claim finalClaim = claim;
             final User finalTransmittedTo = transmittedTo;
+
+            // Conserver une trace de cette transmission dans l'historique (une ligne
+            // par transmission, contrairement aux champs ci-dessus qui sont écrasés
+            // à chaque nouvelle transmission) — permet de reconstituer les chaînes
+            // de transmission à plusieurs sauts (A→B→C).
+            HistoriqueTransmission historique = HistoriqueTransmission
+                    .builder()
+                    .claimId(finalClaim.getId())
+                    .codePlainte(finalClaim.getCodeClient())
+                    .typePlainte(finalClaim.getType())
+                    .transmisParId(connectedUser.getId())
+                    .transmisParNom(connectedUser.getFirstandlastname())
+                    .transmisAId(transmittedTo.getId())
+                    .transmisANom(transmittedTo.getFirstandlastname())
+                    .commentaire(comment)
+                    .dateTransmission(LocalDateTime.now())
+                    .build();
+            historiqueTransmissionRepository.save(historique);
 
             // TODO send mail
             // Initialisation de la liste
@@ -2748,7 +2817,13 @@ public class ClaimServiceImpl implements ClaimService {
                                 <p style="margin: 5px 0;">📌 <strong>Code de la %s :</strong> %s</p>
                                 <p style="margin: 5px 0;">📅 <strong>Date de réception :</strong> %s</p>
                                 <p style="margin: 5px 0;">📝 <strong>Objet :</strong> %s</p>
-                               
+
+                            </div>
+
+                            <div style="margin-top: 15px; background-color: #fff8e1; border-left: 4px solid #f0ad4e;
+                                        padding: 10px 15px;">
+                                <p style="margin: 0;"><strong>Commentaire de transmission (par %s) :</strong></p>
+                                <p style="margin: 5px 0;">%s</p>
                             </div>
 
                             <p style="margin-top: 20px;">
@@ -2764,7 +2839,7 @@ public class ClaimServiceImpl implements ClaimService {
                             </div>
                         </body>
                         </html>
-                        """.formatted(finalTransmittedTo.getFirstandlastname(),type,type,type,finalClaim.getCodeClient(),Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),finalClaim.getObjet().getLibelle(),type);
+                        """.formatted(finalTransmittedTo.getFirstandlastname(),type,type,type,finalClaim.getCodeClient(),Utils.convertLocalDateTimeToStr(finalClaim.getReceiptDateTime()),finalClaim.getObjet().getLibelle(),connectedUser.getFirstandlastname(),comment,type);
 
                         mailService.sendMail(destis, "Transmission de traitement - GPR", messageHtml, null);
                                                         
@@ -2812,6 +2887,102 @@ public class ClaimServiceImpl implements ClaimService {
 
         } else {
             throw new Exception("Le statut de la réclamation est invalide");
+        }
+    }
+
+    @Override
+    public List<HistoriqueTransmissionDto> getTransmissionHistory(Long claimId) {
+        return historiqueTransmissionRepository.findByClaimIdOrderByDateTransmissionDesc(claimId)
+                .stream()
+                .map(h -> HistoriqueTransmissionDto
+                        .builder()
+                        .id(h.getId())
+                        .claimId(h.getClaimId())
+                        .codePlainte(h.getCodePlainte())
+                        .typePlainte(h.getTypePlainte())
+                        .transmisParId(h.getTransmisParId())
+                        .transmisParNom(h.getTransmisParNom())
+                        .transmisAId(h.getTransmisAId())
+                        .transmisANom(h.getTransmisANom())
+                        .commentaire(h.getCommentaire())
+                        .dateTransmission(h.getDateTransmission())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Claim> restrictClaimsToUserScope(List<Claim> claims, User connectedUser) {
+        if (connectedUser.isRa()) {
+            Long raId = connectedUser.getId();
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            // 1 seul niveau de hiérarchie ici (enfants directs uniquement) — le
+            // parcours récursif multi-niveaux (getAllDescendants) est réservé à
+            // restrictClaimsToMeasureScope (écran Mesure de satisfaction).
+            List<ServicePoint> relatedServicePoints = servicePointServiceImpl.getByDirectionId(servicePoint.getId());
+            relatedServicePoints.add(servicePoint);
+            // Comparaison par ID plutôt que par égalité d'entité JPA : ServicePoint
+            // est annotée @Data (Lombok), qui génère un equals()/hashCode() sur TOUS
+            // les champs, y compris les collections @OneToMany (users, claims,
+            // suggestions) chargées paresseusement — deux instances représentant la
+            // même agence mais chargées via des requêtes différentes peuvent donc ne
+            // jamais être "égales", faisant échouer silencieusement tout contains().
+            final Set<Long> scopedServicePointIds = relatedServicePoints.stream()
+                    .map(ServicePoint::getId)
+                    .collect(Collectors.toSet());
+            return claims.stream()
+                    .filter(claim -> (claim.getServicePoint() != null
+                            && scopedServicePointIds.contains(claim.getServicePoint().getId()))
+                            || (claim.getTreatmentAffectedTo() != null
+                                    && claim.getTreatmentAffectedTo().getId().equals(raId))
+                            || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
+                    .collect(Collectors.toList());
+        } else if (connectedUser.canAffectTreatment() || connectedUser.getAdditionalrole().equals(Role.PILOTE)
+                || connectedUser.getAdditionalrole().equals(Role.DE)) {
+            return claims;
+        } else {
+            Long userId = connectedUser.getId();
+            return claims.stream()
+                    .filter(claim -> (claim.getCollector() != null && claim.getCollector().getId().equals(userId))
+                            || (claim.getTreatmentAffectedTo() != null
+                                    && claim.getTreatmentAffectedTo().getId().equals(userId)))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    @Override
+    public List<Claim> restrictClaimsToMeasureScope(List<Claim> claims, User connectedUser) {
+        if (connectedUser.canMeasureClaim()) {
+            return claims;
+        } else if (connectedUser.isRa()) {
+            Long myServicePointId = connectedUser.getServicePoint().getId();
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            List<ServicePoint> relatedServicePoints = servicePointServiceImpl.getAllDescendants(servicePoint.getId());
+            relatedServicePoints.add(servicePoint);
+            final Set<Long> scopedServicePointIds = relatedServicePoints.stream()
+                    .map(ServicePoint::getId)
+                    .collect(Collectors.toSet());
+            return claims.stream()
+                    .filter(claim -> (claim.getServicePoint() != null
+                            && scopedServicePointIds.contains(claim.getServicePoint().getId()))
+                            || (claim.isTransmitted() && claim.getTreatBy() != null
+                                    && claim.getTreatBy().getServicePoint() != null
+                                    && claim.getTreatBy().getServicePoint().getId().equals(myServicePointId))
+                            || (claim.isTransmitted() && claim.getTreatmentAffectedTo() != null
+                                    && claim.getTreatmentAffectedTo().getServicePoint() != null
+                                    && claim.getTreatmentAffectedTo().getServicePoint().getId()
+                                            .equals(myServicePointId)))
+                    .collect(Collectors.toList());
+        } else if (connectedUser.canAffectTreatment() || connectedUser.getAdditionalrole().equals(Role.PILOTE)
+                || connectedUser.getAdditionalrole().equals(Role.DE)) {
+            return claims;
+        } else {
+            Long userId = connectedUser.getId();
+            return claims.stream()
+                    .filter(claim -> (claim.getCollector() != null && claim.getCollector().getId().equals(userId))
+                            || (claim.getTreatBy() != null && claim.getTreatBy().getId().equals(userId))
+                            || (claim.getTreatmentAffectedTo() != null
+                                    && claim.getTreatmentAffectedTo().getId().equals(userId)))
+                    .collect(Collectors.toList());
         }
     }
 

@@ -72,7 +72,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/claim/measureSatisfaction",
                                                                 "/api/v1/claim/classedClaim","api/v1/claim/PARTIAL_SATISFIED", "/api/v1/claim/litigate",
                                                                 "/api/v1/claim/listAssuranceSatisfaction")
-                                                .hasAnyAuthority("H5", "PILOTE")
+                                                .hasAnyAuthority("H5", "PILOTE", "DE", "RA")
                                                 .requestMatchers("/api/v1/chat/**").hasAnyAuthority("H2", "H3", "H4")
                                                 .requestMatchers("/api/v1/claim/list/**").hasAuthority("H1")
                                                 // DENUNCIATION
@@ -93,7 +93,7 @@ public class SecurityConfig {
                                                 // ALERT
                                                 .requestMatchers("/api/v1/alert/**")
                                                 .hasAnyAuthority("H13",  "DE", "PILOTE")
-                                                // .requestMatchers("/api/v1/report/**").hasAnyAuthority("h11")
+                                                .requestMatchers("/api/v1/report/**").hasAnyAuthority("H11", "PILOTE", "DE")
                                                 // private endpoints
                                                 .anyRequest()
                                                 .authenticated());

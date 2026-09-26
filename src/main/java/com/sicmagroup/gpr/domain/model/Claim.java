@@ -122,6 +122,9 @@ public class Claim {
     private User transmittedTo;
     @ManyToOne
     private User transmittedBy;
+    @Lob
+    @Column(name = "transmission_comment", columnDefinition = "TEXT")
+    private String transmissionComment;
 
 
     @Lob

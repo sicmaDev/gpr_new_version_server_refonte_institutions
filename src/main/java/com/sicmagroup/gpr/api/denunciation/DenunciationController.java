@@ -419,6 +419,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
             allClaims = service.getAllByTypeStatusCollector(ClaimType.DENUNCIACION, status, connectedUser);
         } else if (status == ClaimStatus.TREAT) {
             allClaims = service.getAllWithLatestApprouvedSolutionByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.TREAT));
+            allClaims = service.restrictClaimsToMeasureScope(allClaims, connectedUser);
         } else {
             allClaims = service.getClaimByStatus(ClaimType.DENUNCIACION, status);
         }
@@ -1000,7 +1001,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                 //     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
                 // }
                 try {
-                    claim = service.transmitClaim(claim);
+                    claim = service.transmitClaim(claim, request.getComment());
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)

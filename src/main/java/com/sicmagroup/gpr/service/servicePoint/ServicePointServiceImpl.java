@@ -1,7 +1,12 @@
 package com.sicmagroup.gpr.service.servicePoint;
 
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.naming.NameNotFoundException;
@@ -110,7 +115,33 @@ public class ServicePointServiceImpl implements ServicePointService {
         // Récupérer les points de service dont le direction_id correspond à servicePointId
         return repository.findByDirectionId(servicePointId);
     }
-    
+
+    // Remonte TOUTE la chaîne de rattachement sous un point de service donné
+    // (enfants, petits-enfants, etc. — pas seulement les enfants directs comme
+    // getByDirectionId), pour supporter une hiérarchie d'agences à plusieurs
+    // niveaux (A rattachée à B, B rattachée à C, ...). Le "visited" protège
+    // contre une éventuelle boucle dans les données (direction_id mal configuré).
+    public List<ServicePoint> getAllDescendants(Long servicePointId) {
+        List<ServicePoint> result = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        Deque<Long> toVisit = new ArrayDeque<>();
+        visited.add(servicePointId);
+        toVisit.add(servicePointId);
+
+        while (!toVisit.isEmpty()) {
+            Long currentId = toVisit.poll();
+            for (ServicePoint child : repository.findByDirectionId(currentId)) {
+                if (visited.add(child.getId())) {
+                    result.add(child);
+                    toVisit.add(child.getId());
+                }
+            }
+        }
+
+        return result;
+    }
+
+
     
     @Override
     public ServicePoint findServicePointByUuid(String uuid){

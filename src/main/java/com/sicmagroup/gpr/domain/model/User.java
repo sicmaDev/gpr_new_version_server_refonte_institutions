@@ -167,6 +167,9 @@ public class User implements UserDetails {
 			authorities.add(new SimpleGrantedAuthority(h[i].trim()));
 		}
 		authorities.add(new SimpleGrantedAuthority(additionalrole.name()));
+		if (isRa()) {
+			authorities.add(new SimpleGrantedAuthority("RA"));
+		}
 		// System.out.println(authorities.get(0));
 		return authorities;
 	}

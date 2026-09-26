@@ -12,6 +12,7 @@ import com.sicmagroup.gpr.api.claim.SaveRequest;
 import com.sicmagroup.gpr.api.denunciation.DenunRequest;
 import com.sicmagroup.gpr.api.denunciation.SaveDenunRequest;
 import com.sicmagroup.gpr.domain.dto.AlertDto;
+import com.sicmagroup.gpr.domain.dto.HistoriqueTransmissionDto;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.SatisfactionStatus;
@@ -87,7 +88,22 @@ public interface ClaimService {
 
         public Long countClaims();
 
-        public Claim transmitClaim(Claim claim) throws Exception;
+        public Claim transmitClaim(Claim claim, String comment) throws Exception;
+
+        public List<HistoriqueTransmissionDto> getTransmissionHistory(Long claimId);
+
+        // Restreint une liste de réclamations/dénonciations déjà chargée au périmètre
+        // visible par l'utilisateur connecté (RA : son agence + agences rattachées +
+        // ce qui lui a été affecté/transmis ; PILOTE/DE : tout ; agent classique :
+        // uniquement ce qu'il a collecté ou ce qui lui a été affecté).
+        public List<Claim> restrictClaimsToUserScope(List<Claim> claims, User connectedUser);
+
+        // Variante utilisée par les écrans de mesure de satisfaction (TREAT,
+        // listAssuranceSatisfaction, PARTIAL_SATISFIED) : un utilisateur H5
+        // (canMeasureClaim) voit tout, même s'il est RA. Sinon, même logique que
+        // restrictClaimsToUserScope, avec en plus pour le RA les réclamations
+        // transmises et traitées par lui ou un agent de sa propre agence.
+        public List<Claim> restrictClaimsToMeasureScope(List<Claim> claims, User connectedUser);
 
         public List<Claim> getClaimsWhenUserIsInGuestChat(User user, List<Claim> excludeClaims);
 

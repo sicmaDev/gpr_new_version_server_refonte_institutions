@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class TransmissionRequest {
     private Long claimId;
     private Long transmitTo;
+    private String comment;
 }

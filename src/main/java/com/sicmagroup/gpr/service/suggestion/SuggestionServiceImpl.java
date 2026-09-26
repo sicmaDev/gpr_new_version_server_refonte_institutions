@@ -123,24 +123,38 @@ public class SuggestionServiceImpl implements SuggestionService {
             throw new Exception("Collector of the claim not found");
         }
 
+        if (suggestionRequest.getId() == null && suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
+            Optional<Suggestion> existing = repository.findByCode(suggestionRequest.getCode());
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+
         if (suggestionRequest.getId() != null) {
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
                     .orElseThrow(() -> new Exception("Aucune suggestion ne porte ce code"));
             suggestion = oldSuggestion;
-               
-            
+
+
              if (oldSuggestion.getCodeClient() == null || oldSuggestion.getCodeClient() == "") {
                 String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
                 suggestion.setCodeClient(codeClient);
             }
             else {
-                suggestion.setCodeClient(oldSuggestion.getCodeClient()); 
+                suggestion.setCodeClient(oldSuggestion.getCodeClient());
                 // claim.setCodeClient(claimToSave.getCodeClient());
             }
         } else {
             if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
                 suggestion.setCode(suggestionRequest.getCode());
-                suggestion.setCodeClient(suggestionRequest.getCodeClient());
+                // Le code a déjà été généré côté client au moment de la création
+                // hors-ligne : le codeClient, lui, doit toujours être attribué ici.
+                if (suggestionRequest.getCodeClient() == null || suggestionRequest.getCodeClient().isEmpty()) {
+                    String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
+                    suggestion.setCodeClient(codeClient);
+                } else {
+                    suggestion.setCodeClient(suggestionRequest.getCodeClient());
+                }
 
             } else {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
@@ -498,29 +512,44 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         String libelleLog = "";
         LogTarget targetLog = null;
-       
+
             targetLog = LogTarget.SUGGESTION;
-        
+
         log.setTarget(targetLog);
+
+        if (suggestionRequest.getId() == null && suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
+            Optional<Suggestion> existing = repository.findByCode(suggestionRequest.getCode());
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
 
         if (suggestionRequest.getId() != null) {
             Suggestion oldSuggestion = repository.findById(suggestionRequest.getId())
                     .orElseThrow(() -> new Exception("Aucune suggestion ne porte ce code"));
             suggestion = oldSuggestion;
-            
+
             libelleLog = "Modification d'une suggestion Temporairement sauvegardée";
            
 
         } else {
             if (suggestionRequest.getCode() != null && !suggestionRequest.getCode().isEmpty()) {
                 suggestion.setCode(suggestionRequest.getCode());
-               
+                if (suggestionRequest.getCodeClient() == null || suggestionRequest.getCodeClient().isEmpty()) {
+                    String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
+                    suggestion.setCodeClient(codeClient);
+                } else {
+                    suggestion.setCodeClient(suggestionRequest.getCodeClient());
+                }
+
                     libelleLog = "Suggestion Temporairement sauvegardée - offline mis en ligne";
-               
-           
+
+
             } else {
                 String code = generateCode(collector.getServicePoint().getUuid(), collector.getCode());
                 suggestion.setCode(code);
+                String codeClient = "SUG-" + UUID.randomUUID().toString().substring(0, 4);
+                suggestion.setCodeClient(codeClient);
             }
 
         }

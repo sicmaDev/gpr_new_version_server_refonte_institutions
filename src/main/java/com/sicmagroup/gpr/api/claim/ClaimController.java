@@ -531,6 +531,7 @@ public class ClaimController {
         } else if (status == ClaimStatus.TREAT) {
             allClaims = service.getAllWithLatestApprouvedSolutionByTypeAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.TREAT));
+            allClaims = service.restrictClaimsToMeasureScope(allClaims, connectedUser);
         } else {
             allClaims = service.getClaimByStatus(ClaimType.CLAIM, status);
         }        
@@ -553,8 +554,24 @@ public class ClaimController {
         // System.out.println(claimStatus.toString());
         List<Claim> allClaims = new ArrayList<>();
         ApiResponseDto apiResponseDto;
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+        User connectedUser;
+        try {
+            connectedUser = authService.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                            .title("NOT FOUND EXCEPTION")
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
         allClaims = service.getAllWithApprovedSolutionByTypeAndStatus(ClaimType.CLAIM,
                 Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED));
+        allClaims = service.restrictClaimsToMeasureScope(allClaims, connectedUser);
         List<ClaimDto> allClaimDtos = allClaims.stream()
             .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
             .map(this::convertToDto)
@@ -574,8 +591,24 @@ public class ClaimController {
         // System.out.println(claimStatus.toString());
         List<Claim> allClaims = new ArrayList<>();
         ApiResponseDto apiResponseDto;
+        UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
+        User connectedUser;
+        try {
+            connectedUser = authService.getByEmail(collectorDetails.getUsername());
+        } catch (Exception e) {
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().message("Utilisateur introuvable")
+                            .title("NOT FOUND EXCEPTION")
+                            .build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        }
         allClaims = service.getAllWithApprovedSolutionByTypeAndStatus(ClaimType.CLAIM,
                 Arrays.asList(ClaimStatus.PARTIAL_SATISFIED));
+        allClaims = service.restrictClaimsToMeasureScope(allClaims, connectedUser);
         List<ClaimDto> allClaimDtos = allClaims.stream().map(this::convertToDto).collect(Collectors.toList());
 
         apiResponseDto = ApiResponseDto
@@ -1036,7 +1069,8 @@ public class ClaimController {
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
                 }
 
-                if (!measurer.canMeasureClaim() && !measurer.getAdditionalrole().equals(Role.PILOTE)) {
+                if (!measurer.canMeasureClaim() && !measurer.getAdditionalrole().equals(Role.PILOTE)
+                        && !measurer.getAdditionalrole().equals(Role.DE) && !measurer.isRa()) {
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(false)
@@ -1593,7 +1627,7 @@ public class ClaimController {
                 }
                
                 try {
-                    claim = service.transmitClaim(claim);
+                    claim = service.transmitClaim(claim, request.getComment());
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
@@ -1622,6 +1656,16 @@ public class ClaimController {
 
             return ResponseEntity.ok(apiResponseDto);
         }
+    }
+
+    @GetMapping("/{id}/transmissions")
+    public ResponseEntity<ApiResponseDto> getTransmissionHistory(@PathVariable Long id) {
+        ApiResponseDto apiResponseDto = ApiResponseDto
+                .builder()
+                .status(true)
+                .content(service.getTransmissionHistory(id))
+                .build();
+        return ResponseEntity.ok(apiResponseDto);
     }
 
     @DeleteMapping("/delete/{id}")
