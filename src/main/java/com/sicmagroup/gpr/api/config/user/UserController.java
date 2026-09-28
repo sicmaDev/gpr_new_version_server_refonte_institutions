@@ -48,6 +48,7 @@ import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -206,6 +207,8 @@ public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequ
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(authenticationResponse);
         }
     }    
+    // Inscription publique : exception au @RolesAllowed("H12") de la classe
+    @PermitAll
     @PostMapping("/publicRegister")
     public ResponseEntity<AuthenticationResponse> publicRegister(@RequestBody RegisterRequest request) {
         if (request.getAdditionalRole() == null || request.getAdditionalRole().equals("")) {

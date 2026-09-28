@@ -3,14 +3,15 @@ package com.sicmagroup.gpr.configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.core.GrantedAuthorityDefaults;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -25,12 +26,20 @@ import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(jsr250Enabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
         private final UserRepository userRepository;
         private final JwtAuthenticationFilter jwtAuthFilter;
         private final AuthenticationProvider authenticationProvider;
+
+        // Les autorités des utilisateurs sont "H12", "PILOTE"... sans préfixe "ROLE_" :
+        // sans ce bean, @RolesAllowed("H12") chercherait "ROLE_H12" et refuserait tout le monde.
+        @Bean
+        static GrantedAuthorityDefaults grantedAuthorityDefaults() {
+                return new GrantedAuthorityDefaults("");
+        }
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -40,9 +49,17 @@ public class SecurityConfig {
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .cors(cors -> corsConfigurationSource())
                                 .authorizeHttpRequests(registry -> registry
-                                                // public endpoints
-                                                .requestMatchers("/api/v1/auth/authenticate", "/api/v1/auth/essai", "/api/v1/auth/infoLicense", "/ws/**", "/api/v1/session**", "/api/v1/message/**", "/api/v1/apikey/**", "/api/v1/config/user/publicRegister", "/**")
-
+                                                // public endpoints (connexion, mot de passe oublié, licence, vérification de session)
+                                                .requestMatchers("/api/v1/auth/authenticate", "/api/v1/auth/forget/password",
+                                                                "/api/v1/auth/infoLicense", "/api/v1/auth/check/token",
+                                                                "/api/v1/config/user/publicRegister", "/error")
+                                                .permitAll()
+                                                // Websocket (le navigateur ne peut pas envoyer le header Authorization au handshake)
+                                                .requestMatchers("/ws/**")
+                                                .permitAll()
+                                                // Bot / site web de l'institution / webhook : protégés par leur propre clé API
+                                                // (ou appelés depuis le site web public de l'institution)
+                                                .requestMatchers("/api/v1/apikey/**", "/api/v1/webhook/**", "/api/v1/bot/claim/**")
                                                 .permitAll()
                                                 // Appels serveur→serveur Node.js → Spring Boot, protégés par le header X-WhatGPR-Secret
                                                 // (pas de JWT car il n'y a pas d'utilisateur connecté côté Node)
@@ -55,6 +72,12 @@ public class SecurityConfig {
 
                                                 // .requestMatchers("/api/v1/auth/update",
                                                 // "/api/v1/auth/update_pwd").permitAll()
+                                                // Utilisés par les agents depuis les écrans d'enregistrement / mesure
+                                                // et par le tableau de bord : toute personne connectée
+                                                .requestMatchers("/api/v1/config/setting/others/sms/sendSmsToClient",
+                                                                "/api/v1/config/setting/others/mail/sendMailToClient",
+                                                                "/api/v1/config/log/**")
+                                                .authenticated()
                                                 .requestMatchers("/api/v1/config/**").hasAnyAuthority("H12")
                                                 // CLAIM
                                                 .requestMatchers("/api/v1/claim/add", "/api/v1/media/download/**",

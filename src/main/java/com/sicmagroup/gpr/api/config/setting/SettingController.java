@@ -26,6 +26,7 @@ import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.model.Log;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 
@@ -412,6 +413,8 @@ public class SettingController {
 
     }
 
+    // Utilisé par les agents (écrans d'enregistrement / mesure) : exception au @RolesAllowed("H12") de la classe
+    @PermitAll
     @PostMapping(value = "/others/sms/sendSmsToClient")
     public ResponseEntity<ApiResponseDto> sendSmsToClient(@RequestBody SmsTestRequest request) {
         ObjectMapper Obj = new ObjectMapper();
@@ -455,6 +458,8 @@ public class SettingController {
         }
     }
 
+    // Utilisé par les agents (écrans d'enregistrement / mesure) : exception au @RolesAllowed("H12") de la classe
+    @PermitAll
     @PostMapping(value = "/others/mail/sendMailToClient")
     public ResponseEntity<ApiResponseDto> sendMailToClient(@RequestBody EmailRequest request) {
         System.out.println("sendMailToClient called with request: " + request);
