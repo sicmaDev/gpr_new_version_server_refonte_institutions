@@ -3,10 +3,12 @@ package com.sicmagroup.gpr.domain.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -35,6 +37,8 @@ public class Suggestion {
     @Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 1024)
 	private String clientFirstAndLastName;
     @Column(unique = true)
 	private String code;
@@ -42,10 +46,16 @@ public class Suggestion {
     private String codeClient;
     @Enumerated(EnumType.STRING)
 	private Gender gender;
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 1024)
     private String address;
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 1024)
 	private String tel;
 	private String crew;
 	private String folderCode;
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(length = 1024)
     private String email;
     
     @ManyToOne
@@ -64,7 +74,8 @@ public class Suggestion {
 	private Language langue;
 
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "MEDIUMTEXT")
 	private String content;
 
      @Enumerated(EnumType.STRING)
@@ -85,7 +96,8 @@ public class Suggestion {
     private List<Media> files;
 
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "MEDIUMTEXT")
 	private String commentaire;
         
     private LocalDateTime convertedAt;
@@ -116,7 +128,8 @@ public class Suggestion {
     @Column(name = "restored_at", nullable = true)
     private LocalDateTime restoredAt;
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "MEDIUMTEXT")
 	private String delete_reason;
     
     

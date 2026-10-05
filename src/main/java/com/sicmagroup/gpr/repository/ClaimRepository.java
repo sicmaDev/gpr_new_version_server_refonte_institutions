@@ -19,6 +19,7 @@ import com.sicmagroup.gpr.repository.projection.ClaimPerObjLevelProjection;
 import com.sicmagroup.gpr.repository.projection.ClaimPerServicePointProjection;
 import com.sicmagroup.gpr.repository.projection.ClaimPerStatusSatisfactionProjection;
 import com.sicmagroup.gpr.repository.projection.ObjectTotalPerStatusProjection;
+import com.sicmagroup.gpr.utils.crypto.FieldEncryptor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,7 +36,15 @@ public interface        ClaimRepository extends JpaRepository<Claim, Long>, Clai
 
         List<Claim> findByTypeAndCodeStartsWith(ClaimType type,String code);
 
-        List<Claim> findByTelAndTypeAndStatus(String tel, ClaimType type, ClaimStatus status);
+        // Le téléphone est chiffré : la recherche se fait sur son empreinte (tel_hash).
+        // Les anciens noms sont conservés en méthodes default pour ne pas changer les appelants.
+        List<Claim> findByTelHashAndTypeAndStatus(String telHash, ClaimType type, ClaimStatus status);
+
+        default List<Claim> findByTelAndTypeAndStatus(String tel, ClaimType type, ClaimStatus status) {
+                String telHash = FieldEncryptor.current().blindIndex(tel);
+                // Téléphone vide : aucun résultat (et non « toutes les réclamations sans téléphone »)
+                return telHash == null ? List.of() : findByTelHashAndTypeAndStatus(telHash, type, status);
+        }
 
         Optional<Claim> findByTypeAndCode(ClaimType type, String code);
 
@@ -181,11 +190,35 @@ public interface        ClaimRepository extends JpaRepository<Claim, Long>, Clai
 
         List<Claim> findByStatusIn(List<ClaimStatus> status);
 
-         List<Claim> findByTelAndServicePointAndStatusInAndIsDeletedFalse(String tel, ServicePoint servicePoint, List<ClaimStatus> statuses);
-        List<Claim> findByTelAndServicePointNotAndStatusInAndIsDeletedFalse(String tel, ServicePoint servicePoint, List<ClaimStatus> statuses);
+        List<Claim> findByTelHashAndServicePointAndStatusInAndIsDeletedFalse(String telHash, ServicePoint servicePoint, List<ClaimStatus> statuses);
+        List<Claim> findByTelHashAndServicePointNotAndStatusInAndIsDeletedFalse(String telHash, ServicePoint servicePoint, List<ClaimStatus> statuses);
         List<Claim> findByServicePointAndStatusInAndIsDeletedFalse(ServicePoint servicePoint, List<ClaimStatus> statuses);
-        List<Claim> findByTelAndStatusInAndIsDeletedFalse(String tel, List<ClaimStatus> statuses);
-        List<Claim> findByTelAndIsDeletedFalse(String tel);
+        List<Claim> findByTelHashAndStatusInAndIsDeletedFalse(String telHash, List<ClaimStatus> statuses);
+        List<Claim> findByTelHashAndIsDeletedFalse(String telHash);
+
+        default List<Claim> findByTelAndServicePointAndStatusInAndIsDeletedFalse(String tel, ServicePoint servicePoint, List<ClaimStatus> statuses) {
+                String telHash = FieldEncryptor.current().blindIndex(tel);
+                // Téléphone vide : aucun résultat (et non « toutes les réclamations sans téléphone »)
+                return telHash == null ? List.of() : findByTelHashAndServicePointAndStatusInAndIsDeletedFalse(telHash, servicePoint, statuses);
+        }
+
+        default List<Claim> findByTelAndServicePointNotAndStatusInAndIsDeletedFalse(String tel, ServicePoint servicePoint, List<ClaimStatus> statuses) {
+                String telHash = FieldEncryptor.current().blindIndex(tel);
+                // Téléphone vide : aucun résultat (et non « toutes les réclamations sans téléphone »)
+                return telHash == null ? List.of() : findByTelHashAndServicePointNotAndStatusInAndIsDeletedFalse(telHash, servicePoint, statuses);
+        }
+
+        default List<Claim> findByTelAndStatusInAndIsDeletedFalse(String tel, List<ClaimStatus> statuses) {
+                String telHash = FieldEncryptor.current().blindIndex(tel);
+                // Téléphone vide : aucun résultat (et non « toutes les réclamations sans téléphone »)
+                return telHash == null ? List.of() : findByTelHashAndStatusInAndIsDeletedFalse(telHash, statuses);
+        }
+
+        default List<Claim> findByTelAndIsDeletedFalse(String tel) {
+                String telHash = FieldEncryptor.current().blindIndex(tel);
+                // Téléphone vide : aucun résultat (et non « toutes les réclamations sans téléphone »)
+                return telHash == null ? List.of() : findByTelHashAndIsDeletedFalse(telHash);
+        }
         List<Claim> findAllByIsDeletedFalse();
         List<Claim> findByTypeAndIsDeletedFalseAndStatusAndCollector(ClaimType type, ClaimStatus status, User collector);
 

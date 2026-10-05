@@ -1,10 +1,12 @@
 package com.sicmagroup.gpr.domain.model;
 
+import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import java.time.LocalDateTime;
 
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -39,7 +41,8 @@ public class HistoriqueAffectation {
     private Integer delaiJours; 
     private LocalDateTime dateFinAffectation;
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "MEDIUMTEXT")
 	private String contentMail;
     @Column(columnDefinition = "boolean default false") 
     private Boolean mailEnvoye;

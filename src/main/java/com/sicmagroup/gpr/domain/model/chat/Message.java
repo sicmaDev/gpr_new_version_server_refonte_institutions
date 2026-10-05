@@ -1,10 +1,12 @@
 package com.sicmagroup.gpr.domain.model.chat;
 
+import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import java.time.LocalDateTime;
 
 import com.sicmagroup.gpr.domain.model.User;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -32,7 +34,8 @@ public class Message {
     private Long id;
 
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String content;
 
     @ManyToOne

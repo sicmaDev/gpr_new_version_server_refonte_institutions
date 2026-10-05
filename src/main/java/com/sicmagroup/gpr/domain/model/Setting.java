@@ -1,8 +1,10 @@
 package com.sicmagroup.gpr.domain.model;
 
+import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -30,6 +32,7 @@ public class Setting {
     private String libelle;
 
     @Lob
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "MEDIUMTEXT")
     private String value;
 

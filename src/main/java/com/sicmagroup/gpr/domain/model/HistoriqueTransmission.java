@@ -2,9 +2,11 @@ package com.sicmagroup.gpr.domain.model;
 
 import java.time.LocalDateTime;
 
+import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -42,7 +44,8 @@ public class HistoriqueTransmission {
     private String transmisANom;
 
     @Lob
-    @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String commentaire;
 
     private LocalDateTime dateTransmission;

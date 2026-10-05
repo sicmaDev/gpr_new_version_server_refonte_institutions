@@ -1,11 +1,13 @@
 package com.sicmagroup.gpr.domain.model;
 
+import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import java.time.LocalDateTime;
 
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -32,7 +34,8 @@ public class ExtraContent {
     private Long id;
 
     @Lob
-    @Column(name = "contenu", columnDefinition = "TEXT default null")
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "contenu", columnDefinition = "MEDIUMTEXT")
     private String contenu;
     
     @Enumerated(EnumType.STRING)
