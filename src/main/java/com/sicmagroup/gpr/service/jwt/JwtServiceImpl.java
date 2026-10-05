@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +19,43 @@ import io.jsonwebtoken.security.Keys;
 @Service
 public class JwtServiceImpl implements JwtService {
 
-    private static final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+    /** HS256 exige une clé d'au moins 256 bits. */
+    static final int MIN_KEY_BYTES = 32;
+
+    private final Key signInKey;
+
+    /**
+     * Clé de signature lue depuis gpr.jwt.secret (variable d'environnement GPR_JWT_SECRET, Base64).
+     * L'application refuse de démarrer si elle est absente ou trop courte.
+     */
+    public JwtServiceImpl(Environment environment) {
+        this.signInKey = loadKey(environment);
+    }
+
+    static Key loadKey(Environment environment) {
+        String help = " Générez-la avec : openssl rand -base64 64";
+        String secret;
+        try {
+            secret = environment.getProperty("gpr.jwt.secret");
+        } catch (IllegalArgumentException e) {
+            // Placeholder ${GPR_JWT_SECRET} non résolu : variable d'environnement absente
+            secret = null;
+        }
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("Démarrage impossible : GPR_JWT_SECRET est absente." + help);
+        }
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(secret.trim());
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("Démarrage impossible : GPR_JWT_SECRET n'est pas une valeur Base64 valide." + help);
+        }
+        if (keyBytes.length < MIN_KEY_BYTES) {
+            throw new IllegalStateException("Démarrage impossible : GPR_JWT_SECRET doit faire au moins "
+                    + MIN_KEY_BYTES + " octets (reçu : " + keyBytes.length + ")." + help);
+        }
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
 
     @Override
     public String extracUserName(String token) {
@@ -39,8 +76,7 @@ public class JwtServiceImpl implements JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyByte = Decoders.BASE64.decode(SECRET_KEY);
-        return Keys.hmacShaKeyFor(keyByte);
+        return signInKey;
     }
 
 
