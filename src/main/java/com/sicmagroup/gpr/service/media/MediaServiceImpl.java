@@ -32,6 +32,7 @@ import com.sicmagroup.gpr.repository.InboxMessageRepository;
 import com.sicmagroup.gpr.repository.InboxRepository;
 import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.utils.Constante;
+import com.sicmagroup.gpr.utils.crypto.FileEncryptor;
 
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
@@ -68,7 +69,7 @@ public class MediaServiceImpl implements MediaService {
             Files.createDirectories(audioDir);
             Path source = Paths.get(orphan.getPath());
             Path target = audioDir.resolve(orphan.getName());
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+            FileEncryptor.moveEncrypted(source, target);
             return target.toAbsolutePath().toFile().getAbsolutePath();
         } catch (IOException e) {
             System.out.println("Impossible de déplacer l'audio WhatsApp vers le dossier audio : " + e.getMessage());
@@ -118,7 +119,7 @@ public class MediaServiceImpl implements MediaService {
             System.out.println("store fnction");
             Path filePath = fileStorageLocation.resolve(media.getName()).normalize();
             System.out.println(filePath.toUri().toString());
-            Resource resource = new UrlResource(filePath.toUri());
+            Resource resource = Files.exists(filePath) ? FileEncryptor.readAsResource(filePath) : new UrlResource(filePath.toUri());
             if (resource.exists()) {
                 return resource;
             } else {
@@ -140,7 +141,7 @@ public class MediaServiceImpl implements MediaService {
             System.out.println("store fnction");
             Path filePath = fileStorageLocation.resolve(media.getName()).normalize();
             System.out.println(filePath.toUri().toString());
-            Resource resource = new UrlResource(filePath.toUri());
+            Resource resource = Files.exists(filePath) ? FileEncryptor.readAsResource(filePath) : new UrlResource(filePath.toUri());
             if (resource.exists()) {
                 return resource;
             } else {
@@ -176,7 +177,7 @@ public class MediaServiceImpl implements MediaService {
         Path targetLocation = fileStorageLocation.resolve(fileName);
         try {
 
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            FileEncryptor.write(file.getInputStream(), targetLocation);
         } catch (IOException e) {
             throw new FileStorageException("Sorry! Filename cann't be upload " + fileName);
         }
@@ -213,7 +214,7 @@ public class MediaServiceImpl implements MediaService {
 
         Path targetLocation = fileStorageLocation.resolve(fileName);
         try {
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            FileEncryptor.write(file.getInputStream(), targetLocation);
         } catch (IOException e) {
             throw new FileStorageException("Sorry! Filename cann't be upload " + fileName);
         }
@@ -256,7 +257,7 @@ public class MediaServiceImpl implements MediaService {
         Path targetLocation = fileStorageLocation.resolve(fileName);
         try {
             byte[] file = Base64.getDecoder().decode(inboxMessage.getContent());
-            Files.write(targetLocation, file);
+            FileEncryptor.write(file, targetLocation);
             // Files.copy(file.getInputStream(), targetLocation,
             // StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
@@ -296,7 +297,7 @@ public class MediaServiceImpl implements MediaService {
 
         Path targetLocation = fileStorageLocation.resolve(fileName);
         try {
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            FileEncryptor.write(file.getInputStream(), targetLocation);
         } catch (IOException e) {
             throw new FileStorageException("Sorry! Filename cann't be upload " + fileName);
         }

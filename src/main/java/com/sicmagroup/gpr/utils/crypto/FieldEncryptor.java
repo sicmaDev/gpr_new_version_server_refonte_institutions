@@ -97,17 +97,7 @@ public final class FieldEncryptor {
         if (plainText == null) {
             return null;
         }
-        try {
-            byte[] iv = new byte[IV_LENGTH];
-            random.nextBytes(iv);
-            Cipher cipher = Cipher.getInstance(CIPHER);
-            cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, new GCMParameterSpec(TAG_BITS, iv));
-            byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-            byte[] out = ByteBuffer.allocate(IV_LENGTH + encrypted.length).put(iv).put(encrypted).array();
-            return PREFIX + Base64.getEncoder().encodeToString(out);
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Échec du chiffrement", e);
-        }
+        return PREFIX + Base64.getEncoder().encodeToString(encryptBytes(plainText.getBytes(StandardCharsets.UTF_8)));
     }
 
     public String decrypt(String stored) {
@@ -115,19 +105,46 @@ public final class FieldEncryptor {
             // null ou ancienne donnée en clair : renvoyée telle quelle
             return stored;
         }
+        byte[] data;
         try {
-            byte[] data = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
-            if (data.length < IV_LENGTH + TAG_BITS / 8) {
+            data = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Impossible de déchiffrer la donnée (clé incorrecte ou donnée altérée)", e);
+        }
+        return new String(decryptBytes(data), StandardCharsets.UTF_8);
+    }
+
+    /** Chiffre des octets : renvoie IV (12 octets) + texte chiffré + tag. */
+    public byte[] encryptBytes(byte[] plain) {
+        try {
+            byte[] iv = new byte[IV_LENGTH];
+            random.nextBytes(iv);
+            Cipher cipher = Cipher.getInstance(CIPHER);
+            cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, new GCMParameterSpec(TAG_BITS, iv));
+            byte[] encrypted = cipher.doFinal(plain);
+            return ByteBuffer.allocate(IV_LENGTH + encrypted.length).put(iv).put(encrypted).array();
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Échec du chiffrement", e);
+        }
+    }
+
+    /** Déchiffre des octets produits par {@link #encryptBytes(byte[])} (offset = début de l'IV). */
+    public byte[] decryptBytes(byte[] data, int offset) {
+        try {
+            if (data.length - offset < IV_LENGTH + TAG_BITS / 8) {
                 throw new IllegalStateException("Donnée chiffrée tronquée");
             }
             Cipher cipher = Cipher.getInstance(CIPHER);
-            cipher.init(Cipher.DECRYPT_MODE, encryptionKey, new GCMParameterSpec(TAG_BITS, data, 0, IV_LENGTH));
-            byte[] plain = cipher.doFinal(data, IV_LENGTH, data.length - IV_LENGTH);
-            return new String(plain, StandardCharsets.UTF_8);
-        } catch (GeneralSecurityException | IllegalArgumentException e) {
-            // Mauvaise clé, donnée modifiée ou Base64 invalide
+            cipher.init(Cipher.DECRYPT_MODE, encryptionKey, new GCMParameterSpec(TAG_BITS, data, offset, IV_LENGTH));
+            return cipher.doFinal(data, offset + IV_LENGTH, data.length - offset - IV_LENGTH);
+        } catch (GeneralSecurityException e) {
+            // Mauvaise clé ou donnée modifiée
             throw new IllegalStateException("Impossible de déchiffrer la donnée (clé incorrecte ou donnée altérée)", e);
         }
+    }
+
+    public byte[] decryptBytes(byte[] data) {
+        return decryptBytes(data, 0);
     }
 
     /** Empreinte HMAC-SHA256 (hexadécimal), espaces supprimés ; null si la valeur est vide. */
