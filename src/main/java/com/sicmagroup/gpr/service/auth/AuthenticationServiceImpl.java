@@ -108,6 +108,7 @@ import com.sicmagroup.gpr.service.jwt.JwtServiceImpl;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
+import com.sicmagroup.gpr.utils.SettingSecrets;
 import com.sicmagroup.gpr.utils.Utils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -812,6 +813,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+            mailRequest.setPwd(null); // le mot de passe SMTP ne quitte jamais le serveur
             settings.put("mail", mailRequest);
 
         } catch (Exception e) {
@@ -823,6 +825,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+            smsRequest.setValMdp(null); // le mot de passe SMS ne quitte jamais le serveur
             settings.put("sms", smsRequest);
 
 
@@ -873,7 +876,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         settings.put("help", faqServiceImpl.getHelp());
         settings.put("presolution", allExistingSolutions);
         settings.put("categorie_objet", allCategorieObjetDtos);
-        settings.put("others", settingServiceImpl.getAll());
+        settings.put("others", SettingSecrets.withoutSecrets(settingServiceImpl.getAll()));
 
         // recuperer le contenu du fichier data
         // settingServiceImpl.updateLicence();
@@ -983,6 +986,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+            mailRequest.setPwd(null); // le mot de passe SMTP ne quitte jamais le serveur
             settings.put("mail", mailRequest);
 
         } catch (Exception e) {
@@ -994,6 +998,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
             ObjectMapper objectMapper = new ObjectMapper();
             SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+            smsRequest.setValMdp(null); // le mot de passe SMS ne quitte jamais le serveur
             settings.put("sms", smsRequest);
 
 
@@ -1044,7 +1049,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         settings.put("help", faqServiceImpl.getHelp());
         settings.put("presolution", allExistingSolutions);
         settings.put("categorie_objet", allCategorieObjetDtos);
-        settings.put("others", settingServiceImpl.getAll());
+        settings.put("others", SettingSecrets.withoutSecrets(settingServiceImpl.getAll()));
 
         // recuperer le contenu du fichier data
         // settingServiceImpl.updateLicence();
@@ -1269,6 +1274,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 Setting mail = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
                 ObjectMapper objectMapper = new ObjectMapper();
                 MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
+                mailRequest.setPwd(null); // le mot de passe SMTP ne quitte jamais le serveur
                 settings.put("mail", mailRequest);
 
             } catch (Exception e) {
@@ -1280,6 +1286,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
                 ObjectMapper objectMapper = new ObjectMapper();
                 SmsRequest smsRequest = objectMapper.readValue(sms.getValue(), SmsRequest.class);
+                smsRequest.setValMdp(null); // le mot de passe SMS ne quitte jamais le serveur
                 settings.put("sms", smsRequest);
 
             } catch (Exception e) {
@@ -1309,7 +1316,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             settings.put("help", faqServiceImpl.getHelp());
             settings.put("presolution", allExistingSolutions);
             settings.put("categorie_objet", allCategorieObjetDtos);
-            settings.put("others", settingServiceImpl.getAll());
+            settings.put("others", SettingSecrets.withoutSecrets(settingServiceImpl.getAll()));
 
             
             result.put("data", settings);

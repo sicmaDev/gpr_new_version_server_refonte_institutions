@@ -246,6 +246,7 @@ public class SettingController {
                     .value(jsonStr)
                     .build();
             Setting setting = serviceImpl.update(majSettingRequest);
+            request.setPwd(null); // jamais renvoyé au navigateur
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
@@ -274,6 +275,7 @@ public class SettingController {
                             .value(jsonStr)
                             .build();
                     Setting setting = serviceImpl.save(addSettingRequest);
+                    request.setPwd(null); // jamais renvoyé au navigateur
                     ApiResponseDto apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
@@ -316,6 +318,7 @@ public class SettingController {
                     .value(jsonStr)
                     .build();
             Setting setting = serviceImpl.update(majSettingRequest);
+            request.setValMdp(null); // jamais renvoyé au navigateur
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(true)
@@ -344,6 +347,7 @@ public class SettingController {
                             .value(jsonStr)
                             .build();
                     Setting setting = serviceImpl.save(addSettingRequest);
+                    request.setValMdp(null); // jamais renvoyé au navigateur
                     ApiResponseDto apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)

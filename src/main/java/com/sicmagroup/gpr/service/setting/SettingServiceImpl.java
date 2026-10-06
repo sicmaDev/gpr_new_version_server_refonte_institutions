@@ -27,6 +27,7 @@ import com.sicmagroup.gpr.api.config.setting.InstitutionRequest;
 import com.sicmagroup.gpr.api.config.setting.MailRequest;
 import com.sicmagroup.gpr.api.config.setting.SmsRequest;
 import com.sicmagroup.gpr.api.config.setting.UpdateSettingRequest;
+import com.sicmagroup.gpr.utils.SettingSecrets;
 import com.sicmagroup.gpr.domain.dto.CategorieObjetDto;
 import com.sicmagroup.gpr.domain.dto.ClaimDto;
 import com.sicmagroup.gpr.domain.dto.Client;
@@ -124,7 +125,8 @@ public class SettingServiceImpl implements SettingService {
                 .orElseThrow(() -> new Exception("The choosen setting doesn't exist"));
 
         oldSetting.setUpdatedAt(LocalDateTime.now());
-        oldSetting.setValue(request.getValue());
+        // Mot de passe vide (le navigateur ne le reçoit plus) : on conserve l'ancien
+        oldSetting.setValue(SettingSecrets.keepOldSecrets(request.getValue(), oldSetting.getValue()));
         return repository.save(oldSetting);
     }
 
