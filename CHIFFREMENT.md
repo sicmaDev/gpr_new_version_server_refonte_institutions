@@ -127,6 +127,42 @@ passe en production avant que ses clés soient rangées comme suit :
 issues de la copie de secours, et vérifier qu'une réclamation et une pièce jointe s'affichent.
 Noter la date du test.
 
+### 4.1 Sauvegardes : les clés ne vont jamais avec les données
+
+Trois choses se sauvegardent, **séparément** :
+
+| Quoi | Fréquence | Où |
+|---|---|---|
+| Base de données (dump complet) | chaque jour | système de sauvegarde habituel, **hors du serveur** |
+| Fichiers (`/app/gpr/preuve`, `/app/gpr/claim_audio`) | chaque jour | idem, **hors du serveur** |
+| **Clés** (3 copies) | **une seule fois**, puis à chaque changement ou perte d'une copie | rangement à part (§4, points 1 à 3) |
+
+Règles :
+
+- **Ne jamais mettre les clés dans la sauvegarde de la base ni des fichiers.** Sinon, le vol d'une
+  sauvegarde donne accès à toutes les données et le chiffrement ne sert plus à rien. Les personnes qui
+  gèrent les sauvegardes de la base ne doivent pas avoir accès aux clés.
+- **Les clés ne changent jamais** : inutile de les sauvegarder à chaque sauvegarde de la base.
+- La base et les fichiers sont déjà chiffrés : une sauvegarde volée est illisible sans les clés.
+  Mais **une sauvegarde de la base sans la sauvegarde des fichiers (ou l'inverse) est incomplète**.
+
+**Forme de la copie des clés.** La copie peut être un simple fichier texte lisible (3 lignes :
+`GPR_ENCRYPTION_KEY=...`, `GPR_HMAC_KEY=...`, `GPR_JWT_SECRET=...`, avec la date et le nom de
+l'institution). Un fichier lisible est pratique : on s'en sert immédiatement en cas de sinistre.
+Ce qui compte n'est pas que le fichier soit codé, c'est **où il est rangé** : uniquement dans les
+rangements du §4 (clé USB chiffrée dans un coffre, gestionnaire de mots de passe), jamais dans un
+dossier partagé, un e-mail, une messagerie, Git, ni le même disque que les sauvegardes de la base.
+Si ce fichier doit être posé sur un support ordinaire, le protéger par un mot de passe long
+(archive chiffrée) et ranger ce mot de passe séparément.
+
+**Perte de toutes les copies** : aucune récupération possible. Générer de nouvelles clés ne permet pas
+de relire les anciennes données chiffrées (erreur « Impossible de déchiffrer la donnée »). Seules les
+données non chiffrées (utilisateurs, codes, statuts, dates, tables de configuration) restent utilisables.
+
+**Serveur détruit** : nouveau serveur (Java, MariaDB, code depuis Git), restauration de la base, des
+fichiers, puis fourniture des clés au démarrage. Le code doit donc aussi être sur un dépôt hébergé
+ailleurs que sur un poste de travail.
+
 **Changer `GPR_ENCRYPTION_KEY` ou `GPR_HMAC_KEY`** n'est pas prévu : les données existantes
 deviendraient illisibles. Une rotation demande une migration dédiée (déchiffrer avec l'ancienne,
 rechiffrer avec la nouvelle) à développer le moment venu.
