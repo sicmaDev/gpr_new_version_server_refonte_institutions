@@ -2076,7 +2076,9 @@ public class ClaimServiceImpl implements ClaimService {
             lStatus = Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                     ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT, ClaimStatus.LITIGATION);
         }
-        List<Claim> allClaims = this.getAllByTypeAndStatusNotIn(type, lStatus);
+        List<Claim> allClaims = this.getAllByTypeAndStatusNotIn(type, lStatus).stream()
+                .filter(c -> !c.isDeleted())
+                .collect(Collectors.toList());
         boolean isOneSolutionMeasured = false;
         List<AlertDto> claimAlertDtos = new ArrayList<>();
         AlertDto alertDto = AlertDto.builder().build();
@@ -2093,6 +2095,10 @@ public class ClaimServiceImpl implements ClaimService {
             //     }
             // }
             // if (!isOneSolutionMeasured) {
+                // Objet sans délai (0) : pas d'échéance, donc pas d'alerte de retard
+                if (claim.getObjet().getProcessingTime() <= 0) {
+                    continue;
+                }
                 LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
                 if (LocalDateTime.now().isAfter(calculateDate)) {
                     Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
@@ -2100,7 +2106,8 @@ public class ClaimServiceImpl implements ClaimService {
                     Long hours = hoursRetard % 24;
                     alertDto = AlertDto
                             .builder()
-                            .claimClient(claim.getClientFirstAndLastName())
+                            // l'identité du dénonciateur n'est jamais renvoyée
+                            .claimClient(type == ClaimType.DENUNCIACION ? null : claim.getClientFirstAndLastName())
                             .claimCodeClient(claim.getCodeClient())
                             .claimCode(claim.getCode())
                             .claimId(claim.getId())

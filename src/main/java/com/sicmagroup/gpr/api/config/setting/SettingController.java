@@ -77,8 +77,27 @@ public class SettingController {
     // return entity;
     // }
 
+    // Le réglage de visibilité de l'apparence n'est modifiable que par SICMA, directement en base. Quand il vaut
+    // « false », les couleurs ne peuvent plus être changées, ni par la page ni par les appels génériques.
+    private ResponseEntity<ApiResponseDto> refuseSiReserve(String libelle) {
+        boolean reserve = Constante.APPEARANCE_VISIBLE_SLUG.equals(libelle)
+                || (Constante.APPEARANCE_SLUG.equals(libelle) && !serviceImpl.isAppearanceVisible());
+        if (!reserve) {
+            return null;
+        }
+        ApiResponseDto refus = ApiResponseDto.builder().status(false)
+                .content(ErrorResponse.builder().title("Accès refusé")
+                        .message("Cette configuration n'est pas disponible pour votre institution.").build())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(refus);
+    }
+
     @PostMapping(value = "/others")
     public ResponseEntity<ApiResponseDto> config(@RequestBody AddSettingRequest request) {
+        ResponseEntity<ApiResponseDto> refus = refuseSiReserve(request.getLibelle());
+        if (refus != null) {
+            return refus;
+        }
         Setting setting = serviceImpl.save(request);
         ApiResponseDto apiResponseDto = ApiResponseDto
                 .builder()
@@ -161,6 +180,10 @@ public class SettingController {
     @PutMapping(value = "/others/{app-slug}")
     public ResponseEntity<ApiResponseDto> configUpdate(@RequestParam(value = "app-slug") String slug,
             @RequestBody UpdateSettingRequest request) {
+        ResponseEntity<ApiResponseDto> refus = refuseSiReserve(request.getLibelle());
+        if (refus != null) {
+            return refus;
+        }
         Setting setting;
         try {
             setting = serviceImpl.update(request);
@@ -609,6 +632,10 @@ public class SettingController {
 
     @PostMapping(value = "/others/appearance/create")
     public ResponseEntity<ApiResponseDto> configAppearance(@RequestBody AppearanceRequest request) {
+        ResponseEntity<ApiResponseDto> refus = refuseSiReserve(Constante.APPEARANCE_SLUG);
+        if (refus != null) {
+            return refus;
+        }
         ObjectMapper obj = new ObjectMapper();
         try {
             serviceImpl.getbySlug(Constante.APPEARANCE_SLUG);

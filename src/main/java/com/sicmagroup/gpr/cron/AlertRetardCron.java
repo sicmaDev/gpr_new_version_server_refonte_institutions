@@ -34,6 +34,7 @@ import com.sicmagroup.gpr.repository.HistoriqueAffectationRepository;
 import com.sicmagroup.gpr.repository.UserRepository;
 import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
+import com.sicmagroup.gpr.sla.service.SlaConfig;
 import com.sicmagroup.gpr.utils.Constante;
 import com.sicmagroup.gpr.utils.Utils;
 
@@ -54,12 +55,21 @@ public class AlertRetardCron {
 
     @Autowired
     private SettingServiceImpl settingService;
+
+    // Suivi des délais (SLA) : quand il est actif, il envoie lui-même les rappels (une seule règle, sans doublon)
+    @Autowired
+    private SlaConfig slaConfig;
+
     private final MailService mailService;
 
     // Exécution une fois par jour à 8h du matin
    
     @Scheduled(cron = "0 0 8 * * *")
     public void sendRelanceMail() {
+        // SLA actif : cet ancien envoi quotidien est remplacé par les rappels et alertes du SLA
+        if (slaConfig.enabled()) {
+            return;
+        }
         try {
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime fourDaysLater = now.plusDays(4);

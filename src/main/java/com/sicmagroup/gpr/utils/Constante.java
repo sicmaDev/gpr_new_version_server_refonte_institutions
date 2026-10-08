@@ -20,6 +20,8 @@ public class Constante {
     public static final String BOT_SLUG = "app-bot";
     public static final String API_KEY_SLUG = "app-api-key";
     public static final String APPEARANCE_SLUG = "app-appearance";
+    /** Réglage réservé à SICMA : « false » masque la personnalisation des couleurs (absent = visible). */
+    public static final String APPEARANCE_VISIBLE_SLUG = "app-appearance-visible";
     public static final String MODULES_SLUG = "app-modules";
 
 }

@@ -51,6 +51,8 @@ import com.sicmagroup.gpr.repository.chat.UserVoteRepository;
 import com.sicmagroup.gpr.repository.chat.VoteRepository;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.service.MailService;
+import com.sicmagroup.gpr.service.claimEvent.ClaimEventService;
+import com.sicmagroup.gpr.domain.enumeration.ClaimEventType;
 import com.sicmagroup.gpr.service.log.LogServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
@@ -73,6 +75,7 @@ public class MessageServiceImp implements MessageService {
     private final SettingServiceImpl settingServiceImpl;
     private final LogServiceImpl logServiceImpl;
     private final MailService mailService;
+    private final ClaimEventService claimEventService;
 
     @Override
     public Message send(NewMessageRequest request) throws Exception {
@@ -316,6 +319,9 @@ public class MessageServiceImp implements MessageService {
                 claim.getSolutions().add(solution2);
             }
             claim = claimRepository.save(claim);
+            // la plainte passe en TREAT : on le trace dans l'historique comme l'approbation classique
+            claimEventService.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.APPROVED,
+                    message.getSender().getFirstandlastname(), message.getSender().getEmail(), "session");
 
             // chat.setStatus(ChatStatus.CLOSED);
             chat.setUpdatedAt(LocalDateTime.now());

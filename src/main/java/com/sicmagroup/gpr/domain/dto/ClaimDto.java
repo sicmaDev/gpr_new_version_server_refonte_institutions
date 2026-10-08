@@ -23,6 +23,8 @@ import com.sicmagroup.gpr.domain.model.Media;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.utils.Utils;
 
+import com.sicmagroup.gpr.sla.dto.SlaInfo;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -88,6 +90,8 @@ public class ClaimDto {
     private String draftCommentaire;
     private Long draftUserId;
     private String draftSavedAt;
+    // Bloc SLA (renseigné seulement quand le SLA est activé)
+    private SlaInfo sla;
 
     public String convertDate(LocalDateTime dateTime){
         

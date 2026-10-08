@@ -101,6 +101,8 @@ import com.sicmagroup.gpr.repository.ProductRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.SuggestionRepository;
 import com.sicmagroup.gpr.repository.UserRepository;
+import com.sicmagroup.gpr.sla.service.SlaAlertService;
+import com.sicmagroup.gpr.sla.service.SlaConfig;
 import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.claim.ClaimService;
 import com.sicmagroup.gpr.service.faq.FaqServiceImpl;
@@ -118,6 +120,8 @@ import lombok.RequiredArgsConstructor;
 public class AuthenticationServiceImpl implements AuthenticationService {
 
     private final UserRepository userRepository;
+    private final SlaConfig slaConfig;
+    private final SlaAlertService slaAlertService;
     private final PasswordEncoder passwordEncoder;
     private final JwtServiceImpl jwtServiceImpl;
     private final AuthenticationManager authenticationManager;
@@ -851,6 +855,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         } catch (Exception e) {
             // Pas encore configuré — normal au premier démarrage
         }
+        settings.put("appearanceVisible", settingServiceImpl.isAppearanceVisible());
 
         // Modules actifs — lus depuis app-modules en BDD (même pattern que app-mail)
         try {
@@ -1024,6 +1029,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         } catch (Exception e) {
             // Pas encore configuré — normal au premier démarrage
         }
+        settings.put("appearanceVisible", settingServiceImpl.isAppearanceVisible());
 
         // Modules actifs — lus depuis app-modules en BDD (même pattern que app-mail)
         try {
@@ -1429,6 +1435,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         objetDto.setLibelle(objet.getLibelle());
         objetDto.setRisqueLevel(objet.getRisqueLevel());
         objetDto.setProcessingTime(objet.getProcessingTime());
+        objetDto.setTakeoverHours(objet.getTakeoverHours());
         objetDto.setId(objet.getId());
         return objetDto;
     }
@@ -2180,6 +2187,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private List<AlertDto> alertClaimAndDenun(ClaimType type) {
+        // SLA actif : un seul calcul de retard pour tous les écrans
+        if (slaConfig.enabled()) {
+            return slaAlertService.overdue(type);
+        }
 
         List<ClaimStatus> lStatus = Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED);
@@ -2212,7 +2223,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     Long hours = hoursRetard % 24;
                     alertDto = AlertDto
                             .builder()
-                            .claimClient(claim.getClientFirstAndLastName())
+                            .claimClient(type == ClaimType.DENUNCIACION ? null : claim.getClientFirstAndLastName())
                             .claimCodeClient(claim.getCodeClient())
                             .claimCode(claim.getCode())
                             .claimId(claim.getId())
@@ -2435,6 +2446,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     private List<AlertDto> computeAlerts(List<Claim> claims, ClaimType type) {
+        // SLA actif : on garde, parmi ces plaintes, celles que le moteur déclare en retard
+        if (slaConfig.enabled()) {
+            java.util.Set<Long> ids = claims.stream().map(Claim::getId).collect(java.util.stream.Collectors.toSet());
+            return slaAlertService.overdue(type).stream().filter(a -> ids.contains(a.getClaimId()))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        }
         List<AlertDto> alertDtos = new ArrayList<>();
         for (Claim claim : claims) {
             boolean isOneSolutionMeasured = false;
@@ -2453,7 +2470,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     Long days = hoursRetard / 24;
                     Long hours = hoursRetard % 24;
                     alertDtos.add(AlertDto.builder()
-                            .claimClient(claim.getClientFirstAndLastName())
+                            .claimClient(type == ClaimType.DENUNCIACION ? null : claim.getClientFirstAndLastName())
                             .claimCodeClient(claim.getCodeClient())
                             .claimCode(claim.getCode())
                             .claimId(claim.getId())

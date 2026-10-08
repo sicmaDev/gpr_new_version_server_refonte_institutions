@@ -19,6 +19,7 @@ public class ObjetDto {
     private String description;
     private GravityLevel risqueLevel;
     private int processingTime;
+    private Integer takeoverHours;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private boolean isDeleted;

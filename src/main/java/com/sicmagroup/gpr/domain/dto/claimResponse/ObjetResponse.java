@@ -19,6 +19,7 @@ public class ObjetResponse {
     private String description;
     private GravityLevel risqueLevel;
     private int processingTime;
+    private Integer takeoverHours;
     private List<ExistingSolutionResponse> existingSolutions;
     private CategorieObjetDto categorie;
     private String uuid;

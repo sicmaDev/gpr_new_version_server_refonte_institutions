@@ -51,6 +51,8 @@ public class Objet {
     @Enumerated(EnumType.STRING)
     private GravityLevel risqueLevel;
     private int processingTime;
+    /** Délai de prise en charge propre à l'objet, en heures (facultatif : vide = politique du niveau de risque). */
+    private Integer takeoverHours;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;

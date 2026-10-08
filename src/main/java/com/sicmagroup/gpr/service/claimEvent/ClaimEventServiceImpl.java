@@ -11,6 +11,7 @@ import com.sicmagroup.gpr.domain.enumeration.ClaimEventType;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.model.ClaimEvent;
 import com.sicmagroup.gpr.repository.ClaimEventRepository;
+import com.sicmagroup.gpr.sla.service.SlaEventHook;
 
 import lombok.RequiredArgsConstructor;
 
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class ClaimEventServiceImpl implements ClaimEventService {
 
     private final ClaimEventRepository repository;
+    private final SlaEventHook slaEventHook;
 
     @Override
     public void log(Long claimId, String claimCode, ClaimType claimType, ClaimEventType eventType,
@@ -34,6 +36,8 @@ public class ClaimEventServiceImpl implements ClaimEventService {
                 .createdAt(LocalDateTime.now())
                 .build();
         repository.save(event);
+        // le SLA suit le cycle de vie de la plainte ; il ne bloque jamais le traitement (voir SlaEventHook)
+        slaEventHook.afterEvent(claimId, claimType, eventType);
     }
 
     @Override

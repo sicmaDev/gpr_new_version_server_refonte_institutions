@@ -12,6 +12,8 @@ public enum ClaimStatus {
     PARTIAL_SATISFIED,
     LITIGATION,
     CLASSED,
-    TRANSMITTED
+    TRANSMITTED,
+    // L'institution attend une pièce du client (le délai interne est en pause, pas l'échéance réglementaire)
+    WAITING_CUSTOMER
 
 }

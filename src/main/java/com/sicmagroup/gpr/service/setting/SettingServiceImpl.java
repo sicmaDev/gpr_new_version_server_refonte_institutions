@@ -130,6 +130,14 @@ public class SettingServiceImpl implements SettingService {
         return repository.save(oldSetting);
     }
 
+    /** La personnalisation des couleurs est visible sauf si SICMA a posé le réglage à « false ». */
+    public boolean isAppearanceVisible() {
+        return repository.findByLibelle(Constante.APPEARANCE_VISIBLE_SLUG)
+                .map(Setting::getValue)
+                .map(v -> !"false".equalsIgnoreCase(v.trim()))
+                .orElse(true);
+    }
+
     @Override
     public Setting getbySlug(String slug) throws Exception {
         Setting setting = repository.findByLibelle(slug)
