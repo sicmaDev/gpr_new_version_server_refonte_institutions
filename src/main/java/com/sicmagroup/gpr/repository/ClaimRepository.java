@@ -68,6 +68,13 @@ public interface        ClaimRepository extends JpaRepository<Claim, Long>, Clai
 
                 List<Claim> findByTypeAndIsDeletedFalseAndStatusIn(ClaimType type, List<ClaimStatus> statusList);
 
+        /** Plaintes dont la solution a été désapprouvée et dont l'utilisateur est l'auteur d'une solution. */
+        @org.springframework.data.jpa.repository.Query("select distinct c from Claim c join c.solutions s "
+                + "where c.type = :type and c.isDeleted = false "
+                + "and c.status = com.sicmagroup.gpr.domain.enumeration.ClaimStatus.DESAPPROUVED and s.author = :author")
+        List<Claim> findDisapprovedAuthoredBy(@org.springframework.data.repository.query.Param("type") ClaimType type,
+                @org.springframework.data.repository.query.Param("author") User author);
+
         List<Claim> findByTypeAndIsDeletedFalseAndCollectorAndStatusOrTypeAndTreatmentAffectedToAndStatusIn(ClaimType type,
                         User collector,
                         ClaimStatus status, ClaimType type2, User affectedTo, List<ClaimStatus> statusList);

@@ -107,6 +107,9 @@ public interface ClaimService {
 
         public List<Claim> getClaimsWhenUserIsInGuestChat(User user, List<Claim> excludeClaims);
 
+        /** Ajoute les plaintes désapprouvées dont l'utilisateur a rédigé la solution (selon les risques qu'il peut traiter). */
+        public List<Claim> addDisapprovedClaimsAuthoredBy(User user, ClaimType type, List<Claim> claims);
+
         public List<Claim> getClaimsWhenUserIsInGuestChatSuper(User user, List<Claim> excludeClaims);
 
         public Claim saveBotClaim(SaveRequest claimToSave, ClaimType type)  throws Exception;

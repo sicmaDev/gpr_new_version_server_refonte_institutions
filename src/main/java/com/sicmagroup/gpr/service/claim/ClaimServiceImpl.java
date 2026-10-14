@@ -3017,6 +3017,29 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
     @Override
+    public List<Claim> addDisapprovedClaimsAuthoredBy(User user, ClaimType type, List<Claim> claims) {
+        List<Claim> result = new ArrayList<>(claims);
+        for (Claim claim : repository.findDisapprovedAuthoredBy(type, user)) {
+            if (!result.contains(claim) && canTreatRisk(user, claim)) {
+                result.add(claim);
+            }
+        }
+        return result;
+    }
+
+    /** Même règle que la liste de traitement : H4 grave, H3 moyen, H2 mineur. */
+    private boolean canTreatRisk(User user, Claim claim) {
+        if (claim.getObjet() == null || claim.getObjet().getRisqueLevel() == null) {
+            return true;
+        }
+        return switch (claim.getObjet().getRisqueLevel()) {
+            case GRAVE -> user.canTreatHighRiskClaim();
+            case MOYEN -> user.canTreatMiddleRiskClaim();
+            case MINEUR -> user.canTreatMinorRiskClaim();
+        };
+    }
+
+    @Override
     public List<Claim> getClaimsWhenUserIsInGuestChatSuper(User user, List<Claim> excludeClaims) {
         List<Chat> chats = chatRepository.findByGuestsIn(Arrays.asList(user));
         List<Claim> claims = excludeClaims;

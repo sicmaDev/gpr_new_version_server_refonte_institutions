@@ -435,6 +435,8 @@ public class ClaimController {
                     || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                     .collect(Collectors.toList());
             }
+            // plaintes pour lesquelles le RA est invité dans une session de chat
+            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, new ArrayList<>(allClaims));
         }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 || connectedUser.getAdditionalrole().equals(Role.DE))) {
             // System.out.println(connectedUser.getPoste().getHabilitations());
@@ -461,6 +463,7 @@ public class ClaimController {
                             ClaimStatus.DESAPPROUVED));
 
             allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims);
+            allClaims = service.addDisapprovedClaimsAuthoredBy(connectedUser, ClaimType.CLAIM, allClaims);
         }
         List<ClaimDto> allClaimDtos = allClaims.stream()
             .sorted(Comparator.comparing(Claim::getCreatedAt).reversed())
