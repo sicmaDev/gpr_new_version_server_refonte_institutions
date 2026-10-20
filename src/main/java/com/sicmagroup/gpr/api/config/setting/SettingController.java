@@ -19,6 +19,11 @@ import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.auth.AuthenticationService;
 import com.sicmagroup.gpr.service.claimEvent.ClaimEventServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
+import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.SmsStatus;
+import com.sicmagroup.gpr.domain.enumeration.SmsType;
+import com.sicmagroup.gpr.domain.model.SmsLog;
+import com.sicmagroup.gpr.service.smsLog.SmsLogService;
 import com.sicmagroup.gpr.utils.Constante;
 import com.sicmagroup.gpr.utils.Utils;
 import com.sicmagroup.gpr.domain.enumeration.LogTarget;
@@ -36,6 +41,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.List;
@@ -63,6 +69,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class SettingController {
 
     private final SettingServiceImpl serviceImpl;
+    private final SmsLogService smsLogService;
     private final AuthenticationService authService;
     private final PasswordEncoder passwordEncoder;
     private final ApiKeyRepository apiKeyRepository;
@@ -440,6 +447,25 @@ public class SettingController {
 
     }
 
+    /** Garde une trace de chaque SMS envoyé au client (archive des SMS). Un échec d'archivage ne bloque jamais l'envoi. */
+    private void archiveSms(SmsTestRequest request, boolean sent) {
+        try {
+            // l'écran d'une suggestion envoie l'identifiant de la suggestion dans claimId, avec le type SUGGESTION
+            boolean suggestion = request.getClaimType() == ClaimType.SUGGESTION;
+            smsLogService.save(SmsLog.builder()
+                    .type(SmsType.EXTERNE)
+                    .claimId(suggestion ? null : request.getClaimId())
+                    .suggestId(suggestion && request.getSuggestId() == null ? request.getClaimId() : request.getSuggestId())
+                    .numeroDestinataire(request.getPhone())
+                    .content(request.getMessage())
+                    .status(sent ? SmsStatus.ENVOYE : SmsStatus.ECHEC)
+                    .sendAt(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            System.err.println("Archivage du SMS impossible : " + e.getMessage());
+        }
+    }
+
     // Utilisé par les agents (écrans d'enregistrement / mesure) : exception au @RolesAllowed("H12") de la classe
     @PermitAll
     @PostMapping(value = "/others/sms/sendSmsToClient")
@@ -449,6 +475,7 @@ public class SettingController {
         System.out.println("sendSmsToClient called with request: " + request);
         try {
             Boolean isSuccess = Utils.sendSmsToClient(request.getPhone(), request.getMessage(), serviceImpl);
+            archiveSms(request, Boolean.TRUE.equals(isSuccess));
             if (!isSuccess) {
                 throw new Exception("SMS non envoyé");
             }

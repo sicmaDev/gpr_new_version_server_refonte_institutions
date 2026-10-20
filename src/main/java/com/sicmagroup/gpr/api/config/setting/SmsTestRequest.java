@@ -17,6 +17,7 @@ public class SmsTestRequest {
     public String message;
     public String claimCode;
     public Long claimId;
+    public Long suggestId;
     public ClaimType claimType;
     public String senderName;
     public String senderEmail;
