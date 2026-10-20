@@ -3,7 +3,10 @@ package com.sicmagroup.gpr.repository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.sicmagroup.gpr.api.report.FilterRequest;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
@@ -1319,7 +1322,8 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         // if (request.getEtats() != null && !request.getEtats().isEmpty()) {
         predicates.add(claim.get("status")
-                .in(Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED)));
+                .in(Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+                        ClaimStatus.LITIGATION, ClaimStatus.CLASSED)));
         // } else {
         // predicates.add(cb.notEqual(claim.get("status"), ClaimStatus.TEMP_SAVED));
         // }
@@ -1339,7 +1343,19 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
         TypedQuery<ObjectTotalPerStatusPro> typedQuery = entityManager.createQuery(query);
 
-        return typedQuery.getResultList();
+        // Classées et en contentieux comptent comme « non satisfait », comme dans la répartition sans filtre
+        Map<ClaimStatus, Long> grouped = new EnumMap<>(ClaimStatus.class);
+        for (ObjectTotalPerStatusPro result : typedQuery.getResultList()) {
+            ClaimStatus status = result.getStatus();
+            if (status == ClaimStatus.CLASSED || status == ClaimStatus.LITIGATION) {
+                status = ClaimStatus.UNSATISFIED;
+            }
+            grouped.merge(status, result.getTotal(), Long::sum);
+        }
+
+        return grouped.entrySet().stream()
+                .map(entry -> ObjectTotalPerStatusPro.builder().status(entry.getKey()).total(entry.getValue()).build())
+                .collect(Collectors.toList());
     }
 
     @Override
