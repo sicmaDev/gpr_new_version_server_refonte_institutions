@@ -225,7 +225,9 @@ public class User implements UserDetails {
 	}
 
 	public boolean canSeeAll() {
-		return this.getPoste().getHabilitations().contains("H14");
+		return this.getPoste() != null
+				&& this.getPoste().getHabilitations() != null
+				&& this.getPoste().getHabilitations().contains("H14");
 	}
 
 	@Override

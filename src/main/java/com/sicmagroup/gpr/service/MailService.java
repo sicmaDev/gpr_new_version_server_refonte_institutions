@@ -90,6 +90,53 @@ public class MailService {
         return CompletableFuture.completedFuture(null);
     }
 
+    /**
+     * Envoi synchrone, sans passer par le pool asynchrone : l'appelant sait aussitôt si le mail est parti
+     * (relances planifiées, envoi de test). Lève une exception en cas d'échec.
+     */
+    public void sendMailSync(String to, String subject, String body, String cc) throws Exception {
+        Setting mailSetting = settingServiceImpl.getbySlug(Constante.MAIL_SLUG);
+        if (mailSetting == null) {
+            throw new IllegalStateException("Aucune configuration mail n'est enregistrée (Configurations > Email).");
+        }
+        MailRequest mailRequest = objectMapper.readValue(mailSetting.getValue(), MailRequest.class);
+
+        if (mailSender instanceof JavaMailSenderImpl) {
+            JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
+            impl.setHost(mailRequest.getHost());
+            int port = (mailRequest.getPort() != null && !mailRequest.getPort().isEmpty())
+                    ? Integer.parseInt(mailRequest.getPort()) : 587;
+            impl.setPort(port);
+            impl.setUsername(mailRequest.getUser());
+            impl.setPassword(mailRequest.getPwd());
+
+            boolean useSSL = (port == 465);
+            Properties props = impl.getJavaMailProperties();
+            props.put("mail.transport.protocol", "smtp");
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.ssl.enable", String.valueOf(useSSL));
+            props.put("mail.smtp.starttls.enable", String.valueOf(!useSSL));
+            props.put("mail.smtp.starttls.required", String.valueOf(!useSSL));
+            props.put("mail.smtp.ssl.trust", mailRequest.getHost());
+            props.put("mail.smtp.connectiontimeout", "10000");
+            props.put("mail.smtp.timeout", "10000");
+            props.put("mail.smtp.writetimeout", "10000");
+            props.put("mail.smtp.ssl.sessioncachetime", "0");
+            props.put("mail.debug", "false");
+        }
+
+        MimeMessage mimeMessage = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(body, true);
+        helper.setFrom(mailRequest.getUser());
+        if (cc != null && !cc.isEmpty()) {
+            helper.setCc(cc.split(","));
+        }
+        mailSender.send(mimeMessage);
+    }
+
      @Async("taskExecutor")
     public CompletableFuture<Void> sendMail(List<User> usersTo, String subject, String body, String cc) {
         try {
