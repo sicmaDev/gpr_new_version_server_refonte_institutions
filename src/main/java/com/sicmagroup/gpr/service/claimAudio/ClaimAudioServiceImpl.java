@@ -133,7 +133,12 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
         }
 
         try {
-            Files.deleteIfExists(Paths.get(audio.getPath()));
+            // Chemin enregistré avec l'audio (ex. audios WhatsApp) ; à défaut, dossier des audios + nom du fichier.
+            Path audioFile = (audio.getPath() != null && !audio.getPath().isBlank())
+                    ? Paths.get(audio.getPath())
+                    : Paths.get(Constante.DEVMODE ? Constante.TEST_PATH_AUDIO : Constante.PROD_PATH_AUDIO)
+                            .toAbsolutePath().normalize().resolve(audio.getName());
+            Files.deleteIfExists(audioFile);
         } catch (IOException e) {
             System.out.println("Impossible de supprimer le fichier audio physique : " + e.getMessage());
         }

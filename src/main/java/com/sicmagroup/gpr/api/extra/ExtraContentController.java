@@ -32,11 +32,18 @@ public class ExtraContentController {
             User connectedUser = authService.getByEmail(principal.getUsername());
             service.deleteExtraContent(id, connectedUser);
             return ResponseEntity.ok(ApiResponseDto.builder().status(true).content("Contenu supprimé avec succès.").build());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+        } catch (java.util.NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 ApiResponseDto.builder()
                     .status(false)
-                    .content(ErrorResponse.builder().title("Erreur").message(e.getMessage()).build())
+                    .content(ErrorResponse.builder().title("NOT FOUND").message("Contenu introuvable").build())
+                    .build()
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                ApiResponseDto.builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("FORBIDDEN").message(e.getMessage()).build())
                     .build()
             );
         }
