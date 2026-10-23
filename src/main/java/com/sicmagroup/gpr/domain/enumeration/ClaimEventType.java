@@ -20,6 +20,8 @@ public enum ClaimEventType {
     SESSION_STARTED,
     WHATSAPP_SENT_CLIENT,
     EXTRA_ADDED,
+    DELETED,
+    RESTORED,
     // --- SLA ---
     SLA_REMINDER,
     SLA_BREACH,

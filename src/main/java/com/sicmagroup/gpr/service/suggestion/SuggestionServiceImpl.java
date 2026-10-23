@@ -975,6 +975,9 @@ public class SuggestionServiceImpl implements SuggestionService {
 
         repository.save(suggest);
 
+        claimEventServiceImpl.log(suggest.getId(), suggest.getCodeClient(), ClaimType.SUGGESTION, ClaimEventType.RESTORED,
+                currentUser.getFirstandlastname(), currentUser.getEmail(), null);
+
         Log log = Log
                 .builder()
                 .content("La suggestion portant le code: " + suggest.getCode() + 
@@ -1032,6 +1035,9 @@ public class SuggestionServiceImpl implements SuggestionService {
         suggest.setRestored(false); // par sécurité
 
         repository.save(suggest);
+
+        claimEventServiceImpl.log(suggest.getId(), suggest.getCodeClient(), ClaimType.SUGGESTION, ClaimEventType.DELETED,
+                currentUser.getFirstandlastname(), currentUser.getEmail(), reason);
 
         Log log = Log
                 .builder()

@@ -3441,6 +3441,9 @@ public class ClaimServiceImpl implements ClaimService {
 
         repository.save(claim);
 
+        claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.DELETED,
+                currentUser.getFirstandlastname(), currentUser.getEmail(), reason);
+
         Log log = Log
                 .builder()
                 .content("La " + 
@@ -3482,6 +3485,9 @@ public class ClaimServiceImpl implements ClaimService {
         claim.setRestoredBy(currentUser); 
 
         repository.save(claim);
+
+        claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.RESTORED,
+                currentUser.getFirstandlastname(), currentUser.getEmail(), null);
 
         Log log = Log
                 .builder()
