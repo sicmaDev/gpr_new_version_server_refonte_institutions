@@ -2,6 +2,7 @@ package com.sicmagroup.gpr.api.wgpr;
 
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.wgpr.*;
+import com.sicmagroup.gpr.domain.enumeration.ClaimEventType;
 import com.sicmagroup.gpr.domain.enumeration.SatisfactionStatus;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ClaimAudio;
@@ -9,6 +10,7 @@ import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.ClaimAudioRepository;
 import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
+import com.sicmagroup.gpr.service.claimEvent.ClaimEventServiceImpl;
 import com.sicmagroup.gpr.service.claim.ClaimService;
 import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.service.wgpr.WgprComplaintService;
@@ -44,6 +46,7 @@ public class WgprController {
     private final SolutionServiceImpl        solutionServiceImpl;
     private final AuthenticationServiceImpl  authService;
     private final ClaimAudioRepository       claimAudioRepository;
+    private final ClaimEventServiceImpl      claimEventService;
 
     @Value("${whatgpr.node.url:http://localhost:3001}")
     private String nodeBaseUrl;
@@ -248,6 +251,7 @@ public class WgprController {
 
             bridgeService.sendSolutionAudioWithSurvey(to, audioBase64, mimeType,
                     audioBase642, audioBase643, audioBase644, claimId, solutionId, measurerId, surveyAudioBase64);
+            logWhatsappSolutionEvent(claimId, measurerId);
             return ok("Note vocale et enquête de satisfaction envoyées");
         } catch (Exception e) {
             return err(e.getMessage());
@@ -261,6 +265,7 @@ public class WgprController {
             bridgeService.sendSolutionWithSurvey(dto.getTo(), dto.getMessage(),
                     dto.getClaimId(), dto.getSolutionId(), dto.getMeasurerId(),
                     dto.getSurveyAudioBase64(), dto.getSurveyAudioMimeType());
+            logWhatsappSolutionEvent(dto.getClaimId(), dto.getMeasurerId());
             return ok("Solution et enquête de satisfaction envoyées");
         } catch (Exception e) {
             return err(e.getMessage());
@@ -373,5 +378,19 @@ public class WgprController {
     private Map<String, String> errorBody(Exception e) {
         String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
         return Map.of("error", message);
+    }
+
+    // Historique de la réclamation : la solution a été envoyée au client par WhatsApp (l'envoi lui-même est
+    // inscrit dans le journal des envois par le pont WhatsApp). Ne fait jamais échouer l'envoi.
+    private void logWhatsappSolutionEvent(Long claimId, Long senderId) {
+        try {
+            Claim claim = claimService.getById(claimId);
+            User sender = authService.getById(senderId);
+            claimEventService.log(claim.getId(), claim.getCodeClient(), claim.getType(),
+                    ClaimEventType.WHATSAPP_SENT_CLIENT, sender.getFirstandlastname(), sender.getEmail(),
+                    claim.getClientFirstAndLastName());
+        } catch (Exception e) {
+            log.warn("[WhatGPR] Événement d'envoi WhatsApp non enregistré (claimId={}) : {}", claimId, e.getMessage());
+        }
     }
 }

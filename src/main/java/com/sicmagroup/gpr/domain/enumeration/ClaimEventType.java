@@ -18,6 +18,7 @@ public enum ClaimEventType {
     MAIL_SENT_CLIENT,
     SMS_SENT_CLIENT,
     SESSION_STARTED,
+    WHATSAPP_SENT_CLIENT,
     EXTRA_ADDED,
     // --- SLA ---
     SLA_REMINDER,

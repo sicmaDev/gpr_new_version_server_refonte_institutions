@@ -508,7 +508,7 @@ async function handleIncomingMessage(msg, contentType, downloadMediaMessage) {
             await simulateTyping(fromNumber, 'composing');
             await sock.sendMessage(fromNumber, { text: '✅ Merci pour votre retour ! Nous sommes heureux d\'avoir pu vous satisfaire. 😊' });
           }
-          broadcast('survey_response', { voter: fromNumber, satisfactionStatus: 'SATISFIED' });
+          broadcast('survey_response', { voter: fromNumber, claimId: surveyData.claimId, satisfactionStatus: 'SATISFIED' });
         } else {
           const commentWaitData = { ...surveyData, satisfactionStatus };
           const existingComments = pendingComments.get(fromNumber) || [];
@@ -587,7 +587,7 @@ async function handleIncomingMessage(msg, contentType, downloadMediaMessage) {
           await simulateTyping(fromNumber, 'composing');
           await sock.sendMessage(fromNumber, { text: '✅ Merci pour votre message vocal, il a bien été enregistré. Nous ferons le nécessaire pour nous améliorer.' });
         }
-        broadcast('survey_response', { voter: fromNumber, satisfactionStatus: commentData.satisfactionStatus, commentaire: '[audio]' });
+        broadcast('survey_response', { voter: fromNumber, claimId: commentData.claimId, satisfactionStatus: commentData.satisfactionStatus, commentaire: '[audio]' });
       } catch (err) {
         console.error('[WA] Erreur commentaire audio:', err.message);
         await simulateTyping(fromNumber, 'composing');
@@ -616,7 +616,24 @@ async function handleIncomingMessage(msg, contentType, downloadMediaMessage) {
         await simulateTyping(fromNumber, 'composing');
         await sock.sendMessage(fromNumber, { text: '✅ Merci pour votre commentaire, il a bien été enregistré. Nous ferons le nécessaire pour nous améliorer.' });
       }
-      broadcast('survey_response', { voter: fromNumber, satisfactionStatus: commentData.satisfactionStatus, commentaire });
+      broadcast('survey_response', { voter: fromNumber, claimId: commentData.claimId, satisfactionStatus: commentData.satisfactionStatus, commentaire });
+      return;
+    }
+
+    // Le client doit un commentaire mais n'a envoyé ni texte ni vocal exploitable (photo,
+    // vidéo, document, sticker, message vide…) : on le relance sans consommer l'attente,
+    // au lieu de ranger ce message comme une conversation ordinaire.
+    if (commentList && commentList.length) {
+      const pending = commentList[commentList.length - 1];
+      console.log('[WA] Commentaire attendu mais message de type', info.type, 'reçu → relance du client —', fromNumber);
+      if (pending.audio2) {
+        await sendAudioBuffer(fromNumber, pending.audio2, pending.mimeType);
+      } else {
+        await simulateTyping(fromNumber, 'composing');
+        await sock.sendMessage(fromNumber, {
+          text: `Nous n'avons pas pu enregistrer votre réponse. 🙏\n\nPourriez-vous nous expliquer la raison de votre insatisfaction ?\n\n🎙 Envoyez un *message vocal*\n✍️ Ou tapez votre *commentaire écrit*`,
+        });
+      }
       return;
     }
 
