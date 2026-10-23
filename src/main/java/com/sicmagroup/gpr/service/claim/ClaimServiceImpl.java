@@ -954,6 +954,27 @@ public class ClaimServiceImpl implements ClaimService {
         return claim;
     }
 
+    // Envoie automatiquement la solution au client par mail, quand il a une adresse e-mail enregistrée.
+    // Le commentaire du traitant reste interne : il n'est jamais envoyé au client.
+    // N'interrompt jamais le traitement : une erreur d'envoi est seulement tracée. L'envoi est inscrit dans le
+    // journal des envois (canal MAIL) et dans l'historique de la réclamation.
+    private void sendSolutionMailToClient(Claim claim, Solution solution, User treator) {
+        try {
+            String email = claim.getEmail();
+            if (email == null || email.isBlank()) {
+                return;
+            }
+            String objet = claim.getType() == ClaimType.DENUNCIACION ? "dénonciation" : "réclamation";
+            String message = "Votre " + objet + " a été traitée.\n\nSolution apportée :\n" + solution.getContent();
+            mailService.sendClientMail(email.trim(), "Solution à votre " + objet, message, claim.getId(), null);
+            claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(),
+                    ClaimEventType.MAIL_SENT_CLIENT, treator.getFirstandlastname(), treator.getEmail(),
+                    claim.getClientFirstAndLastName());
+        } catch (Exception e) {
+            System.out.println("Mail de la solution au client non envoyé : " + e.getMessage());
+        }
+    }
+
     @Override
     public Claim treatClaim(Claim claim, User treator, ProposedSolutionRequest request) throws Exception {
         Solution solution2;
@@ -1024,6 +1045,8 @@ public class ClaimServiceImpl implements ClaimService {
         claim = repository.save(claim);
         claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.SOLUTION_PROPOSED,
                 treator.getFirstandlastname(), treator.getEmail(), null);
+        // Mail automatique au client (la solution uniquement), seulement s'il a une adresse e-mail enregistrée.
+        sendSolutionMailToClient(claim, solution2, treator);
         System.out.println("Here 9 ");
 
         String type = "Réclamation";

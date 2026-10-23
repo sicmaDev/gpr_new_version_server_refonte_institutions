@@ -520,10 +520,15 @@ public class SettingController {
     public ResponseEntity<ApiResponseDto> sendMailToClient(@RequestBody EmailRequest request) {
         System.out.println("sendMailToClient called with request: " + request);
         try {
-            mailService.sendMail(
+            if (request.getEmail() == null || request.getEmail().isBlank()) {
+                throw new IllegalArgumentException("Aucune adresse e-mail n'est enregistrée pour ce client");
+            }
+            // Mail au client : journalisé dans le journal des envois (canal MAIL, rattaché à la réclamation).
+            mailService.sendClientMail(
                 request.getEmail(),
                 request.getSubject(),
                 request.getMessage(),
+                request.getClaimId(),
                 null
             );
             if (request.getClaimId() != null && request.getClaimCode() != null && request.getClaimType() != null) {
