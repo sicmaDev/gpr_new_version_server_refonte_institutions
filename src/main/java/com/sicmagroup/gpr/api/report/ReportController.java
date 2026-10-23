@@ -3,12 +3,14 @@ package com.sicmagroup.gpr.api.report;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.report.BceaoReportService;
 import com.sicmagroup.gpr.service.report.ReportServiceImpl;
 import com.sicmagroup.gpr.service.report.StatsClaim;
 import com.sicmagroup.gpr.service.report.StatsDenun;
 import com.sicmagroup.gpr.service.report.StatsSuggest;
 import com.sicmagroup.gpr.service.report.TemplateServiceImpl;
+import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,8 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,7 +41,10 @@ import com.sicmagroup.gpr.domain.dto.reports.BandChart.BandChart;
 import com.sicmagroup.gpr.domain.dto.reports.StackedBar.StackedBar;
 import com.sicmagroup.gpr.domain.dto.reports.pieChart.PieChartDto;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.Role;
+import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Template;
+import com.sicmagroup.gpr.domain.model.User;
 
 @RestController
 @RequestMapping("/api/v1/report")
@@ -49,6 +56,84 @@ public class ReportController {
 	private final StatsSuggest serviceStatsSuggest;
 	private final BceaoReportService bceaoReportService;
 	private final TemplateServiceImpl templateService;
+	private final AuthenticationServiceImpl authService;
+	private final ServicePointServiceImpl spServiceImpl;
+
+	// Ni RA ni élevé (H6/PILOTE/DE) ne doit voir, sur le Rapport Global (filtré ou
+	// non), que son point de service et TOUS ceux qui lui sont rattachés — fils,
+	// petits-fils, etc. (parcours récursif, comme pour l'écran Mesure de
+	// satisfaction). Ça couvre aussi bien un RA qu'un simple titulaire de H11 qui
+	// n'est ni RA ni PILOTE/DE/H6 — le frontend traite déjà ces deux cas de la
+	// même façon (isElevatedUser = H6 || PILOTE || DE, indépendant de isRa()).
+	private boolean isElevatedForReport(User user) {
+		boolean hasH6 = user.getPoste() != null && user.getPoste().getHabilitations() != null
+				&& Arrays.stream(user.getPoste().getHabilitations().split(","))
+						.map(String::trim)
+						.anyMatch(h -> h.equals("H6"));
+		Role role = user.getAdditionalrole();
+		return hasH6 || role == Role.PILOTE || role == Role.DE;
+	}
+
+	private User getConnectedUserOrNull() {
+		try {
+			UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
+					.getPrincipal();
+			return authService.getByEmail(collectorDetails.getUsername());
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	// Un agent simple (H11, ni RA ni élevé) ne voit que sa PROPRE agence — les
+	// agences rattachées ne sont ajoutées que pour un RA. C'est la seule
+	// différence entre les deux profils non-élevés.
+	private List<Long> computeScopedServicePointIds(User connectedUser) {
+		ServicePoint servicePoint = connectedUser.getServicePoint();
+		List<Long> ids = new ArrayList<>();
+		ids.add(servicePoint.getId());
+		if (connectedUser.isRa()) {
+			for (ServicePoint descendant : spServiceImpl.getAllDescendants(servicePoint.getId())) {
+				ids.add(descendant.getId());
+			}
+		}
+		return ids;
+	}
+
+	// Utilisé par /global : construit un FilterRequest ne portant que le
+	// périmètre d'agences de l'utilisateur connecté, sauf s'il est élevé
+	// (H6/PILOTE/DE), auquel cas on retourne null pour préserver l'accès complet.
+	private FilterRequest buildRaScopedFilterOrNull() {
+		User connectedUser = getConnectedUserOrNull();
+		if (connectedUser == null || isElevatedForReport(connectedUser)) {
+			return null;
+		}
+		// Les autres listes sont initialisées vides (pas null) pour matcher
+		// exactement ce que le frontend envoie sur /filtered (buildBackendFiltres) :
+		// plusieurs méthodes de ReportServiceImpl distinguent "null" de "liste vide"
+		// (ex: le comptage des suggestions dans repartitionClaimDenunSuggest), donc
+		// laisser ces champs à null changerait leur comportement par rapport à un
+		// filtre "normal" qui ne restreint que par point de service.
+		return FilterRequest.builder()
+				.servicePoints(computeScopedServicePointIds(connectedUser))
+				.objets(new ArrayList<>())
+				.etats(new ArrayList<>())
+				.products(new ArrayList<>())
+				.savedBy(new ArrayList<>())
+				.canals(new ArrayList<>())
+				.build();
+	}
+
+	// Utilisé par /filtered : écrase le filtre "points de service" envoyé par le
+	// client dès que l'utilisateur n'est pas élevé (H6/PILOTE/DE), pour ne jamais
+	// faire confiance à ce que le frontend a envoyé (que ce soit un RA ou un
+	// simple titulaire de H11, il ne doit pas pouvoir élargir son périmètre en
+	// modifiant la requête).
+	private void enforceRaScope(FilterRequest request) {
+		User connectedUser = getConnectedUserOrNull();
+		if (connectedUser != null && !isElevatedForReport(connectedUser)) {
+			request.setServicePoints(computeScopedServicePointIds(connectedUser));
+		}
+	}
 
 	@GetMapping(value = "/global")
 	public ResponseEntity<Object> generatReport() {
@@ -57,103 +142,109 @@ public class ReportController {
 		if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
 			LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
 			if (lc.isActif()) {
+				// Un RA ne doit voir, même sur le rapport "non filtré" généré
+				// automatiquement à l'ouverture de l'écran, que son point de service
+				// et tous ceux qui lui sont rattachés (fils, petits-fils, ...).
+				// Les autres rôles (PILOTE, DE, H5, ...) gardent l'accès complet.
+				FilterRequest request = buildRaScopedFilterOrNull();
+
 				GlobalReport globalReport = GlobalReport
 						.builder()
-						.repartitionClaimDenunSuggest(service.repartitionClaimDenunSuggest(null))
-						.repartitionClaimDenuSuggestPerCanal(service.repartitionObjectByCanal(null))
-						.nbreObjectPerCanalAndAgence(service.numberObjectByCanalByAgence(null))
-						.nbreObjetPerObjetAndAgence(service.numberObjByObjetByAgence(null))
-						.repartitionObjectByObj(service.repartitionObjPerObjet(null))
-						.evolutionClaimDenunSuggestByYear(service.evolutionClaimDenunSuggestbyYear(null))
-						.tauxResolution(service.tauxResolutionObj(null))
-						.evolutionObjByYearAndAgence(service.evolutionObjBySpAndYear(null))
+						.repartitionClaimDenunSuggest(service.repartitionClaimDenunSuggest(request))
+						.repartitionClaimDenuSuggestPerCanal(service.repartitionObjectByCanal(request))
+						.nbreObjectPerCanalAndAgence(service.numberObjectByCanalByAgence(request))
+						.nbreObjetPerObjetAndAgence(service.numberObjByObjetByAgence(request))
+						.repartitionObjectByObj(service.repartitionObjPerObjet(request))
+						.evolutionClaimDenunSuggestByYear(service.evolutionClaimDenunSuggestbyYear(request))
+						.tauxResolution(service.tauxResolutionObj(request))
+						.evolutionObjByYearAndAgence(service.evolutionObjBySpAndYear(request))
 						.build();
 
 				ClaimReport claimReport = ClaimReport
 						.builder()
-						.nbreClaimPerAgence(service.numberClaimPerServicePoint(null))
-						.repartitionClaimPerAgence(service.repartitionClaimPerServicePoint(null))
-						.basicStats(service.statusTotals(ClaimType.CLAIM, null))
-						.repartitionClaimPerCanal(service.repartitionClaimByCanal(null))
-						.nbreClaimPerCanalPerAgence(service.numberClaimByCanalByAgence(null))
-						.repartitionClaimPerObjet(service.repartitionClaimPerObjet(null))
-						.nbreClaimPerObjPerAgence(service.numberClaimPerObjetByAgence(null))
-						.repartitionClaimPerGender(service.repartitionClaimByGender(null))
-						.nbreClaimPerGenderPerAgence(service.numberClaimByGenderByAgence(null))
-						.repartitionClaimPerObjRisque(service.repartitionClaimByGravityLevel(null))
-						.nbreClaimPerObjLevelAndAgence(service.numberClaimByGravityByAngence(null))
-						.repartitionClaimBySatisfaction(service.repartitionClaimBySatisfaction(null))
-						.nbreClaimTreatInDelaiOrNot(service.numberClaimTreatInDelaiOrNot(null))
-						.tauxClaimSatisfactionByMonth(service.tauxClaimSatisfactionByMonth(null))
-						.tauxClaimSatisfactionByMonthByAgence(service.tauxClaimSatisfactionByMonthByAgence(null))
-						.nbreClaimTreatInDelaiOrNotByMonth(service.numberClaimTreatInDelaiOrNotByMonth(null))
-						.nbreClaimTreatInDelaiOrNotByMonthByAgence(service.numberClaimTreatInDelaiOrNotByMonthByAgence(null))
-						.nbreDenunTreatInDelaiOrNotByMonth(service.numberDenunTreatInDelaiOrNotByMonth(null))
-						.nbreDenunTreatInDelaiOrNotByMonthByAgence(service.numberDenunTreatInDelaiOrNotByMonthByAgence(null))
-						.evolutionSatisfactionByThisYear(service.evolutionSatisfactionByYear(null))
-						.tauxResolution(service.tauxResolutionClaim(null))
-						.evolutionByAgenceAndYear(service.evolutionClaimBySpAndYear(null))
+						.nbreClaimPerAgence(service.numberClaimPerServicePoint(request))
+						.repartitionClaimPerAgence(service.repartitionClaimPerServicePoint(request))
+						.basicStats(service.statusTotals(ClaimType.CLAIM, request))
+						.repartitionClaimPerCanal(service.repartitionClaimByCanal(request))
+						.nbreClaimPerCanalPerAgence(service.numberClaimByCanalByAgence(request))
+						.repartitionClaimPerObjet(service.repartitionClaimPerObjet(request))
+						.nbreClaimPerObjPerAgence(service.numberClaimPerObjetByAgence(request))
+						.repartitionClaimPerGender(service.repartitionClaimByGender(request))
+						.nbreClaimPerGenderPerAgence(service.numberClaimByGenderByAgence(request))
+						.repartitionClaimPerObjRisque(service.repartitionClaimByGravityLevel(request))
+						.nbreClaimPerObjLevelAndAgence(service.numberClaimByGravityByAngence(request))
+						.repartitionClaimBySatisfaction(service.repartitionClaimBySatisfaction(request))
+						.nbreClaimTreatInDelaiOrNot(service.numberClaimTreatInDelaiOrNot(request))
+						.tauxClaimSatisfactionByMonth(service.tauxClaimSatisfactionByMonth(request))
+						.tauxClaimSatisfactionByMonthByAgence(service.tauxClaimSatisfactionByMonthByAgence(request))
+						.nbreClaimTreatInDelaiOrNotByMonth(service.numberClaimTreatInDelaiOrNotByMonth(request))
+						.nbreClaimTreatInDelaiOrNotByMonthByAgence(service.numberClaimTreatInDelaiOrNotByMonthByAgence(request))
+						.nbreDenunTreatInDelaiOrNotByMonth(service.numberDenunTreatInDelaiOrNotByMonth(request))
+						.nbreDenunTreatInDelaiOrNotByMonthByAgence(service.numberDenunTreatInDelaiOrNotByMonthByAgence(request))
+						.evolutionSatisfactionByThisYear(service.evolutionSatisfactionByYear(request))
+						.tauxResolution(service.tauxResolutionClaim(request))
+						.evolutionByAgenceAndYear(service.evolutionClaimBySpAndYear(request))
 						.build();
 
 				DenunReport denunReport = DenunReport
 						.builder()
-						.nbreDenunPerAgence(service.numberDenunPerServicePoint(null))
-						.repartitionDenunPerAgence(service.repartitionDenunPerServicePoint(null))
-						.basicStats(service.statusTotals(ClaimType.DENUNCIACION, null))
-						.repartitionDenunPerCanal(service.repartitionDenunByCanal(null))
-						.nbreDenunPerCanalPerAgence(service.numberDenunByCanalByAgence(null))
-						.repartitionDenunPerObjet(service.repartitionDenunPerObjet(null))
-						.nbreDenunPerObjPerAgence(service.numberDenunPerObjetByAgence(null))
-						.repartitionDenunPerGender(service.repartitionDenunByGender(null))
-						.repartitionDenunPerObjRisque(service.repartitionDenunByGravityLevel(null))
-						.nbreDenunPerObjLevelAndAgence(service.numberDenunByGravityByAgence(null))
-						.tauxResolution(service.tauxResolutionDenun(null))
-						.evolutionByAgenceAndYear(service.evolutionDenunBySpAndYear(null))
+						.nbreDenunPerAgence(service.numberDenunPerServicePoint(request))
+						.repartitionDenunPerAgence(service.repartitionDenunPerServicePoint(request))
+						.basicStats(service.statusTotals(ClaimType.DENUNCIACION, request))
+						.repartitionDenunPerCanal(service.repartitionDenunByCanal(request))
+						.nbreDenunPerCanalPerAgence(service.numberDenunByCanalByAgence(request))
+						.repartitionDenunPerObjet(service.repartitionDenunPerObjet(request))
+						.nbreDenunPerObjPerAgence(service.numberDenunPerObjetByAgence(request))
+						.repartitionDenunPerGender(service.repartitionDenunByGender(request))
+						.repartitionDenunPerObjRisque(service.repartitionDenunByGravityLevel(request))
+						.nbreDenunPerObjLevelAndAgence(service.numberDenunByGravityByAgence(request))
+						.tauxResolution(service.tauxResolutionDenun(request))
+						.evolutionByAgenceAndYear(service.evolutionDenunBySpAndYear(request))
 						.build();
 
 				SuggestionReport suggestionReport = SuggestionReport
 						.builder()
-						.nbreSuggestPerAgence(service.numberSuggestPerServicePoint(null))
-						.repartitionSuggestPerAgence(service.repartitionSuggestPerServicePoint(null))
-						.basicStats(service.statusTotals(ClaimType.SUGGESTION, null))
-						.repartitionSuggestPerCanal(service.repartitionSuggestByCanal(null))
-						.nbreSuggestPerCanalPerAgence(service.numberSuggestByCanalByAgence(null))
-						.repartitionSuggestPerGender(service.repartitionSuggestByGender(null))
-						.nbreSuggestPerGenderPerAgence(service.numberSuggestByGenderAgence(null))
-						.tauxResolution(service.tauxResolutionSuggest(null))
-						.evolutionSuggestByYearAndAgence(service.evolutionSuggestBySpAndYear(null))
+						.nbreSuggestPerAgence(service.numberSuggestPerServicePoint(request))
+						.repartitionSuggestPerAgence(service.repartitionSuggestPerServicePoint(request))
+						.basicStats(service.statusTotals(ClaimType.SUGGESTION, request))
+						.repartitionSuggestPerCanal(service.repartitionSuggestByCanal(request))
+						.nbreSuggestPerCanalPerAgence(service.numberSuggestByCanalByAgence(request))
+						.repartitionSuggestPerGender(service.repartitionSuggestByGender(request))
+						.nbreSuggestPerGenderPerAgence(service.numberSuggestByGenderAgence(request))
+						.tauxResolution(service.tauxResolutionSuggest(request))
+						.evolutionSuggestByYearAndAgence(service.evolutionSuggestBySpAndYear(request))
 						.build();
-						
+
 				ReportGlobalResponse reportGlobalResponse = ReportGlobalResponse
 						.builder()
 						.global(globalReport)
 						.claimReport(claimReport)
 						.denunReport(denunReport)
 						.suggestionReport(suggestionReport)
-						.newVersionStat(generateNewVersionReport(null))
+						.newVersionStat(generateNewVersionReport(request))
 						.build();
-				
+
 				StatisticReport statisticReport = StatisticReport
 						.builder()
-						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(null),
-								serviceStatsClaim.totalByGravity(null), serviceStatsClaim.tauxSatisfaction(null),
-								serviceStatsClaim.totalReclamantSatisfait(null),
-								serviceStatsClaim.totalTreat(null), serviceStatsClaim.totalTreatByGravity(null),
-								serviceStatsClaim.totalTreatByRespectTiming(null), serviceStatsClaim.totalUnTreat(null),
-								serviceStatsClaim.totalUnTreatByGravity(null),
-								serviceStatsClaim.pourcentageReclamationsTraitees(null),
-								serviceStatsClaim.pourcentageReelReclamationsTraitees(null),
-								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(null) 
+						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(request),
+								serviceStatsClaim.totalByGravity(request), serviceStatsClaim.tauxSatisfaction(request),
+								serviceStatsClaim.totalReclamantSatisfait(request),
+								serviceStatsClaim.totalTreat(request), serviceStatsClaim.totalTreatByGravity(request),
+								serviceStatsClaim.totalTreatByRespectTiming(request), serviceStatsClaim.totalUnTreat(request),
+								serviceStatsClaim.totalUnTreatByGravity(request),
+								serviceStatsClaim.pourcentageReclamationsTraitees(request),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(request),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(request)
 								))
-						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(null),
-								serviceStatsDenun.totalByGravity(null),
-								serviceStatsDenun.totalTreat(null),
-								serviceStatsDenun.totalTreatByGravity(null),
-								serviceStatsDenun.totalTreatByRespectTiming(null),
-								serviceStatsDenun.totalUnTreat(null), serviceStatsDenun.totalUnTreatByGravity(null)))
+						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(request),
+								serviceStatsDenun.totalByGravity(request),
+								serviceStatsDenun.totalTreat(request),
+								serviceStatsDenun.totalTreatByGravity(request),
+								serviceStatsDenun.totalTreatByRespectTiming(request),
+								serviceStatsDenun.totalUnTreat(request), serviceStatsDenun.totalUnTreatByGravity(request)))
 						.SuggestStatsAndValue(
-								Arrays.asList(serviceStatsSuggest.totalSaved(null),
-										serviceStatsSuggest.totalSuggest(null)))
+								Arrays.asList(serviceStatsSuggest.totalSaved(request),
+										serviceStatsSuggest.totalSuggest(request)))
 						.build();
 				reportGlobalResponse.setStatistic(statisticReport);
 
@@ -190,6 +281,10 @@ public class ReportController {
 		if (apiResponseDto.isStatus() && apiResponseDto.getContent().getClass() == LicenceControl.class) {
 			LicenceControl lc = (LicenceControl) apiResponseDto.getContent();
 			if (lc.isActif()) {
+				// Un RA ne peut pas élargir son périmètre en modifiant le filtre envoyé
+				// depuis le frontend : on écrase servicePoints avec son périmètre réel.
+				enforceRaScope(request);
+
 				GlobalReport globalReport = GlobalReport
 						.builder()
 						.repartitionClaimDenunSuggest(service.repartitionClaimDenunSuggest(request))
@@ -370,6 +465,11 @@ public class ReportController {
 
 	@PostMapping(value = "/global/new")
 	public HashMap<String,Object> generateNewVersionReport(@RequestBody FilterRequest request) {
+		// Endpoint atteignable directement par le client (pas seulement via
+		// generatReport()/generateFilterReport() qui l'appellent aussi en interne) :
+		// on applique le même verrou de périmètre RA ici.
+		enforceRaScope(request);
+
 		HashMap<String,Object> result = new HashMap<>();
 		HashMap<String,Object> general = new HashMap<>();
 
