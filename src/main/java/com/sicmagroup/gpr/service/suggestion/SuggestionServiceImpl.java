@@ -249,6 +249,17 @@ public class SuggestionServiceImpl implements SuggestionService {
         suggestion = repository.save(suggestion);
         claimEventServiceImpl.log(suggestion.getId(), suggestion.getCodeClient(), ClaimType.SUGGESTION,
                 ClaimEventType.SAVED, collector.getFirstandlastname(), collector.getEmail(), null);
+        Log actionLog = Log
+                .builder()
+                .libelle("Enregistrement de Suggestion")
+                .content("La suggestion portant le code " + Utils.displayCode(suggestion.getCodeClient(), suggestion.getCode()) + " vient d'être enregistrée dans le système.")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(collector.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.SUGGESTION)
+                .build();
+        logServiceImpl.saveLog(actionLog);
 
         if (request.getFiles() != null && request.getFiles().length != 0) {
             // System.out.println("test");
@@ -687,6 +698,17 @@ public class SuggestionServiceImpl implements SuggestionService {
                 request.isAccepted() ? ClaimEventType.APPROVED : ClaimEventType.REJECTED,
                 treator.getFirstandlastname(), treator.getEmail(),
                 request.isAccepted() ? "Suggestion prise en compte" : "Suggestion non prise en compte");
+        Log actionLog = Log
+                .builder()
+                .libelle("Traitement de Suggestion")
+                .content("La suggestion portant le code " + Utils.displayCode(suggestion.getCodeClient(), suggestion.getCode()) + " vient d'être traitée par " + treator.getFirstandlastname() + ".")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(treator.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.SUGGESTION)
+                .build();
+        logServiceImpl.saveLog(actionLog);
 
         final Suggestion finalSuggestion = suggestion;
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));

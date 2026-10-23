@@ -217,6 +217,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
                 user = userRepository.save(user);
                 notifyUserQuotaIfCrossed(totalActuUser, totalUser);
+                Log actionLog = Log
+                        .builder()
+                        .libelle("Création de compte Utilisateur")
+                        .content("Le compte de " + user.getFirstandlastname() + " a été créé avec succès.")
+                        .createdAt(LocalDateTime.now())
+                        .type(LogType.INFO)
+                        .userId(0L)
+                        .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                        .target(LogTarget.APP)
+                        .build();
+                logServiceImpl.saveLog(actionLog);
                 final User userForMail = user;
                 // HashMap<String, Object> extras = new HashMap<>();
                 // extras.put("additionalRole", user.getAdditionalrole());

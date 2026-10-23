@@ -1369,6 +1369,17 @@ public class ClaimServiceImpl implements ClaimService {
                 : ClaimEventType.PARTIAL_SATISFIED;
         claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), satisfactionEventType,
                 measurer.getFirstandlastname(), measurer.getEmail(), commentaire);
+        Log actionLog = Log
+                .builder()
+                .libelle("Mesure de satisfaction")
+                .content("La satisfaction de la solution proposée pour la " + (claim.getType().equals(ClaimType.DENUNCIACION) ? "Dénonciation" : "Réclamation").toLowerCase() + " " + Utils.displayCode(claim.getCodeClient(), claim.getCode()) + " a été mesurée par " + measurer.getFirstandlastname() + " avec le statut " + (status == SatisfactionStatus.SATISFIED ? "satisfait" : status == SatisfactionStatus.UNSATISFIED ? "insatisfait" : "partiellement satisfait") + ".")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(measurer.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+                .build();
+        logServiceImpl.saveLog(actionLog);
 
         return claim;
 
@@ -1395,6 +1406,17 @@ public class ClaimServiceImpl implements ClaimService {
         claim = repository.save(claim);
         claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.REJECTED,
                 unApprouver.getFirstandlastname(), unApprouver.getEmail(), commentaire);
+        Log actionLog = Log
+                .builder()
+                .libelle("Désapprobation de solution")
+                .content("La " + (claim.getType().equals(ClaimType.DENUNCIACION) ? "Dénonciation" : "Réclamation") + " portant le code " + Utils.displayCode(claim.getCodeClient(), claim.getCode()) + " a une solution désapprouvée par " + unApprouver.getFirstandlastname() + ".")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(unApprouver.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+                .build();
+        logServiceImpl.saveLog(actionLog);
         // TODO send mail to CGR User
 
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
@@ -1493,6 +1515,17 @@ public class ClaimServiceImpl implements ClaimService {
         claim = repository.save(claim);
         claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.APPROVED,
                 approuver.getFirstandlastname(), approuver.getEmail(), null);
+        Log actionLog = Log
+                .builder()
+                .libelle("Approbation de solution")
+                .content("La " + (claim.getType().equals(ClaimType.DENUNCIACION) ? "Dénonciation" : "Réclamation") + " portant le code " + Utils.displayCode(claim.getCodeClient(), claim.getCode()) + " a une solution approuvée par " + approuver.getFirstandlastname() + ".")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(approuver.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+                .build();
+        logServiceImpl.saveLog(actionLog);
         final Claim finalClaim = claim;
         String type = "Réclamation";
         if (claim.getType().equals(ClaimType.DENUNCIACION)) {
@@ -1680,6 +1713,17 @@ public class ClaimServiceImpl implements ClaimService {
         claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.LITIGATION,
                 litigator.getFirstandlastname(), litigator.getEmail(),
                 recoursesLabel.isEmpty() ? null : "Recours externe(s) : " + recoursesLabel);
+        Log actionLog = Log
+                .builder()
+                .libelle("Mise en litige de réclamation")
+                .content("La réclamation portant le code " + Utils.displayCode(claim.getCodeClient(), claim.getCode()) + " est en litige. Ceci a été consigné par " + litigator.getFirstandlastname() + ".")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(litigator.getId())
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+                .build();
+        logServiceImpl.saveLog(actionLog);
         LocalDateTime majDate = LocalDateTime.now();
         for (ExternalRecourse externalRecourse : externalRecour) {
             externalRecourse.setUpdatedAt(majDate);
@@ -2791,6 +2835,17 @@ public class ClaimServiceImpl implements ClaimService {
             claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.TRANSMITTED,
                     connectedUser.getFirstandlastname(), connectedUser.getEmail(),
                     transmittedTo.getFirstandlastname() + "|" + transmittedRoleLabel + "|" + transmittedSpLabel);
+            Log actionLog = Log
+                    .builder()
+                    .libelle("Transmission de réclamation")
+                    .content("La " + (claim.getType().equals(ClaimType.DENUNCIACION) ? "Dénonciation" : "Réclamation") + " portant le code " + Utils.displayCode(claim.getCodeClient(), claim.getCode()) + " a été transmise par " + connectedUser.getFirstandlastname() + " à " + transmittedTo.getFirstandlastname() + ".")
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.INFO)
+                    .userId(connectedUser.getId())
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                    .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
+                    .build();
+            logServiceImpl.saveLog(actionLog);
             final Claim finalClaim = claim;
             final User finalTransmittedTo = transmittedTo;
 
