@@ -69,4 +69,14 @@ class AlertRetardCronTest {
         verify(schedule).markExecuted(any(ScheduledReportConfig.class), any(LocalDateTime.class), org.mockito.ArgumentMatchers.eq(false));
         verify(schedule, never()).markExecuted(any(), any(), org.mockito.ArgumentMatchers.eq(true));
     }
+
+    @Test
+    void laMiseAJourQuotidienneDeLaLicenceResteProgrammeeAuDixHeures() throws Exception {
+        org.springframework.scheduling.annotation.Scheduled scheduled = AlertRetardCron.class
+                .getMethod("updateLicence")
+                .getAnnotation(org.springframework.scheduling.annotation.Scheduled.class);
+
+        org.assertj.core.api.Assertions.assertThat(scheduled).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(scheduled.cron()).isEqualTo("0 0 10 * * *");
+    }
 }

@@ -1,5 +1,18 @@
 package com.sicmagroup.gpr.cron;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashMap;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.sicmagroup.gpr.domain.dto.LicenseResponse;
+import com.sicmagroup.gpr.utils.Constante;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -605,4 +618,95 @@ public class AlertRetardCron {
         }
     }
 
+    // Mise à jour quotidienne (10 h) de la licence à partir de data.txt : reprise telle quelle du projet source.
+    @Scheduled(cron = "0 0 10 * * *")
+    public void updateLicence() {
+        try {
+            // Le fichier d'entrée
+            File file = new File("data.txt");
+
+            // Créer l'objet File Reader
+            FileReader fr = new FileReader(file);
+         
+            // Créer l'objet BufferedReader
+            BufferedReader br = new BufferedReader(fr);
+         
+            StringBuffer sb = new StringBuffer();
+         
+            String line;
+            while ((line = br.readLine()) != null) {
+                // ajoute la ligne au buffer
+                sb.append(line);
+                sb.append("\n");
+            }
+         
+            fr.close();
+            String license = sb.toString();
+            
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode licenseObj = mapper.readTree("" + license + "");
+          
+            if (licenseObj != null && license != "") {
+                RestTemplate restTemplate = new RestTemplate();
+                LicenseResponse licenseResponse = new LicenseResponse();
+              
+                licenseResponse.setSerial(licenseObj.get("serial").asText());
+                try {
+                    ResponseEntity<String> response = restTemplate.postForEntity(Constante.LICENSE_URL, licenseResponse, String.class);
+                    String responseBody = response.getBody();
+        
+                    // Affiche la réponse brute pour vérifier sa structure
+                    System.out.println("Réponse brute de l'API : " + responseBody);
+                    // Utiliser ObjectMapper pour analyser la réponse brute en un JsonNode
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    JsonNode rootNode = objectMapper.readTree(responseBody);
+
+                    // Accéder à une valeur spécifique (par exemple, "serial")
+                    JsonNode reponse = rootNode;  // Si c'est un tableau, accès au premier élément
+                    if (reponse != null) {
+                        System.out.println("Serial15 : " + reponse.get("serial").asText());
+                       
+                            try {
+                                ObjectWriter ow = new ObjectMapper().writer().withDefaultPrettyPrinter();
+                                HashMap<String, Object> licenseMap = new HashMap<>();
+                                licenseMap.put("id", reponse.get("id").asText());
+                                licenseMap.put("fullname", reponse.get("denomination").asText());
+                                licenseMap.put("company", reponse.get("denomination").asText());
+                                licenseMap.put("serial", reponse.get("serial").asText());
+                                licenseMap.put("email", reponse.get("email").asText());
+                                licenseMap.put("activationRequest", reponse.get("activation_request").asText());
+                                licenseMap.put("createdAt", reponse.get("createdAt").asText());
+                                licenseMap.put("updatedAt", reponse.get("updatedAt").asText());
+                                System.out.println(licenseMap);
+                                String json = ow.writeValueAsString(licenseMap);
+        
+                                FileWriter fw = new FileWriter("data.txt");
+                                fw.write(json);
+                                fw.close();
+        
+                                System.out.println("Le texte a été écrit avec succès");
+                             
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                       
+                    } else {
+                        System.out.println("Le texte n'a été pas été écrit avec succès");
+                    }
+                   
+                } catch (Exception e) {
+                    System.err.println("Erreur de désérialisation : " + e.getMessage());
+                    e.printStackTrace();
+                }
+                // System.out.println(result);
+              
+            } else {
+                System.out.println("Une erreur est survenue.");
+            }
+        } catch (NullPointerException eNullPointerException) {
+            eNullPointerException.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
