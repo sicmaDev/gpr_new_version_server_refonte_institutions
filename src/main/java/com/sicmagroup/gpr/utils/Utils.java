@@ -48,6 +48,9 @@ import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.model.Log;
 import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
+import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
+import com.sicmagroup.gpr.domain.enumeration.SmsType;
+import com.sicmagroup.gpr.service.smsLog.OutgoingMessageLogger;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 
 import jakarta.mail.internet.InternetAddress;
@@ -57,6 +60,15 @@ import jakarta.servlet.http.HttpServletRequest;
 public class Utils {
 
     // public static generateCode(String initial, )
+    // Code d'une plainte/suggestion à afficher : code client (court, ex. REC-4c12) ; code technique à défaut
+    // (anciennes données sans code client). Jamais null.
+    public static String displayCode(String codeClient, String code) {
+        if (codeClient != null && !codeClient.isBlank()) {
+            return codeClient;
+        }
+        return code != null ? code : "";
+    }
+
     public static String guessFileExtension(String dataString) {
         String type = "";
         if (dataString.contains("application/pdf")) {
@@ -440,6 +452,8 @@ public class Utils {
     @Async
     public static Future<Boolean> sendSms(List<User> usersTo, String message, SettingServiceImpl settingServiceImpl)
             throws Exception {
+        final String plainMessage = message;
+        String currentTel = null;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             Setting sms = settingServiceImpl.getbySlug(Constante.SMS_SLUG);
@@ -456,6 +470,7 @@ public class Utils {
                 message = UriEncoder.encode(message);
                 HttpURLConnection con;
                 for (User to : usersTo) {
+                    currentTel = to.getTel();
                     String urlStr = baseUrl + smsRequest.getLibId() + "=" + account 
                             + "&" + smsRequest.getLibMdp() + "=" + token
                             + "&" + smsRequest.getLibEmetteur() + "=" + sender
@@ -467,6 +482,8 @@ public class Utils {
                     con = (HttpURLConnection) url.openConnection();
                     con.setRequestMethod("GET");
                     int status = con.getResponseCode();
+                    OutgoingMessageLogger.record(MessageChannel.SMS, SmsType.INTERNE, to.getTel(), plainMessage,
+                            status >= 200 && status <= 299, null, null);
                     if (status >= 200 && status <= 299) {
                         BufferedReader in = new BufferedReader(
                                 new InputStreamReader(con.getInputStream()));
@@ -495,17 +512,31 @@ public class Utils {
             }
 
         } catch (IOException e) {
+            if (currentTel != null) {
+                OutgoingMessageLogger.record(MessageChannel.SMS, SmsType.INTERNE, currentTel, plainMessage, false, null, null);
+            }
             throw e;
         } catch (Exception ex) {
+            if (currentTel != null) {
+                OutgoingMessageLogger.record(MessageChannel.SMS, SmsType.INTERNE, currentTel, plainMessage, false, null, null);
+            }
             throw ex;
         }
 
         return null;
     }
 
+    // Envoi sans contexte : message interne (agents, pilote), non rattaché à une réclamation.
     @Async
     public static Future<Boolean> sendSms(String number, String message, SettingServiceImpl settingServiceImpl)
             throws Exception {
+        return sendSms(number, message, settingServiceImpl, SmsType.INTERNE, null, null);
+    }
+
+    // Envoi tracé dans le journal des envois : 	ype EXTERNE pour un client, INTERNE pour un agent.
+    public static Future<Boolean> sendSms(String number, String message, SettingServiceImpl settingServiceImpl,
+            SmsType type, Long claimId, Long suggestId) throws Exception {
+        final String plainMessage = message;
 
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -529,6 +560,8 @@ public class Utils {
                 con = (HttpURLConnection) url.openConnection();
                 con.setRequestMethod("GET");
                 int status = con.getResponseCode();
+                OutgoingMessageLogger.record(MessageChannel.SMS, type, number, plainMessage,
+                        status >= 200 && status <= 299, claimId, suggestId);
                 if (status >= 200 && status <= 299) {
                     BufferedReader in = new BufferedReader(
                             new InputStreamReader(con.getInputStream()));
@@ -556,8 +589,10 @@ public class Utils {
             }
 
         } catch (IOException e) {
+            OutgoingMessageLogger.record(MessageChannel.SMS, type, number, plainMessage, false, claimId, suggestId);
             throw e;
         } catch (Exception ex) {
+            OutgoingMessageLogger.record(MessageChannel.SMS, type, number, plainMessage, false, claimId, suggestId);
             throw ex;
         }
 

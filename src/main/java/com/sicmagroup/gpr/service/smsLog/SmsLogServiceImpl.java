@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.sicmagroup.gpr.domain.dto.SmsLogDto;
+import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.SmsLog;
 import com.sicmagroup.gpr.domain.model.Suggestion;
@@ -56,6 +57,7 @@ public class SmsLogServiceImpl implements SmsLogService {
 
         return smsLogs.stream().map(l -> SmsLogDto.builder()
                 .id(l.getId())
+                .channel(l.getChannel() != null ? l.getChannel() : MessageChannel.SMS)
                 .type(l.getType())
                 .claimId(l.getClaimId())
                 .claimCode(l.getClaimId() != null ? claimCodes.get(l.getClaimId()) : null)

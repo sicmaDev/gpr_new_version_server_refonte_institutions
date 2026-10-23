@@ -1,5 +1,8 @@
 package com.sicmagroup.gpr.service.wgpr;
 
+import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
+import com.sicmagroup.gpr.domain.enumeration.SmsType;
+import com.sicmagroup.gpr.service.smsLog.OutgoingMessageLogger;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -94,8 +97,10 @@ public class WgprWhatsappBridgeServiceImpl implements WgprWhatsappBridgeService 
         HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
         try {
             restTemplate.postForEntity(nodeBaseUrl + "/internal/send", entity, Map.class);
+            logWhatsapp(to, message, true, null);
         } catch (Exception e) {
             log.error("[WhatGPR] Erreur envoi message vers {}", to, e);
+            logWhatsapp(to, message, false, null);
             throw new RuntimeException("Impossible d'envoyer le message WhatsApp : " + e.getMessage());
         }
     }
@@ -110,8 +115,10 @@ public class WgprWhatsappBridgeServiceImpl implements WgprWhatsappBridgeService 
         HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
         try {
             restTemplate.postForEntity(nodeBaseUrl + "/internal/send-audio", entity, Map.class);
+            logWhatsapp(to, "[Note vocale]", true, null);
         } catch (Exception e) {
             log.error("[WhatGPR] Erreur envoi audio vers {}", to, e);
+            logWhatsapp(to, "[Note vocale]", false, null);
             throw new RuntimeException("Impossible d'envoyer l'audio WhatsApp : " + e.getMessage());
         }
     }
@@ -133,8 +140,10 @@ public class WgprWhatsappBridgeServiceImpl implements WgprWhatsappBridgeService 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
         try {
             restTemplate.postForEntity(nodeBaseUrl + "/internal/send-with-survey", entity, Map.class);
+            logWhatsapp(to, message + "\n\n[Sondage de satisfaction envoyé avec la solution]", true, claimId);
         } catch (Exception e) {
             log.error("[WhatGPR] Erreur envoi solution+survey vers {}", to, e);
+            logWhatsapp(to, message + "\n\n[Sondage de satisfaction envoyé avec la solution]", false, claimId);
             throw new RuntimeException("Impossible d'envoyer la solution WhatsApp : " + e.getMessage());
         }
     }
@@ -149,11 +158,13 @@ public class WgprWhatsappBridgeServiceImpl implements WgprWhatsappBridgeService 
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(
                     nodeBaseUrl + "/internal/sendPoll", entity, Map.class);
+            logWhatsapp(to, "[Sondage] " + question + " : " + String.join(" / ", options), true, null);
             if (response.getBody() != null) {
                 return (String) response.getBody().get("messageId");
             }
         } catch (Exception e) {
             log.error("[WhatGPR] Erreur envoi poll vers {}", to, e);
+            logWhatsapp(to, "[Sondage] " + question, false, null);
             throw new RuntimeException("Impossible d'envoyer le sondage WhatsApp : " + e.getMessage());
         }
         return null;
@@ -182,8 +193,10 @@ public class WgprWhatsappBridgeServiceImpl implements WgprWhatsappBridgeService 
         try {
             restTemplate.postForEntity(nodeBaseUrl + "/internal/send-with-survey-audio", entity, Map.class);
             log.info("[WhatGPR] Note vocale+survey envoyés → claimId={}", claimId);
+            logWhatsapp(to, "[Notes vocales : solution + sondage de satisfaction]", true, claimId);
         } catch (Exception e) {
             log.error("[WhatGPR] Erreur envoi note vocale vers {}", to, e);
+            logWhatsapp(to, "[Notes vocales : solution + sondage de satisfaction]", false, claimId);
             throw new RuntimeException("Impossible d'envoyer la note vocale WhatsApp : " + e.getMessage());
         }
     }
@@ -202,11 +215,18 @@ public class WgprWhatsappBridgeServiceImpl implements WgprWhatsappBridgeService 
         try {
             restTemplate.postForEntity(nodeBaseUrl + "/internal/send-acknowledgment", entity, Map.class);
             log.info("[WhatGPR] Accusé de réception ({}) envoyé → {}", type, phone);
+            logWhatsapp(phone, "Accusé de réception (" + type + ") - code client " + codeClient, true, null);
         } catch (Exception e) {
             log.warn("[WhatGPR] Accusé de réception non envoyé → {} : {}", phone, e.getMessage());
+            logWhatsapp(phone, "Accusé de réception (" + type + ") - code client " + codeClient, false, null);
         }
     }
 
+    // Journal des envois : tout message WhatsApp parti de l'application (réussi ou échoué).
+    private void logWhatsapp(String to, String content, boolean success, Long claimId) {
+        OutgoingMessageLogger.record(MessageChannel.WHATSAPP, SmsType.EXTERNE,
+                OutgoingMessageLogger.phoneFromJid(to), content, success, claimId, null);
+    }
     // ── Numéro connecté ──────────────────────────────────────────────────────────
     @Override
     public String getConnectedNumber() {

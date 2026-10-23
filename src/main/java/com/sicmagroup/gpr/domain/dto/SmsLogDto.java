@@ -2,6 +2,7 @@ package com.sicmagroup.gpr.domain.dto;
 
 import java.time.LocalDateTime;
 
+import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
 import com.sicmagroup.gpr.domain.enumeration.SmsStatus;
 import com.sicmagroup.gpr.domain.enumeration.SmsType;
 
@@ -20,6 +21,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SmsLogDto {
     private Long id;
+    private MessageChannel channel;
     private SmsType type;
     private Long claimId;
     private String claimCode;

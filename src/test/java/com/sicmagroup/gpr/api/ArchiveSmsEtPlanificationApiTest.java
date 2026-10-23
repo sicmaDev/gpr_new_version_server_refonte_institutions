@@ -23,6 +23,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
 import com.sicmagroup.gpr.domain.enumeration.SmsStatus;
 import com.sicmagroup.gpr.domain.enumeration.SmsType;
 import com.sicmagroup.gpr.domain.model.SmsLog;
@@ -71,7 +72,7 @@ class ArchiveSmsEtPlanificationApiTest {
     void lArchiveRelitLeNumeroEtLeTexteEtLesGardeChiffresEnBase() throws Exception {
         SmsLog saved = sms(SmsStatus.ENVOYE);
 
-        mockMvc.perform(get("/api/v1/sms-log").header("Authorization", bearer(admin)))
+        mockMvc.perform(get("/api/v1/config/sms-log").header("Authorization", bearer(admin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(true))
                 .andExpect(jsonPath("$.content[0].numeroDestinataire").value("002290152030745"))
@@ -88,13 +89,13 @@ class ArchiveSmsEtPlanificationApiTest {
     void lArchiveSeFiltreParStatut() throws Exception {
         sms(SmsStatus.ECHEC);
 
-        mockMvc.perform(get("/api/v1/sms-log").param("status", "ECHEC").header("Authorization", bearer(admin)))
+        mockMvc.perform(get("/api/v1/config/sms-log").param("status", "ECHEC").header("Authorization", bearer(admin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].status").value("ECHEC"));
-        mockMvc.perform(get("/api/v1/sms-log").param("numeroDestinataire", "0152030745").header("Authorization", bearer(admin)))
+        mockMvc.perform(get("/api/v1/config/sms-log").param("numeroDestinataire", "0152030745").header("Authorization", bearer(admin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].numeroDestinataire").value("002290152030745"));
-        mockMvc.perform(get("/api/v1/sms-log").param("numeroDestinataire", "99999999").header("Authorization", bearer(admin)))
+        mockMvc.perform(get("/api/v1/config/sms-log").param("numeroDestinataire", "99999999").header("Authorization", bearer(admin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(0));
     }
@@ -103,13 +104,31 @@ class ArchiveSmsEtPlanificationApiTest {
     void lArchiveEstReserveeAuxAdministrateursEtEnLectureSeule() throws Exception {
         SmsLog saved = sms(SmsStatus.ENVOYE);
 
-        mockMvc.perform(get("/api/v1/sms-log")).andExpect(result -> assertThat(result.getResponse().getStatus()).isIn(401, 403));
-        mockMvc.perform(get("/api/v1/sms-log").header("Authorization", bearer(agent))).andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/v1/sms-log/" + saved.getId()).header("Authorization", bearer(admin))).andExpect(status().isOk());
-        mockMvc.perform(get("/api/v1/sms-log/987654321").header("Authorization", bearer(admin))).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/config/sms-log")).andExpect(result -> assertThat(result.getResponse().getStatus()).isIn(401, 403));
+        mockMvc.perform(get("/api/v1/config/sms-log").header("Authorization", bearer(agent))).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/config/sms-log/" + saved.getId()).header("Authorization", bearer(admin))).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/config/sms-log/987654321").header("Authorization", bearer(admin))).andExpect(status().isNotFound());
         // aucun appel ne permet de créer, modifier ou supprimer une ligne de l'archive
-        mockMvc.perform(post("/api/v1/sms-log").header("Authorization", bearer(admin)).contentType(MediaType.APPLICATION_JSON).content("{}"))
+        mockMvc.perform(post("/api/v1/config/sms-log").header("Authorization", bearer(admin)).contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(result -> assertThat(result.getResponse().getStatus()).isIn(404, 405));
+    }
+
+    // --- Journal des envois : canal SMS, mail ou WhatsApp -------------------------------------------------------
+
+    @Test
+    void leJournalSeFiltreParCanalEtLesAnciennesLignesCompentCommeDesSms() throws Exception {
+        sms(SmsStatus.ENVOYE); // ancienne ligne : aucun canal enregistré
+        smsLogRepository.saveAndFlush(SmsLog.builder().channel(MessageChannel.MAIL).type(SmsType.EXTERNE)
+                .numeroDestinataire("client@exemple.test").content("Objet : Solution").status(SmsStatus.ENVOYE).build());
+
+        mockMvc.perform(get("/api/v1/config/sms-log").param("channel", "MAIL").header("Authorization", bearer(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].channel").value("MAIL"))
+                .andExpect(jsonPath("$.content[0].numeroDestinataire").value("client@exemple.test"));
+        mockMvc.perform(get("/api/v1/config/sms-log").param("channel", "SMS").header("Authorization", bearer(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].channel").value("SMS"));
     }
 
     // --- Planification des relances ----------------------------------------------------------------------------

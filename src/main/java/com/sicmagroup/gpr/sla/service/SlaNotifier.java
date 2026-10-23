@@ -11,6 +11,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.SmsType;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.MailService;
@@ -118,15 +119,15 @@ public class SlaNotifier {
         String email = claim.getEmail();
         if (email != null && !email.isBlank()) {
             attempted = true;
-            afterCommit(() -> mailService.sendMail(email.trim(), "Votre réclamation " + claim.getCodeClient(),
-                    "<p>" + text + "</p>", null));
+            afterCommit(() -> mailService.sendClientMail(email.trim(), "Votre réclamation " + claim.getCodeClient(),
+                    text, claim.getId(), null));
         }
         String tel = claim.getTel();
         if (tel != null && !tel.isBlank()) {
             attempted = true;
             afterCommit(() -> {
                 try {
-                    Utils.sendSms(tel.trim(), text, settingService);
+                    Utils.sendSms(tel.trim(), text, settingService, SmsType.EXTERNE, claim.getId(), null);
                 } catch (Exception e) {
                     log.warn("SLA : SMS d'attente non envoyé : {}", e.toString());
                 }

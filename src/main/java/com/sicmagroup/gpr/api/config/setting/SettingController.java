@@ -20,6 +20,7 @@ import com.sicmagroup.gpr.service.auth.AuthenticationService;
 import com.sicmagroup.gpr.service.claimEvent.ClaimEventServiceImpl;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
+import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
 import com.sicmagroup.gpr.domain.enumeration.SmsStatus;
 import com.sicmagroup.gpr.domain.enumeration.SmsType;
 import com.sicmagroup.gpr.domain.model.SmsLog;
@@ -453,6 +454,7 @@ public class SettingController {
             // l'écran d'une suggestion envoie l'identifiant de la suggestion dans claimId, avec le type SUGGESTION
             boolean suggestion = request.getClaimType() == ClaimType.SUGGESTION;
             smsLogService.save(SmsLog.builder()
+                    .channel(MessageChannel.SMS)
                     .type(SmsType.EXTERNE)
                     .claimId(suggestion ? null : request.getClaimId())
                     .suggestId(suggestion && request.getSuggestId() == null ? request.getClaimId() : request.getSuggestId())

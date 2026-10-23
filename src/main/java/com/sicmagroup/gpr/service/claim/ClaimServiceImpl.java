@@ -39,6 +39,7 @@ import com.sicmagroup.gpr.domain.enumeration.LogTarget;
 import com.sicmagroup.gpr.domain.enumeration.LogType;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.enumeration.SatisfactionStatus;
+import com.sicmagroup.gpr.domain.enumeration.SmsType;
 import com.sicmagroup.gpr.domain.enumeration.SolutionStatus;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.ClaimAudio;
@@ -2279,7 +2280,8 @@ public class ClaimServiceImpl implements ClaimService {
         try {
 
             Utils.sendSms(claim.getTel(),
-                    "Cher(e) client, Votre réclamation a été prise en compte. Nous vous recontacterons dès que possible avec une solution.", settingServiceImpl);
+                    "Cher(e) client, Votre réclamation a été prise en compte. Nous vous recontacterons dès que possible avec une solution.", settingServiceImpl,
+                    SmsType.EXTERNE, claim.getId(), null);
 
         } catch (Exception ex) {
             // TODO Auto-generated catch block

@@ -1,4 +1,4 @@
-package com.sicmagroup.gpr.api.sms;
+package com.sicmagroup.gpr.api.config.smsLog;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.domain.dto.SmsLogDto;
+import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
 import com.sicmagroup.gpr.domain.enumeration.SmsStatus;
 import com.sicmagroup.gpr.domain.enumeration.SmsType;
 import com.sicmagroup.gpr.service.smsLog.SmsLogService;
@@ -21,11 +22,11 @@ import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Archive des SMS envoyés aux clients. Réservée à l'administration (droit H12) et en lecture seule : l'archive
+ * Journal des envois (SMS, e-mails, WhatsApp). Réservée à l'administration (droit H12) et en lecture seule : l'archive
  * n'est alimentée que par l'envoi des SMS, jamais à la main.
  */
 @RestController
-@RequestMapping("/api/v1/sms-log")
+@RequestMapping("/api/v1/config/sms-log")
 @RolesAllowed("H12")
 @RequiredArgsConstructor
 public class SmsLogController {
@@ -34,6 +35,7 @@ public class SmsLogController {
 
     @GetMapping
     public ResponseEntity<ApiResponseDto> getAll(
+            @RequestParam(required = false) MessageChannel channel,
             @RequestParam(required = false) SmsType type,
             @RequestParam(required = false) SmsStatus status,
             @RequestParam(required = false) Long claimId,
@@ -42,6 +44,9 @@ public class SmsLogController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         List<SmsLogDto> logs = smsLogService.getAll();
+        if (channel != null) {
+            logs = logs.stream().filter(l -> l.getChannel() == channel).toList();
+        }
         if (type != null) {
             logs = logs.stream().filter(l -> l.getType() == type).toList();
         }

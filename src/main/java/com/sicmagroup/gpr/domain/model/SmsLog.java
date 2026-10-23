@@ -3,6 +3,7 @@ package com.sicmagroup.gpr.domain.model;
 import java.time.LocalDateTime;
 
 import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
+import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
 import com.sicmagroup.gpr.domain.enumeration.SmsStatus;
 import com.sicmagroup.gpr.domain.enumeration.SmsType;
 
@@ -38,6 +39,11 @@ public class SmsLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    // Canal d'envoi : SMS, MAIL ou WHATSAPP. Vide pour les anciennes lignes (tous des SMS).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "channel")
+    private MessageChannel channel;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
