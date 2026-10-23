@@ -54,6 +54,10 @@ public class SecurityConfig {
                                                                 "/api/v1/auth/infoLicense", "/api/v1/auth/check/token",
                                                                 "/api/v1/config/user/publicRegister", "/error")
                                                 .permitAll()
+                                                // Listes Poste / Point de service en lecture seule, sans "habilitations" : utilisées par le
+                                                // formulaire d'inscription publique pour un visiteur qui n'a jamais eu de session.
+                                                .requestMatchers("/api/v1/public/**")
+                                                .permitAll()
                                                 // Websocket (le navigateur ne peut pas envoyer le header Authorization au handshake)
                                                 .requestMatchers("/ws/**")
                                                 .permitAll()

@@ -175,4 +175,26 @@ class ArchiveSmsEtPlanificationApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
     }
+
+    // --- Inscription publique : listes de postes et de points de service -----------------------------------------
+
+    @Test
+    void lesListesDInscriptionPubliqueSontAccessiblesSansConnexionEtSansHabilitations() throws Exception {
+        String postes = mockMvc.perform(get("/api/v1/public/poste/list"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String points = mockMvc.perform(get("/api/v1/public/service_point/list"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // jamais d'habilitations dans une réponse publique
+        assertThat(postes).doesNotContain("habilitations");
+        assertThat(points).doesNotContain("habilitations");
+    }
+
+    @Test
+    void lesListesDeConfigurationRestentReserveesAuxAdministrateurs() throws Exception {
+        mockMvc.perform(get("/api/v1/config/poste/list"))
+                .andExpect(result -> assertThat(result.getResponse().getStatus()).isIn(401, 403));
+    }
 }
