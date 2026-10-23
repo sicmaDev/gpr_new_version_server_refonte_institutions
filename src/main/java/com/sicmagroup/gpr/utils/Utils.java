@@ -242,17 +242,7 @@ public class Utils {
             if (mail != null) {
                 MailRequest mailRequest = objectMapper.readValue(mail.getValue(), MailRequest.class);
                 // System.out.println("try b");
-                mailSenderr.setHost(mailRequest.getHost());
-                mailSenderr.setPort(Integer.parseInt(mailRequest.getPort()));
-                mailSenderr.setUsername(mailRequest.getUser());
-                mailSenderr.setPassword(mailRequest.getPwd());
-
-                Properties props = mailSenderr.getJavaMailProperties();
-                props.put("mail.transport.protocol", "smtp");
-                props.put("mail.smtp.auth", "true");
-                props.put("mail.smtp.ssl.enable", "true");
-                props.put("mail.smtp.starttls.enable", "true");
-                props.put("mail.debug", "true");
+                MailTransport.apply(mailSenderr, mailRequest);
 
                 if (cc != "" && cc != null) {
                     String[] listCc = cc.split(",");

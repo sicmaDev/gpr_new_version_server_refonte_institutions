@@ -13,6 +13,7 @@ import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.utils.Constante;
+import com.sicmagroup.gpr.utils.MailTransport;
 
 import jakarta.mail.internet.MimeMessage;
 import java.util.concurrent.CompletableFuture;
@@ -42,29 +43,7 @@ public class MailService {
 
                 // Configure dynamiquement JavaMailSender si nécessaire
                 if (mailSender instanceof JavaMailSenderImpl) {
-                    JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
-                    impl.setHost(mailRequest.getHost());
-                    impl.setPort(Integer.parseInt(mailRequest.getPort()));
-                    impl.setUsername(mailRequest.getUser());
-                    impl.setPassword(mailRequest.getPwd());
-
-                    int port = Integer.parseInt(mailRequest.getPort());
-                    boolean useSSL = (port == 465);
-
-                    Properties props = impl.getJavaMailProperties();
-                    props.put("mail.transport.protocol", "smtp");
-                    props.put("mail.smtp.auth", "true");
-                    props.put("mail.smtp.ssl.enable", String.valueOf(useSSL));
-                    props.put("mail.smtp.starttls.enable", String.valueOf(!useSSL));
-                    props.put("mail.smtp.starttls.required", String.valueOf(!useSSL));
-                    props.put("mail.smtp.ssl.trust", mailRequest.getHost());
-                    // Timeouts pour éviter les connexions mortes après longue inactivité
-                    props.put("mail.smtp.connectiontimeout", "10000");
-                    props.put("mail.smtp.timeout", "10000");
-                    props.put("mail.smtp.writetimeout", "10000");
-                    // Désactiver le cache SSL pour éviter les sessions expirées
-                    props.put("mail.smtp.ssl.sessioncachetime", "0");
-                    props.put("mail.debug", "false");
+                    MailTransport.apply((JavaMailSenderImpl) mailSender, mailRequest);
                 }
 
                 // Création du mail HTML
@@ -102,27 +81,7 @@ public class MailService {
         MailRequest mailRequest = objectMapper.readValue(mailSetting.getValue(), MailRequest.class);
 
         if (mailSender instanceof JavaMailSenderImpl) {
-            JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
-            impl.setHost(mailRequest.getHost());
-            int port = (mailRequest.getPort() != null && !mailRequest.getPort().isEmpty())
-                    ? Integer.parseInt(mailRequest.getPort()) : 587;
-            impl.setPort(port);
-            impl.setUsername(mailRequest.getUser());
-            impl.setPassword(mailRequest.getPwd());
-
-            boolean useSSL = (port == 465);
-            Properties props = impl.getJavaMailProperties();
-            props.put("mail.transport.protocol", "smtp");
-            props.put("mail.smtp.auth", "true");
-            props.put("mail.smtp.ssl.enable", String.valueOf(useSSL));
-            props.put("mail.smtp.starttls.enable", String.valueOf(!useSSL));
-            props.put("mail.smtp.starttls.required", String.valueOf(!useSSL));
-            props.put("mail.smtp.ssl.trust", mailRequest.getHost());
-            props.put("mail.smtp.connectiontimeout", "10000");
-            props.put("mail.smtp.timeout", "10000");
-            props.put("mail.smtp.writetimeout", "10000");
-            props.put("mail.smtp.ssl.sessioncachetime", "0");
-            props.put("mail.debug", "false");
+            MailTransport.apply((JavaMailSenderImpl) mailSender, mailRequest);
         }
 
         MimeMessage mimeMessage = mailSender.createMimeMessage();
@@ -146,31 +105,7 @@ public class MailService {
 
                 // Configure dynamiquement JavaMailSender si nécessaire
                 if (mailSender instanceof JavaMailSenderImpl) {
-                    JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
-                    impl.setHost(mailRequest.getHost());
-                    if (mailRequest.getPort() != null && !mailRequest.getPort().isEmpty()) {
-                        impl.setPort(Integer.parseInt(mailRequest.getPort()));
-                    }
-                    impl.setUsername(mailRequest.getUser());
-                    impl.setPassword(mailRequest.getPwd());
-
-                    int port2 = (mailRequest.getPort() != null && !mailRequest.getPort().isEmpty())
-                            ? Integer.parseInt(mailRequest.getPort()) : 587;
-                    boolean useSSL2 = (port2 == 465);
-
-                    Properties props = impl.getJavaMailProperties();
-                    props.put("mail.transport.protocol", "smtp");
-                    props.put("mail.smtp.auth", "true");
-                    props.put("mail.smtp.ssl.enable", String.valueOf(useSSL2));
-                    props.put("mail.smtp.starttls.enable", String.valueOf(!useSSL2));
-                    props.put("mail.smtp.starttls.required", String.valueOf(!useSSL2));
-                    props.put("mail.smtp.ssl.trust", mailRequest.getHost());
-                    props.put("mail.smtp.connectiontimeout", "10000");
-                    props.put("mail.smtp.timeout", "10000");
-                    props.put("mail.smtp.writetimeout", "10000");
-                    props.put("mail.smtp.ssl.sessioncachetime", "0");
-                    props.put("mail.debug", "false");
-                    impl.setJavaMailProperties(props);
+                    MailTransport.apply((JavaMailSenderImpl) mailSender, mailRequest);
                 }
 
                 // Récupérer les emails des utilisateurs
