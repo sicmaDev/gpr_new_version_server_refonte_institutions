@@ -48,6 +48,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         CriteriaQuery<Suggestion> query = cb.createQuery(Suggestion.class);
         Root<Suggestion> suggestion = query.from(Suggestion.class);
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
         if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
 
@@ -132,6 +133,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         Join<Suggestion, ServicePoint> joinServiceSuggest = suggestion.join("serviceIndexe");
 
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
         predicates.add(cb.equal(servicePoint.get("id"), joinServiceSuggest.get("id")));
 
@@ -213,6 +215,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
                 suggestion.get("accepted"),
                 cb.count(suggestion.get("code")).alias("total"));
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
         if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
 
@@ -286,6 +289,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         Root<Suggestion> suggestion = query.from(Suggestion.class);
         Root<CollectionChannel> collectionChannel = query.from(CollectionChannel.class);
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
         query.multiselect(
                 collectionChannel.get("id").alias("id"),
                 collectionChannel.get("libelle").alias("libelle"),
@@ -369,6 +373,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         Root<CollectionChannel> collectionChannel = query.from(CollectionChannel.class);
         Root<ServicePoint> servicePoint = query.from(ServicePoint.class);
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
         query.multiselect(
                 collectionChannel.get("id").alias("canalId"),
@@ -459,6 +464,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         CriteriaQuery<ClaimPerGenderPro> query = cb.createQuery(ClaimPerGenderPro.class);
         Root<Suggestion> suggestion = query.from(Suggestion.class);
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
         query.multiselect(
                 cb.count(suggestion.get("code")).alias("total"),
                 cb.selectCase(suggestion.get("gender"))
@@ -537,6 +543,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         Root<Suggestion> suggestion = query.from(Suggestion.class);
         Root<ServicePoint> servicePoint = query.from(ServicePoint.class);
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
         Join<Suggestion, ServicePoint> joinSuggestSp = suggestion.join("serviceIndexe", JoinType.LEFT);
         predicates.add(cb.equal(servicePoint.get("id"), joinSuggestSp.get("id")));
@@ -638,6 +645,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         CriteriaQuery<Suggestion> query = cb.createQuery(Suggestion.class);
         Root<Suggestion> suggestion = query.from(Suggestion.class);
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
         if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
 
@@ -707,6 +715,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         Root<Suggestion> suggestion = query.from(Suggestion.class);
         Root<ServicePoint> servicePoint = query.from(ServicePoint.class);
         List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
         Join<Suggestion, ServicePoint> joinServiceSuggest = suggestion.join("serviceIndexe");
         predicates.add(cb.equal(servicePoint.get("id"), joinServiceSuggest.get("id")));

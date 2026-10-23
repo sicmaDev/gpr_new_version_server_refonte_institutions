@@ -3431,143 +3431,58 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public PieChartDto repartitionClaimBySatisfaction(@Nullable FilterRequest request) {
+        // Trois catégories, toujours dans cet ordre : satisfait, non satisfait, partiellement satisfait.
+        // Les réclamations classées ou en contentieux comptent comme "non satisfait", avec ou sans
+        // filtre : sinon le graphique reçoit plus de valeurs que de libellés et de couleurs.
+        long[] counts = new long[3]; // [0] satisfait, [1] non satisfait, [2] partiellement satisfait
+
+        if (request != null) {
+            for (ObjectTotalPerStatusPro projection : claimRepository.countClaimByCriteriaAndSatisfaction(request)) {
+                addSatisfactionCount(counts, projection.getStatus().name(), projection.getTotal());
+            }
+        } else {
+            for (ClaimPerStatusSatisfactionProjection projection : claimRepository.countClaimPerSatisfaction()) {
+                addSatisfactionCount(counts, projection.getStatus(), projection.getTotal());
+            }
+        }
+
+        long total = counts[0] + counts[1] + counts[2];
+
         PieChartDto pieChartDto = PieChartDto
                 .builder()
-                .backgroundColors(new ArrayList<>())
+                .backgroundColors(new ArrayList<>(Arrays.asList(SATISFIED_BG_COLOR, UNSATISFIED_BG_COLOR,
+                        PARTIAL_SATISFIED_BG_COLOR)))
                 .hoverColors(new ArrayList<>())
-                .labels(new ArrayList<>())
+                .labels(new ArrayList<>(Arrays.asList("SATISFAIT", "NON SATISFAIT", "PARTIELLEMENT SATISFAIT")))
                 .datas(new ArrayList<>())
                 .ids(new ArrayList<>())
                 .build();
-        long total = 0;
-        boolean isFind = false;
-        // List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-        //         ClaimStatus.PARTIAL_SATISFIED);
-        // si il faut prendre en compte classée et litigate il faut les grouper comme nonstatisfait ou les afficher dans le pie chart
-        List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-                ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
-        
-        if (request != null) {
-            List<ObjectTotalPerStatusPro> allResult = claimRepository.countClaimByCriteriaAndSatisfaction(request);
 
-            for (ObjectTotalPerStatusPro projection : allResult) {
-                total += projection.getTotal();
-            }
-
-            for (ClaimStatus status : allSatisfaction) {
-
-                for (ObjectTotalPerStatusPro projection : allResult) {
-                    if (projection.getStatus().equals(status)) {
-                        switch (status) {
-                            case SATISFIED:
-                                pieChartDto.getLabels().add("SATISFAIT");
-                                pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
-                                break;
-                            case PARTIAL_SATISFIED:
-                                pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
-                                pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
-                                break;
-                            case UNSATISFIED:
-                                pieChartDto.getLabels().add("NON SATISFAIT");
-                                pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
-                                break;
-                           
-                            default:
-                                break;
-                        }
-                        pieChartDto.getDatas()
-                                .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                        isFind = true;
-                    }
-
-                }
-                if (!isFind) {
-                    switch (status) {
-                        case SATISFIED:
-                            pieChartDto.getLabels().add("SATISFAIT");
-                            pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
-                            break;
-                        case PARTIAL_SATISFIED:
-                            pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
-                            pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
-                            break;
-                        case UNSATISFIED:
-                            pieChartDto.getLabels().add("NON SATISFAIT");
-                            pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
-                            break;
-                        
-                        default:
-                            break;
-                    }
-                    pieChartDto.getDatas().add((double) 0);
-                } else {
-                    isFind = false;
-                }
-
-            }
-        } else {
-            System.out.println("lol ");
-            List<ClaimPerStatusSatisfactionProjection> allResult = claimRepository.countClaimPerSatisfaction();
-
-            total = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
-
-            for (ClaimStatus status : allSatisfaction) {
-
-                for (ClaimPerStatusSatisfactionProjection projection : allResult) {
-                    if (projection.getStatus().equals(status.name())) {
-                        switch (status) {
-                            case SATISFIED:
-                                pieChartDto.getLabels().add("SATISFAIT");
-                                pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
-                                break;
-                            case PARTIAL_SATISFIED:
-                                pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
-                                pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
-                                break;
-                            case UNSATISFIED:
-                                pieChartDto.getLabels().add("NON SATISFAIT");
-                                pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
-                                break;
-                            
-                            default:
-                                break;
-                        }
-                        pieChartDto.getDatas()
-                                .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                        isFind = true;
-                    }
-                }
-
-                if (!isFind) {
-                    switch (status) {
-                        case SATISFIED:
-                            pieChartDto.getLabels().add("SATISFAIT");
-                            pieChartDto.getBackgroundColors().add(SATISFIED_BG_COLOR);
-                            break;
-                        case PARTIAL_SATISFIED:
-                            pieChartDto.getLabels().add("PARTIELLEMENT SATISFAIT");
-                            pieChartDto.getBackgroundColors().add(PARTIAL_SATISFIED_BG_COLOR);
-                            break;
-                        case UNSATISFIED:
-                            pieChartDto.getLabels().add("NON SATISFAIT");
-                            pieChartDto.getBackgroundColors().add(UNSATISFIED_BG_COLOR);
-                            break;
-                       
-                        default:
-                            break;
-                    }
-                    pieChartDto.getDatas().add((double) 0);
-                }
-                isFind = false;
-
-            }
-
+        for (long count : counts) {
+            pieChartDto.getDatas().add(Utils.parseDouble(Utils.percentCalculator(count, total)));
         }
-        
-        return pieChartDto;
 
+        return pieChartDto;
     }
 
+    private void addSatisfactionCount(long[] counts, String status, Long total) {
+        long value = total == null ? 0 : total;
+        switch (status) {
+            case "SATISFIED":
+                counts[0] += value;
+                break;
+            case "UNSATISFIED":
+            case "CLASSED":
+            case "LITIGATION":
+                counts[1] += value;
+                break;
+            case "PARTIAL_SATISFIED":
+                counts[2] += value;
+                break;
+            default:
+                break;
+        }
+    }
     @Override
     public StackedBar numberClaimTreatInDelaiOrNot(@Nullable FilterRequest request) {
         List<Claim> allClaims;
@@ -4730,8 +4645,8 @@ public class ReportServiceImpl implements ReportService {
             }
 
         } else {
-            List<Suggestion> allResult = suggestionRepository.findByStatusIn(Arrays.asList(ClaimStatus.TREAT));
-            List<Suggestion> suggestNotTempSaved = suggestionRepository.findByStatusNot(ClaimStatus.TEMP_SAVED);
+            List<Suggestion> allResult = suggestionRepository.findByStatusInAndIsDeletedFalse(Arrays.asList(ClaimStatus.TREAT));
+            List<Suggestion> suggestNotTempSaved = suggestionRepository.findByStatusNotAndIsDeletedFalse(ClaimStatus.TEMP_SAVED);
 
             if (suggestNotTempSaved.size() != 0) {
                 return Utils.parseDouble((double) allResult.size() / suggestNotTempSaved.size());
@@ -4787,8 +4702,8 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION));
             totalClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
-            List<Suggestion> allTreatResult = suggestionRepository.findByStatusIn(Arrays.asList(ClaimStatus.TREAT));
-            List<Suggestion> suggestNotTempSaved = suggestionRepository.findByStatusNot(ClaimStatus.TEMP_SAVED);
+            List<Suggestion> allTreatResult = suggestionRepository.findByStatusInAndIsDeletedFalse(Arrays.asList(ClaimStatus.TREAT));
+            List<Suggestion> suggestNotTempSaved = suggestionRepository.findByStatusNotAndIsDeletedFalse(ClaimStatus.TEMP_SAVED);
 
             totalObj = totalDenuns + totalClaims + suggestNotTempSaved.size();
             totalTreatObj = totalTreatDenun + totalTreatClaims + allTreatResult.size();

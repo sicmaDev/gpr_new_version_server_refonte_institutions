@@ -35,7 +35,7 @@ public class StatsSuggest {
         if (request != null) {
             total = suggestionRepository.countSuggestByCriterias(request);
         } else {
-            total = suggestionRepository.countByStatusNot(ClaimStatus.TEMP_SAVED);
+            total = suggestionRepository.countByStatusNotAndIsDeletedFalse(ClaimStatus.TEMP_SAVED);
         }
         HashMap<String, Double> resultat = new HashMap<>();
         resultat.put("Nombre de suggestions Enregistrées", total.doubleValue());
