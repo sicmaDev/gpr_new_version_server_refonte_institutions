@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Objects;
@@ -181,24 +182,25 @@ public class DenunciationController {
         if (connectedUser.isRa()) {
             // Récupérer le point de service de l'utilisateur
             ServicePoint servicePoint = connectedUser.getServicePoint();
-            
+            Long raId = connectedUser.getId();
+
             // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
             List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
-            
-            if (!relatedServicePoints.isEmpty()) {
-                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
-                relatedServicePoints.add(servicePoint);
-        
-                // Filtrer les Dénonciations pour tous ces points de service
-                allClaims = allClaims.stream()
-                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint()))
-                    .collect(Collectors.toList());
-            } else {
-                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
-                allClaims = allClaims.stream()
-                    .filter(claim -> claim.getServicePoint().equals(servicePoint))
-                    .collect(Collectors.toList());
-            }
+            relatedServicePoints.add(servicePoint);
+
+            // Comparaison par ID plutôt que par égalité d'entité JPA : ServicePoint
+            // est annotée @Data (Lombok), qui génère un equals()/hashCode() sur TOUS
+            // les champs, y compris les collections @OneToMany chargées paresseusement
+            // — deux instances de la même agence chargées via des requêtes différentes
+            // peuvent donc ne jamais être "égales", faisant échouer contains()/equals().
+            Set<Long> scopedServicePointIds = relatedServicePoints.stream()
+                    .map(ServicePoint::getId)
+                    .collect(Collectors.toSet());
+            allClaims = allClaims.stream()
+                .filter(claim -> (claim.getServicePoint() != null
+                        && scopedServicePointIds.contains(claim.getServicePoint().getId()))
+                        || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
+                .collect(Collectors.toList());
         }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 && !connectedUser.getAdditionalrole().equals(Role.DE)) {
             for (Claim claim : allClaims) {
@@ -283,25 +285,19 @@ public class DenunciationController {
 
             // Récupérer tous les points de service dont le direction_id est égal à l'ID du point de service de l'utilisateur
             List<ServicePoint> relatedServicePoints = spServiceImpl.getByDirectionId(servicePoint.getId());
+            relatedServicePoints.add(servicePoint);
 
-            if (!relatedServicePoints.isEmpty()) {
-                // Ajouter le point de service de l'utilisateur à la liste des points de service liés
-                relatedServicePoints.add(servicePoint);
-
-                // Filtrer les Dénonciations pour tous ces points de service
-                allClaims = allClaims.stream()
-                    .filter(claim -> relatedServicePoints.contains(claim.getServicePoint())
-                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
-                    || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
-                    .collect(Collectors.toList());
-            } else {
-                // Si aucun point de service lié n'est trouvé, filtrer uniquement par le point de service de l'utilisateur
-                allClaims = allClaims.stream()
-                    .filter(claim -> claim.getServicePoint().equals(servicePoint)
-                    || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
-                    || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
-                    .collect(Collectors.toList());
-            }
+            // Comparaison par ID plutôt que par égalité d'entité JPA (voir plus haut
+            // dans ce fichier pour l'explication du piège @Data + collections lazy).
+            Set<Long> scopedServicePointIds = relatedServicePoints.stream()
+                    .map(ServicePoint::getId)
+                    .collect(Collectors.toSet());
+            allClaims = allClaims.stream()
+                .filter(claim -> (claim.getServicePoint() != null
+                        && scopedServicePointIds.contains(claim.getServicePoint().getId()))
+                || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId))
+                || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
+                .collect(Collectors.toList());
             // plaintes pour lesquelles le RA est invité dans une session de chat
             allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, new ArrayList<>(allClaims));
         }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
