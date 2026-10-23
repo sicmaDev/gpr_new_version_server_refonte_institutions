@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.sicmagroup.gpr.domain.enumeration.ReportRecipientType;
+import com.sicmagroup.gpr.domain.model.Setting;
+import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
 import com.sicmagroup.gpr.domain.model.ScheduledReportConfig;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.UserRepository;
@@ -78,5 +80,21 @@ class AlertRetardCronTest {
 
         org.assertj.core.api.Assertions.assertThat(scheduled).isNotNull();
         org.assertj.core.api.Assertions.assertThat(scheduled.cron()).isEqualTo("0 0 10 * * *");
+    }
+
+    @Test
+    void lesMailsDeRelanceportentLeNomDeLInstitutionOuGprParDefaut() throws Exception {
+        SettingServiceImpl settings = mock(SettingServiceImpl.class);
+        ReflectionTestUtils.setField(cron, "settingService", settings);
+
+        Setting setting = new Setting();
+        setting.setValue("{\"denomination\":\"Banque & Co\"}");
+        when(settings.getbySlug(any())).thenReturn(setting);
+        org.assertj.core.api.Assertions.assertThat((String) ReflectionTestUtils.invokeMethod(cron, "platformName"))
+                .isEqualTo("Banque &amp; Co");
+
+        when(settings.getbySlug(any())).thenThrow(new IllegalStateException("absent"));
+        org.assertj.core.api.Assertions.assertThat((String) ReflectionTestUtils.invokeMethod(cron, "platformName"))
+                .isEqualTo("GPR");
     }
 }

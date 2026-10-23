@@ -37,6 +37,8 @@ import com.sicmagroup.gpr.repository.UserRepository;
 import com.sicmagroup.gpr.service.MailService;
 import com.sicmagroup.gpr.service.scheduledReport.ScheduledReportConfigService;
 import com.sicmagroup.gpr.service.setting.SettingServiceImpl;
+import com.sicmagroup.gpr.api.config.setting.InstitutionRequest;
+import com.sicmagroup.gpr.domain.model.Setting;
 import com.sicmagroup.gpr.sla.service.SlaConfig;
 import com.sicmagroup.gpr.utils.Utils;
 import com.sicmagroup.gpr.domain.enumeration.ReportRecipientType;
@@ -289,8 +291,8 @@ public class AlertRetardCron {
                     <body style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px;">
                     <div style="max-width:900px; margin:auto; background:#ffffff; border-radius:8px;
                                 box-shadow:0 2px 8px rgba(0,0,0,0.1); padding:25px;">
-                    <h2 style="color:#004080; text-align:center;">Rapport de suivi des plaintes - GPR</h2>
-                """);
+                    <h2 style="color:#004080; text-align:center;">Rapport de suivi des plaintes - {{PLATEFORME}}</h2>
+                """.replace("{{PLATEFORME}}", platformName()));
 
         body.append("<p>Bonjour <strong>")
                 // .append(claims.get(0).getCollector().getFirstandlastname())
@@ -352,7 +354,7 @@ public class AlertRetardCron {
         body.append("</p>");
 
         body.append("<p style='margin-top:20px;'>Cordialement,<br>");
-        body.append("<strong>GPR</strong></p>");
+        body.append("<strong>" + platformName() + "</strong></p>");
 
         body.append("<p style='font-size:12px; color:gray; text-align:center; margin-top:30px;'>");
         body.append(" Cet email a été généré automatiquement. Merci de ne pas y répondre.<br>");
@@ -399,10 +401,10 @@ public class AlertRetardCron {
                     <body style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px;">
                     <div style="max-width:900px; margin:auto; background:#ffffff; border-radius:8px;
                                 box-shadow:0 2px 8px rgba(0,0,0,0.1); padding:25px;">
-                    <h2 style="color:#004080; text-align:center;">Rapport de suivi des plaintes - GPR</h2>
+                    <h2 style="color:#004080; text-align:center;">Rapport de suivi des plaintes - {{PLATEFORME}}</h2>
                     <p>Bonjour,</p>
                     <p>Veuillez trouver ci-dessous le résumé des plaintes.</p>
-                """);
+                """.replace("{{PLATEFORME}}", platformName()));
 
         /*
          * ============================================================
@@ -569,16 +571,32 @@ public class AlertRetardCron {
         // Footer
         body.append("""
                     <p style="margin-top:30px;">Merci de traiter ces plaintes dans les plus brefs délais.</p>
-                    <p>Cordialement,<br><strong>GPR</strong></p>
+                    <p>Cordialement,<br><strong>{{PLATEFORME}}</strong></p>
                     <p style="font-size:12px; color:gray; text-align:center; margin-top:20px;">
                         Cet email a été généré automatiquement. Merci de ne pas y répondre.
                     </p>
                     </div>
                     </body>
                     </html>
-                """);
+                """.replace("{{PLATEFORME}}", platformName()));
 
         return body.toString();
+    }
+
+    // Nom affiché dans les mails : le nom de l'institution (paramètre app-institution), sans préfixe ;
+    // "GPR" seulement si l'institution n'est pas renseignée (pour ne pas laisser un titre vide).
+    private String platformName() {
+        try {
+            Setting setting = settingService.getbySlug(Constante.INSTITUTION_SLUG);
+            InstitutionRequest institution = new ObjectMapper().readValue(setting.getValue(), InstitutionRequest.class);
+            String name = institution.getDenomination();
+            if (name != null && !name.isBlank()) {
+                return name.trim().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+            }
+        } catch (Exception e) {
+            // paramètre absent ou illisible : on retombe sur le nom générique
+        }
+        return "GPR";
     }
 
     /** Code lisible par les agents (REC-xxxx, DEN-xxxx) ; le code interne seulement à défaut. */
