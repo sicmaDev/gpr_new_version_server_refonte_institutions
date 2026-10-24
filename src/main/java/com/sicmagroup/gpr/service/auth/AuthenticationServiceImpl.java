@@ -45,6 +45,8 @@ import com.sicmagroup.gpr.api.config.setting.MailRequest;
 import com.sicmagroup.gpr.api.config.setting.SmsRequest;
 import com.sicmagroup.gpr.api.config.user.AddEmailReceiver;
 import com.sicmagroup.gpr.api.config.user.ForgetPasswordRequest;
+import com.sicmagroup.gpr.utils.PasswordGenerator;
+import com.sicmagroup.gpr.utils.AccountMails;
 import com.sicmagroup.gpr.api.config.user.RegisterRequest;
 import com.sicmagroup.gpr.domain.dto.AlertDto;
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
@@ -150,6 +152,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new AuthenticationException("Un utilisateur avec cet email existe déjà");
         }
+        // Le mot de passe est toujours généré par le système et envoyé par mail à la personne.
+        final String generatedPassword = PasswordGenerator.generate();
         int totalUser = 0;
         String license = "";
         try {
@@ -193,7 +197,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 User user = User.builder()
                         .firstandlastname(request.getFirstAndLastName())
                         .email(request.getEmail())
-                        .password(passwordEncoder.encode(request.getPassword()))
+                        .password(passwordEncoder.encode(generatedPassword))
+                        .temporaryPassword(generatedPassword)
                         .additionalrole(Role.valueOf(request.getAdditionalRole()))
                         .tel(request.getTel())
                         .poste(poste)
@@ -256,40 +261,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     try {
                         //envoi de mail au user
                        
-                        String message = """
-                        <html>
-                        <body style="font-family: Arial, sans-serif; background-color: #f7f9fc; padding: 20px;">
-                            <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 25px;">
-                            
-                            <h2 style="color: #004aad; text-align: center;">Création de votre compte GPR</h2>
-
-                            <p>Bonjour <strong>%s</strong>,</p>
-
-                            <p>Votre compte a été créé avec succès sur la plateforme <strong>GPR</strong> (Gestion des Plaintes et Réclamations).</p>
-
-                            <p style="margin-bottom: 10px;"><strong>Vos identifiants de connexion :</strong></p>
-                            <div style="background-color: #f0f4ff; border-left: 4px solid #004aad; padding: 10px 15px; border-radius: 4px;">
-                                <p style="margin: 0;"><strong>Email :</strong> %s</p>
-                                <p style="margin: 0;"><strong>Mot de passe :</strong> %s</p>
-                            </div>
-
-                            <p style="margin-top: 20px;">
-                                Nous vous recommandons de modifier votre mot de passe dès votre première connexion afin de garantir la sécurité de votre compte.
-                            </p>
-
-                            <p style="margin-top: 30px;">Cordialement,<br>
-                            <strong>L’équipe GPR</strong></p>
-
-                            <p style="font-size: 12px; color: gray; text-align: center; margin-top: 30px;">
-                                Cet email a été généré automatiquement. Merci de ne pas y répondre.
-                            </p>
-                            </div>
-                        </body>zz
-                        </html>
-                        """.formatted(userForMail.getFirstandlastname(), userForMail.getEmail(), request.getPassword());
-
-                        
-                        mailService.sendMail(userForMail.getEmail(), "Création de compte", message, null);
+                        String platform = platformName();
+                        String message = AccountMails.creation(platform, userForMail.getFirstandlastname(),
+                                userForMail.getEmail(), generatedPassword);
+                        mailService.sendMail(userForMail.getEmail(), AccountMails.subjectCreation(platform), message, null);
 
                                                 
                         Log successLog = Log.builder()
@@ -1111,7 +1086,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         try {
 
             User user = userRepository.findByEmailAndIsDeleted(request.getEmail(),false).orElseThrow();
-            char[] password = generatePassword(8);
+            char[] password = PasswordGenerator.generate().toCharArray();
 
             List<User> userMailTo = new ArrayList<>();
             userMailTo.add(user);
@@ -1183,6 +1158,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             // });
             
             user.setPassword(passwordEncoder.encode(new String(password)));
+            // demande faite par la personne elle-même : aucun administrateur ne doit pouvoir relire ce mot de passe
+            user.setTemporaryPassword(null);
             userRepository.save(user);
 
             return ResponseEntity.ok(ApiResponseDto
@@ -1344,23 +1321,60 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return result;
     }
     
-    private static char[] generatePassword(int length) {
-        String capitalCaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        String lowerCaseLetters = "abcdefghijklmnopqrstuvwxyz";
-        String specialCharacters = "!@#$";
-        String numbers = "1234567890";
-        String combinedChars = capitalCaseLetters + lowerCaseLetters + specialCharacters + numbers;
-        Random random = new Random();
-        char[] password = new char[length];
-
-        password[0] = lowerCaseLetters.charAt(random.nextInt(lowerCaseLetters.length()));
-        password[1] = capitalCaseLetters.charAt(random.nextInt(capitalCaseLetters.length()));
-        password[2] = specialCharacters.charAt(random.nextInt(specialCharacters.length()));
-        password[3] = numbers.charAt(random.nextInt(numbers.length()));
-
-        for (int i = 4; i < length; i++) {
-            password[i] = combinedChars.charAt(random.nextInt(combinedChars.length()));
+    /** Nom de l'institution pour les mails de compte ; « GPR » si elle n'est pas renseignée. */
+    private String platformName() {
+        try {
+            Setting setting = settingServiceImpl.getbySlug(Constante.INSTITUTION_SLUG);
+            InstitutionRequest institution = new ObjectMapper().readValue(setting.getValue(), InstitutionRequest.class);
+            String name = institution.getDenomination();
+            if (name != null && !name.isBlank()) {
+                return name.trim();
+            }
+        } catch (Exception e) {
+            // paramètre absent ou illisible : nom générique
         }
+        return "GPR";
+    }
+
+    /** Mot de passe temporaire encore valable (jamais changé par la personne), ou null. */
+    public String getTemporaryPassword(Long id) throws NotFoundException {
+        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException());
+        return user.getTemporaryPassword();
+    }
+
+    /** Génère un nouveau mot de passe temporaire, l'enregistre, l'envoie par mail et le renvoie. */
+    public String resetPassword(Long id) throws NotFoundException {
+        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException());
+        String password = PasswordGenerator.generate();
+        user.setPassword(passwordEncoder.encode(password));
+        user.setTemporaryPassword(password);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        try {
+            String platform = platformName();
+            mailService.sendMail(user.getEmail(), AccountMails.subjectReset(platform),
+                    AccountMails.reset(platform, user.getFirstandlastname(), user.getEmail(), password), null);
+        } catch (Exception e) {
+            logServiceImpl.saveLog(Log.builder()
+                    .libelle("Echec mail réinitialisation mot de passe")
+                    .content(e.getMessage())
+                    .createdAt(LocalDateTime.now())
+                    .type(LogType.ERROR)
+                    .userId(0L)
+                    .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                    .target(LogTarget.APP)
+                    .build());
+        }
+        logServiceImpl.saveLog(Log.builder()
+                .libelle("Réinitialisation du mot de passe")
+                .content("Le mot de passe de " + user.getFirstandlastname() + " a été réinitialisé par un administrateur.")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(0L)
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.APP)
+                .build());
         return password;
     }
 
@@ -1571,8 +1585,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
         if (userDto.getPassword() != null && !userDto.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(userDto.getPassword()));
+            user.setTemporaryPassword(null);
         } else {
             user.setPassword(userOld.getPassword());
+            user.setTemporaryPassword(userOld.getTemporaryPassword());
         }
 
         user.setUpdatedAt(LocalDateTime.now());
@@ -2190,6 +2206,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new Exception("Ancien mot de passe invalide.");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setTemporaryPassword(null);
 
         user.setUpdatedAt(LocalDateTime.now());
 

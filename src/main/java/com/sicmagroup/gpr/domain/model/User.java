@@ -1,6 +1,7 @@
 package com.sicmagroup.gpr.domain.model;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -30,6 +31,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import com.sicmagroup.gpr.domain.enumeration.Habilitation;
 import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
@@ -55,6 +57,13 @@ public class User implements UserDetails {
 	@Column(unique = true)
 	private String email;
 	private String password;
+
+	// Mot de passe temporaire généré par le système, chiffré en base. Conservé seulement tant que la personne
+	// ne l'a pas remplacé par le sien ; jamais renvoyé par l'API des utilisateurs.
+	@JsonIgnore
+	@Convert(converter = EncryptedStringConverter.class)
+	@Column(name = "temporary_password", length = 1024)
+	private String temporaryPassword;
 	private String tel;
 	@Enumerated(EnumType.STRING)
 	private Role additionalrole;

@@ -239,6 +239,32 @@ public ResponseEntity<AuthenticationResponse> register(@RequestBody RegisterRequ
         }
     }
 
+    /** Mot de passe temporaire d'un compte (null s'il l'a déjà remplacé par le sien). */
+    @GetMapping("/{id}/temporary-password")
+    public ResponseEntity<ApiResponseDto> temporaryPassword(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(ApiResponseDto.builder().status(true)
+                    .content(java.util.Collections.singletonMap("password", authenticationServiceImpl.getTemporaryPassword(id)))
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponseDto.builder().status(false)
+                    .content(ErrorResponse.builder().title("NOT FOUND").message("Utilisateur introuvable").build()).build());
+        }
+    }
+
+    /** Génère un nouveau mot de passe, l'envoie par mail à la personne et le renvoie à l'administrateur. */
+    @PostMapping("/{id}/reset-password")
+    public ResponseEntity<ApiResponseDto> resetPassword(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(ApiResponseDto.builder().status(true)
+                    .content(java.util.Collections.singletonMap("password", authenticationServiceImpl.resetPassword(id)))
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponseDto.builder().status(false)
+                    .content(ErrorResponse.builder().title("NOT FOUND").message("Utilisateur introuvable").build()).build());
+        }
+    }
+
     @PutMapping("/{id}/update")
     public ResponseEntity<ApiResponseDto> updateServicePoint(@PathVariable(name = "id") Long id,
             @RequestBody RegisterRequest request) {
