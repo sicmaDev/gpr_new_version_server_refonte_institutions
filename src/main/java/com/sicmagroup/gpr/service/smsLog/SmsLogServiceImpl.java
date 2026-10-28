@@ -50,10 +50,10 @@ public class SmsLogServiceImpl implements SmsLogService {
 
         Map<Long, String> claimCodes = claimIds.isEmpty() ? Map.of()
                 : claimRepository.findAllById(claimIds).stream()
-                        .collect(Collectors.toMap(Claim::getId, c -> c.getCodeClient() != null ? c.getCodeClient() : c.getCode()));
+                        .collect(Collectors.toMap(Claim::getId, c -> displayCode(c.getCodeClient(), c.getCode())));
         Map<Long, String> suggestCodes = suggestIds.isEmpty() ? Map.of()
                 : suggestionRepository.findAllById(suggestIds).stream()
-                        .collect(Collectors.toMap(Suggestion::getId, s -> s.getCodeClient() != null ? s.getCodeClient() : s.getCode()));
+                        .collect(Collectors.toMap(Suggestion::getId, s -> displayCode(s.getCodeClient(), s.getCode())));
 
         return smsLogs.stream().map(l -> SmsLogDto.builder()
                 .id(l.getId())
@@ -71,5 +71,11 @@ public class SmsLogServiceImpl implements SmsLogService {
                 .updatedAt(l.getUpdatedAt())
                 .isDeleted(l.isDeleted())
                 .build()).toList();
+    }
+
+    /** Code client, sinon code technique, jamais null : Collectors.toMap refuse les valeurs nulles. */
+    private static String displayCode(String codeClient, String code) {
+        if (codeClient != null && !codeClient.isBlank()) return codeClient;
+        return code != null ? code : "";
     }
 }

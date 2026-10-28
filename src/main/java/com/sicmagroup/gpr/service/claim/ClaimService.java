@@ -105,12 +105,13 @@ public interface ClaimService {
         // transmises et traitées par lui ou un agent de sa propre agence.
         public List<Claim> restrictClaimsToMeasureScope(List<Claim> claims, User connectedUser);
 
-        public List<Claim> getClaimsWhenUserIsInGuestChat(User user, List<Claim> excludeClaims);
+        /** Ajoute les plaintes du type donné (non supprimées) pour lesquelles l'utilisateur est invité dans une session de chat. */
+        public List<Claim> getClaimsWhenUserIsInGuestChat(User user, List<Claim> excludeClaims, ClaimType type);
 
         /** Ajoute les plaintes désapprouvées dont l'utilisateur a rédigé la solution (selon les risques qu'il peut traiter). */
         public List<Claim> addDisapprovedClaimsAuthoredBy(User user, ClaimType type, List<Claim> claims);
 
-        public List<Claim> getClaimsWhenUserIsInGuestChatSuper(User user, List<Claim> excludeClaims);
+        public List<Claim> getClaimsWhenUserIsInGuestChatSuper(User user, List<Claim> excludeClaims, ClaimType type);
 
         public Claim saveBotClaim(SaveRequest claimToSave, ClaimType type)  throws Exception;
         

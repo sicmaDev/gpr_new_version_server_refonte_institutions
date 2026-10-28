@@ -95,6 +95,14 @@ public class EncryptionMigration {
             log.warn("GPR_ENCRYPT_EXISTING=true : chiffrement des données existantes en cours. "
                     + "Pensez à remettre la variable à false après ce démarrage.");
             migrateExisting();
+        } else if (tableExists(CLAIM_TABLE) && columnInfo(CLAIM_TABLE, "tel_hash") != null) {
+            // Sans empreinte, une ancienne plainte n'est plus retrouvée par téléphone (doublons, autres agences) :
+            // on la remplit à chaque démarrage, même sans migration du chiffrement. Seule tel_hash est écrite,
+            // et seulement là où elle est vide.
+            int n = fillTelHash();
+            if (n > 0) {
+                log.info("Empreinte téléphone {} : {} ligne(s) remplie(s)", CLAIM_TABLE, n);
+            }
         }
     }
 

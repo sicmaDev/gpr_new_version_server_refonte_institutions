@@ -77,6 +77,10 @@ Non concernés : `/app/gpr/documents/` (manuels d'aide), fichiers du microservic
 | `GPR_ENCRYPT_EXISTING` | Non (`false`) | `true` une seule fois : chiffre les données déjà en base |
 | `GPR_ENCRYPT_FILES` | Non (`non`) | `copie` puis `remplacer` une seule fois : chiffre les fichiers existants |
 | `SUPERSET_ADMIN_PASSWORD` | Non | Superset n'est plus utilisé (remplacé à terme par Power BI) |
+| `GPR_TIMEZONE` | Non (`Africa/Porto-Novo`) | Fuseau horaire de l'institution (identifiant IANA, ex. `Africa/Abidjan`) |
+
+L'empreinte du téléphone (`tel_hash`) des anciennes plaintes est remplie automatiquement à chaque démarrage,
+même sans `GPR_ENCRYPT_EXISTING` : la recherche par téléphone (doublons, autres agences) les retrouve donc.
 
 **L'application refuse de démarrer** si `GPR_ENCRYPTION_KEY`, `GPR_HMAC_KEY` ou `GPR_JWT_SECRET` est
 absente, invalide ou trop courte, ou si les deux premières sont identiques. Le message indique la

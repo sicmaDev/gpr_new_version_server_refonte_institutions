@@ -2202,9 +2202,21 @@ public class ClaimServiceImpl implements ClaimService {
         return repository.findByCodeClient(code).orElseThrow(() -> new Exception("Réclamation introuvable"));
     }
 
+    /**
+     * Idempotence de la synchronisation hors ligne : un élément sans id dont le code (généré côté client
+     * hors ligne) existe déjà a été synchronisé lors d'une tentative précédente ; on ne le recrée pas en double
+     * (le code est unique en base, le recréer ferait échouer la synchronisation).
+     */
+    private boolean alreadySynced(Long id, String code) {
+        return id == null && code != null && !code.isEmpty() && repository.findByCode(code).isPresent();
+    }
+
     @Override
     public void saveClaimOffline(SaveRequest claimPart, ClaimType type) throws Exception {
         ClaimRequest claimToSave = claimPart.getClaimRequest();
+        if (alreadySynced(claimToSave.getId(), claimToSave.getCode())) {
+            return;
+        }
         User collector;
         try {
             collector = authServiceImpl.getById(claimToSave.getCollectorId());
@@ -2375,6 +2387,9 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public void saveTempClaimOffline(SaveRequest claimPart, ClaimType type) throws Exception {
         ClaimRequest claimToSave = claimPart.getClaimRequest();
+        if (alreadySynced(claimToSave.getId(), claimToSave.getCode())) {
+            return;
+        }
         Claim claim = Claim
                 .builder().build();
         User collector;
@@ -2521,6 +2536,9 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public void saveDenunOffline(SaveDenunRequest claimPart, ClaimType type) throws Exception {
         DenunRequest claimToSave = claimPart.getClaimRequest();
+        if (alreadySynced(claimToSave.getId(), claimToSave.getCode())) {
+            return;
+        }
         User collector;
         try {
             collector = authServiceImpl.getById(claimToSave.getCollectorId());
@@ -2636,6 +2654,9 @@ public class ClaimServiceImpl implements ClaimService {
     @Override
     public void saveTempDenunOffline(SaveDenunRequest claimPart, ClaimType type) throws Exception {
         DenunRequest claimToSave = claimPart.getClaimRequest();
+        if (alreadySynced(claimToSave.getId(), claimToSave.getCode())) {
+            return;
+        }
         Claim claim = Claim
                 .builder().build();
         User collector;
@@ -3082,16 +3103,24 @@ public class ClaimServiceImpl implements ClaimService {
      *                      session
      */
     @Override
-    public List<Claim> getClaimsWhenUserIsInGuestChat(User user, List<Claim> excludeClaims) {
+    public List<Claim> getClaimsWhenUserIsInGuestChat(User user, List<Claim> excludeClaims, ClaimType type) {
+        return addGuestChatClaims(user, excludeClaims, type,
+                Arrays.asList(ClaimStatus.SAVED, ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
+    }
+
+    /**
+     * Plaintes des sessions de chat où l'utilisateur est invité : seulement du type demandé (une dénonciation
+     * ne doit pas apparaître dans la liste des réclamations) et jamais une plainte supprimée.
+     */
+    private List<Claim> addGuestChatClaims(User user, List<Claim> excludeClaims, ClaimType type, List<ClaimStatus> statuses) {
         List<Chat> chats = chatRepository.findByGuestsIn(Arrays.asList(user));
         List<Claim> claims = excludeClaims;
         for (Chat chat : chats) {
-            if (!excludeClaims.contains(chat.getClaim()) && Arrays
-                    .asList(ClaimStatus.SAVED, ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED)
-                    .contains(chat.getClaim().getStatus())) {
-                claims.add(chat.getClaim());
+            Claim claim = chat.getClaim();
+            if (claim != null && claim.getType() == type && !claim.isDeleted()
+                    && !excludeClaims.contains(claim) && statuses.contains(claim.getStatus())) {
+                claims.add(claim);
             }
-
         }
         return claims;
     }
@@ -3120,19 +3149,10 @@ public class ClaimServiceImpl implements ClaimService {
     }
 
     @Override
-    public List<Claim> getClaimsWhenUserIsInGuestChatSuper(User user, List<Claim> excludeClaims) {
-        List<Chat> chats = chatRepository.findByGuestsIn(Arrays.asList(user));
-        List<Claim> claims = excludeClaims;
-        for (Chat chat : chats) {
-            if (!excludeClaims.contains(chat.getClaim()) && Arrays
-                    .asList(ClaimStatus.SAVED, ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED,
-                            ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED)
-                    .contains(chat.getClaim().getStatus())) {
-                claims.add(chat.getClaim());
-            }
-
-        }
-        return claims;
+    public List<Claim> getClaimsWhenUserIsInGuestChatSuper(User user, List<Claim> excludeClaims, ClaimType type) {
+        return addGuestChatClaims(user, excludeClaims, type,
+                Arrays.asList(ClaimStatus.SAVED, ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED,
+                        ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED));
     }
 
     @Override

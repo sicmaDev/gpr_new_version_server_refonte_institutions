@@ -23,8 +23,8 @@ import lombok.RequiredArgsConstructor;
 public class ScheduledReportConfigService {
 
     // Fuseau horaire par défaut appliqué tant que l'admin n'a rien choisi dans l'écran de
-    // planification (voir aussi GprApplication, où la JVM est alignée dessus).
-    private static final String DEFAULT_TIMEZONE = "Africa/Porto-Novo";
+    // planification : celui de l'institution (GPR_TIMEZONE, Porto-Novo par défaut, voir GprApplication).
+    private static final String DEFAULT_TIMEZONE = com.sicmagroup.gpr.GprApplication.resolveTimezone();
 
     private final ScheduledReportConfigRepository repository;
 

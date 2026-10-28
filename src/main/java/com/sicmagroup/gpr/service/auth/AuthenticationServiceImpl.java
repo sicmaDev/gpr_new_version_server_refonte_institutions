@@ -1336,9 +1336,36 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return "GPR";
     }
 
-    /** Mot de passe temporaire encore valable (jamais changé par la personne), ou null. */
+    /** Administrateur connecté (pour tracer qui consulte ou réinitialise un mot de passe), ou null. */
+    private User connectedUserOrNull() {
+        try {
+            UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            return getByEmail(userDetails.getUsername());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void logPasswordAction(String libelle, String action, User target) {
+        User admin = connectedUserOrNull();
+        logServiceImpl.saveLog(Log.builder()
+                .libelle(libelle)
+                .content("Le mot de passe de " + target.getFirstandlastname() + " a été " + action + " par "
+                        + (admin != null ? admin.getFirstandlastname() + " (" + admin.getEmail() + ")" : "un administrateur") + ".")
+                .createdAt(LocalDateTime.now())
+                .type(LogType.INFO)
+                .userId(admin != null ? admin.getId() : 0L)
+                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
+                .target(LogTarget.APP)
+                .build());
+    }
+
+    /** Mot de passe temporaire encore valable (jamais changé par la personne), ou null. Chaque consultation est tracée. */
     public String getTemporaryPassword(Long id) throws NotFoundException {
         User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException());
+        if (user.getTemporaryPassword() != null) {
+            logPasswordAction("Consultation du mot de passe temporaire", "consulté", user);
+        }
         return user.getTemporaryPassword();
     }
 
@@ -1366,15 +1393,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .target(LogTarget.APP)
                     .build());
         }
-        logServiceImpl.saveLog(Log.builder()
-                .libelle("Réinitialisation du mot de passe")
-                .content("Le mot de passe de " + user.getFirstandlastname() + " a été réinitialisé par un administrateur.")
-                .createdAt(LocalDateTime.now())
-                .type(LogType.INFO)
-                .userId(0L)
-                .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
-                .target(LogTarget.APP)
-                .build());
+        logPasswordAction("Réinitialisation du mot de passe", "réinitialisé", user);
         return password;
     }
 

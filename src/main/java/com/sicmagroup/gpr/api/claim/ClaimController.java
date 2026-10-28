@@ -428,7 +428,7 @@ public class ClaimController {
                 || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                 .collect(Collectors.toList());
             // plaintes pour lesquelles le RA est invité dans une session de chat
-            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, new ArrayList<>(allClaims));
+            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, new ArrayList<>(allClaims), ClaimType.CLAIM);
         }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 || connectedUser.getAdditionalrole().equals(Role.DE))) {
             // System.out.println(connectedUser.getPoste().getHabilitations());
@@ -444,7 +444,7 @@ public class ClaimController {
             }
 
             if (connectedUser.getAdditionalrole().equals(Role.DE)) {
-                allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims);
+                allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims, ClaimType.CLAIM);
             }
         } else {
             // voir les réclamations qu'on à affecter à l'utilisateur et qu'il peut traiter
@@ -454,7 +454,7 @@ public class ClaimController {
                     Arrays.asList(ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED,
                             ClaimStatus.DESAPPROUVED));
 
-            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims);
+            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims, ClaimType.CLAIM);
             allClaims = service.addDisapprovedClaimsAuthoredBy(connectedUser, ClaimType.CLAIM, allClaims);
         }
         List<ClaimDto> allClaimDtos = allClaims.stream()

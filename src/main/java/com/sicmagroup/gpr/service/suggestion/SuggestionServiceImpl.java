@@ -825,6 +825,15 @@ public class SuggestionServiceImpl implements SuggestionService {
     @Override
     public void saveSuggestionOffline(SuggestionAddRequest request, ClaimStatus status) throws Exception {
         SuggestionRequest suggestionRequest = request.getSuggestionRequest();
+
+        // Idempotence : si cette suggestion a déjà été synchronisée lors d'une
+        // tentative précédente (même code), on ne la recrée pas en double.
+        if (suggestionRequest.getId() == null && suggestionRequest.getCode() != null
+                && !suggestionRequest.getCode().isEmpty()
+                && repository.findByCode(suggestionRequest.getCode()).isPresent()) {
+            return;
+        }
+
         User collector;
      
         Suggestion suggestion = Suggestion

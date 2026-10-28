@@ -49,6 +49,7 @@ import com.sicmagroup.gpr.service.claim.ClaimServiceImpl;
 import com.sicmagroup.gpr.service.suggestion.SuggestionServiceImpl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -67,6 +68,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/sync")
@@ -84,18 +86,23 @@ public class SynchronerController {
 		UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
 				.getPrincipal();
 
-		try {
-			syncClaimList(allDataToSync.claims);
-			syncDenunList(allDataToSync.denuns);
-			syncSuggestionList(allDataToSync.suggestions);
-		} catch (Exception e) {
-			System.out.println("Error happened " + e.getMessage());
-		}
+		List<String> failedCodes = new ArrayList<>();
+		List<String> failureDetails = new ArrayList<>();
+		failedCodes.addAll(syncClaimList(allDataToSync.claims, failureDetails));
+		failedCodes.addAll(syncDenunList(allDataToSync.denuns, failureDetails));
+		failedCodes.addAll(syncSuggestionList(allDataToSync.suggestions, failureDetails));
+
+		SyncResultResponse result = SyncResultResponse
+				.builder()
+				.failedCount(failedCodes.size())
+				.failedCodes(failedCodes)
+				.failureDetails(failureDetails)
+				.build();
 
 		apiResponseDto = ApiResponseDto
 				.builder()
-				.content("Response")
-				.status(true)
+				.content(result)
+				.status(failedCodes.isEmpty())
 				.build();
 
 		return ResponseEntity.ok(apiResponseDto);
@@ -616,362 +623,187 @@ public class SynchronerController {
 		return suggestionDto;
 	}
 
-	private void syncClaimList(List<SyncClaimRequest> syncClaimRequests) throws Exception {
+	private List<String> syncClaimList(List<SyncClaimRequest> syncClaimRequests, List<String> failureDetails) {
 		ClaimRequest claimRequest;
 		SaveRequest saveRequest;
-		// Claim claim = Claim.builder().build();
+		List<String> failedCodes = new ArrayList<>();
 
 		for (SyncClaimRequest syncClaimRequest : syncClaimRequests) {
-			claimRequest = ClaimRequest
-					.builder()
-					.code(syncClaimRequest.getCode())
-					.createdAt(syncClaimRequest.getCreatedAt())
-					.status(syncClaimRequest.getStatus())
-					.clientFirstAndLastName(syncClaimRequest.getClientFirstAndLastName())
-					.address(syncClaimRequest.getAddress())
-					.collectionChannelId(syncClaimRequest.getCollectionChannelId())
-					.collectorId(syncClaimRequest.getCollectorId())
-					.content(syncClaimRequest.getContent())
-					.crew(syncClaimRequest.getCrew())
-					.folderCode(syncClaimRequest.getFolderCode())
-					.gender(syncClaimRequest.getGender())
-					.languageId(syncClaimRequest.getLanguageId())
-					.objetId(syncClaimRequest.getObjetId())
-					.phone(syncClaimRequest.getPhone())
-					.productId(syncClaimRequest.getProductId())
-					.receiptDateTime(syncClaimRequest.getReceiptDateTime())
-					.servicePointId(syncClaimRequest.getServicePointId())
-					.onlineUploadDateTime(LocalDateTime.now())
-					.build();
+			try {
+				claimRequest = ClaimRequest
+						.builder()
+						.code(syncClaimRequest.getCode())
+						.createdAt(syncClaimRequest.getCreatedAt())
+						.status(syncClaimRequest.getStatus())
+						.clientFirstAndLastName(syncClaimRequest.getClientFirstAndLastName())
+						.address(syncClaimRequest.getAddress())
+						.collectionChannelId(syncClaimRequest.getCollectionChannelId())
+						.collectorId(syncClaimRequest.getCollectorId())
+						.content(syncClaimRequest.getContent())
+						.crew(syncClaimRequest.getCrew())
+						.folderCode(syncClaimRequest.getFolderCode())
+						.gender(syncClaimRequest.getGender())
+						.languageId(syncClaimRequest.getLanguageId())
+						.objetId(syncClaimRequest.getObjetId())
+						.phone(syncClaimRequest.getPhone())
+						.productId(syncClaimRequest.getProductId())
+						.receiptDateTime(syncClaimRequest.getReceiptDateTime())
+						.servicePointId(syncClaimRequest.getServicePointId())
+						.onlineUploadDateTime(LocalDateTime.now())
+						.build();
 
-			if (syncClaimRequest.getId() != null) {
-				claimRequest.setId(syncClaimRequest.getId());
-
-			}
-
-			if (syncClaimRequest.getStatus() == ClaimStatus.TEMP_SAVED) {
 				if (syncClaimRequest.getId() != null) {
-					// claimRequest.setId(syncClaimRequest.getId());
-					if (syncClaimRequest.getCollectorId() != null) {
-						saveRequest = SaveRequest
-								.builder()
-								.claimRequest(claimRequest)
-								.files(syncClaimRequest.getFiles())
-								.build();
+					claimRequest.setId(syncClaimRequest.getId());
+				}
 
-						try {
-							claimServiceImpl.saveTempClaimOffline(saveRequest, ClaimType.CLAIM);
-						} catch (Exception e) {
-							throw e;
-						}
-					}
+				if (syncClaimRequest.getCollectorId() == null) {
+					continue;
+				}
+
+				saveRequest = SaveRequest
+						.builder()
+						.claimRequest(claimRequest)
+						.files(syncClaimRequest.getFiles())
+						.build();
+
+				if (syncClaimRequest.getStatus() == ClaimStatus.TEMP_SAVED) {
+					claimServiceImpl.saveTempClaimOffline(saveRequest, ClaimType.CLAIM);
 				} else {
-					if (syncClaimRequest.getCollectorId() != null) {
-						saveRequest = SaveRequest
-								.builder()
-								.claimRequest(claimRequest)
-								.files(syncClaimRequest.getFiles())
-								.build();
-
-						try {
-							claimServiceImpl.saveTempClaimOffline(saveRequest, ClaimType.CLAIM);
-						} catch (Exception e) {
-							throw e;
-						}
-					}
-
+					claimServiceImpl.saveClaimOffline(saveRequest, ClaimType.CLAIM);
 				}
-
-			} else {
-
-				if (syncClaimRequest.getCollectorId() != null) {
-					saveRequest = SaveRequest
-							.builder()
-							.claimRequest(claimRequest)
-							.files(syncClaimRequest.getFiles())
-							.build();
-					try {
-						claimServiceImpl.saveClaimOffline(saveRequest, ClaimType.CLAIM);
-					} catch (Exception e) {
-						throw e;
-
-					}
-				}
+			} catch (Exception e) {
+				String reason = describeSyncFailure(e);
+				log.warn("Sync réclamation échouée pour le code {} (collecteur {}) : {}",
+						syncClaimRequest.getCode(), syncClaimRequest.getCollectorId(), reason, e);
+				failedCodes.add(syncClaimRequest.getCode());
+				failureDetails.add(syncClaimRequest.getCode() + " : " + reason);
 			}
-
-			// System.out.println("syncClaimRequests");
-			// System.out.println("code de l'obj"+syncClaimRequest.getCode());
-			// try {
-			// if (claimRequest.getStatus() == ClaimStatus.TEMP_SAVED) {
-			// claimServiceImpl.saveTempClaimOffline(saveRequest, ClaimType.CLAIM);
-			// } else {
-			// claimServiceImpl.saveClaimOffline(saveRequest, ClaimType.CLAIM);
-			// }
-
-			// // if (syncClaimRequest.getSolution() != null) {
-			// // ProposedSolutionRequest proposedSolutionRequest = ProposedSolutionRequest
-			// // .builder()
-			// // .claimId(claim.getId())
-			// // .commentaire(syncClaimRequest.getCommentaire())
-			// // .solution(syncClaimRequest.getSolution())
-			// // .treatorId(connectedUser.getId())
-
-			// // .build();
-			// // claim = claimServiceImpl.treatClaim(claim, connectedUser,
-			// // proposedSolutionRequest);
-
-			// // if (syncClaimRequest.getSatisfactionStatus() != null) {
-			// // claim = claimServiceImpl.measureClaim(claim,
-			// // claim.getSolutions().get(0), connectedUser,
-			// // syncClaimRequest.getSatisfactionStatus());
-			// // }
-
-			// // }
-
-			// } catch (Exception e) {
-			// throw e;
-			// // System.out.println("Error happened" + e.getMessage());
-
-			// }
-			// claims.add(claim);
-
 		}
 
+		return failedCodes;
 	}
 
-	private void syncDenunList(List<SyncClaimRequest> syncClaimRequests) throws Exception {
+	private List<String> syncDenunList(List<SyncClaimRequest> syncClaimRequests, List<String> failureDetails) {
 		DenunRequest claimRequest;
 		SaveDenunRequest saveRequest;
+		List<String> failedCodes = new ArrayList<>();
 
 		for (SyncClaimRequest syncClaimRequest : syncClaimRequests) {
+			try {
+				claimRequest = DenunRequest
+						.builder()
+						.status(syncClaimRequest.getStatus())
+						.code(syncClaimRequest.getCode())
+						.createdAt(syncClaimRequest.getCreatedAt())
+						.collectionChannelId(syncClaimRequest.getCollectionChannelId())
+						.collectorId(syncClaimRequest.getCollectorId())
+						.content(syncClaimRequest.getContent())
+						.languageId(syncClaimRequest.getLanguageId())
+						.objetId(syncClaimRequest.getObjetId())
+						.productId(syncClaimRequest.getProductId())
+						.receiptDateTime(syncClaimRequest.getReceiptDateTime())
+						.servicePointId(syncClaimRequest.getServicePointId())
+						.onlineUploadDateTime(LocalDateTime.now())
+						.build();
 
-			claimRequest = DenunRequest
-					.builder()
-					.status(syncClaimRequest.getStatus())
-					.code(syncClaimRequest.getCode())
-					.createdAt(syncClaimRequest.getCreatedAt())
-
-					.collectionChannelId(syncClaimRequest.getCollectionChannelId())
-					.collectorId(syncClaimRequest.getCollectorId())
-					.content(syncClaimRequest.getContent())
-
-					.languageId(syncClaimRequest.getLanguageId())
-					.objetId(syncClaimRequest.getObjetId())
-
-					.productId(syncClaimRequest.getProductId())
-					.receiptDateTime(syncClaimRequest.getReceiptDateTime())
-					.servicePointId(syncClaimRequest.getServicePointId())
-					.onlineUploadDateTime(LocalDateTime.now())
-					.build();
-			if (syncClaimRequest.getId() != null) {
-				claimRequest.setId(syncClaimRequest.getId());
-			}
-			if (syncClaimRequest.getStatus() == ClaimStatus.TEMP_SAVED) {
 				if (syncClaimRequest.getId() != null) {
-					// claimRequest.setId(syncClaimRequest.getId());
-					if (syncClaimRequest.getCollectorId() != null) {
-						saveRequest = SaveDenunRequest
-								.builder()
-								.claimRequest(claimRequest)
-								.files(syncClaimRequest.getFiles())
-								.build();
+					claimRequest.setId(syncClaimRequest.getId());
+				}
 
-						try {
-							claimServiceImpl.saveTempDenunOffline(saveRequest, ClaimType.DENUNCIACION);
-						} catch (Exception e) {
-							throw e;
-						}
-					}
+				if (syncClaimRequest.getCollectorId() == null) {
+					continue;
+				}
+
+				saveRequest = SaveDenunRequest
+						.builder()
+						.claimRequest(claimRequest)
+						.files(syncClaimRequest.getFiles())
+						.build();
+
+				if (syncClaimRequest.getStatus() == ClaimStatus.TEMP_SAVED) {
+					claimServiceImpl.saveTempDenunOffline(saveRequest, ClaimType.DENUNCIACION);
 				} else {
-					if (syncClaimRequest.getCollectorId() != null) {
-						saveRequest = SaveDenunRequest
-								.builder()
-								.claimRequest(claimRequest)
-								.files(syncClaimRequest.getFiles())
-								.build();
-
-						try {
-							claimServiceImpl.saveTempDenunOffline(saveRequest, ClaimType.DENUNCIACION);
-						} catch (Exception e) {
-							throw e;
-						}
-					}
-
+					claimServiceImpl.saveDenunOffline(saveRequest, ClaimType.DENUNCIACION);
 				}
-			} else {
-				if (syncClaimRequest.getCollectorId() != null) {
-					saveRequest = SaveDenunRequest
-							.builder()
-							.claimRequest(claimRequest)
-							.files(syncClaimRequest.getFiles())
-							.build();
-					try {
-						claimServiceImpl.saveDenunOffline(saveRequest, ClaimType.DENUNCIACION);
-					} catch (Exception e) {
-						throw e;
-
-					}
-				}
+			} catch (Exception e) {
+				String reason = describeSyncFailure(e);
+				log.warn("Sync dénonciation échouée pour le code {} (collecteur {}) : {}",
+						syncClaimRequest.getCode(), syncClaimRequest.getCollectorId(), reason, e);
+				failedCodes.add(syncClaimRequest.getCode());
+				failureDetails.add(syncClaimRequest.getCode() + " : " + reason);
 			}
-
-			// if (syncClaimRequest.getId() != null) {
-			// claimRequest.setId(syncClaimRequest.getId());
-			// }
-			// saveRequest = SaveDenunRequest
-			// .builder()
-			// .claimRequest(claimRequest)
-			// .files(syncClaimRequest.getFiles())
-			// .build();
-
-			// try {
-			// if (claimRequest.getStatus() == ClaimStatus.TEMP_SAVED) {
-			// claimServiceImpl.saveTempDenunOffline(saveRequest, ClaimType.DENUNCIACION);
-			// } else {
-			// claimServiceImpl.saveDenunOffline(saveRequest, ClaimType.DENUNCIACION);
-			// }
-
-			// // if (syncClaimRequest.getSolution() != null) {
-			// // ProposedSolutionRequest proposedSolutionRequest = ProposedSolutionRequest
-			// // .builder()
-			// // .claimId(claim.getId())
-			// // .commentaire(syncClaimRequest.getCommentaire())
-			// // .solution(syncClaimRequest.getSolution())
-			// // .treatorId(connectedUser.getId())
-
-			// // .build();
-			// // claim = claimServiceImpl.treatClaim(claim, connectedUser,
-			// // proposedSolutionRequest);
-
-			// // if (syncClaimRequest.getSatisfactionStatus() != null) {
-			// // claim = claimServiceImpl.measureClaim(claim,
-			// // claim.getSolutions().get(0), connectedUser,
-			// // syncClaimRequest.getSatisfactionStatus());
-			// // }
-
-			// // }
-
-			// } catch (Exception e) {
-			// throw e;
-			// // System.out.println("Error happened" + e.getMessage());
-			// // return ResponseEntity.ok(apiResponseDto);
-			// }
-
 		}
+
+		return failedCodes;
 	}
 
-	private void syncSuggestionList(List<SyncSuggestionRequest> syncSuggestionRequests) throws Exception {
+	private List<String> syncSuggestionList(List<SyncSuggestionRequest> syncSuggestionRequests,
+			List<String> failureDetails) {
 		SuggestionRequest suggestionRequest;
-		// Suggestion suggestion = Suggestion.builder().build();
+		List<String> failedCodes = new ArrayList<>();
 
-		// List<Suggestion> suggestions = new ArrayList<>();
 		syncSuggestionRequests.removeIf(syncSugg -> syncSugg.getCollectionChannelId() == null
 				&& syncSugg.getCollectorId() == null && syncSugg.getProductId() == null
 				&& syncSugg.getLanguageId() == null && syncSugg.getServicePointId() == null);
 
 		for (SyncSuggestionRequest syncSuggestionRequest : syncSuggestionRequests) {
-			suggestionRequest = SuggestionRequest
-					.builder()
-					.status(syncSuggestionRequest.getStatus())
-					.code(syncSuggestionRequest.getCode())
-					.clientFirstAndLastName(syncSuggestionRequest.getClientFirstAndLastName())
-					.address(syncSuggestionRequest.getAddress())
-					.collectionChannelId(syncSuggestionRequest.getCollectionChannelId())
-					.collectorId(syncSuggestionRequest.getCollectorId())
-					.content(syncSuggestionRequest.getContent())
-					.crew(syncSuggestionRequest.getCrew())
-					.folderCode(syncSuggestionRequest.getFolderCode())
-					.gender(syncSuggestionRequest.getGender())
-					.languageId(syncSuggestionRequest.getLanguageId())
-					.objetId(syncSuggestionRequest.getObjetId())
-					.phone(syncSuggestionRequest.getPhone())
-					.productId(syncSuggestionRequest.getProductId())
-					.receiptDateTime(syncSuggestionRequest.getReceiptDateTime())
-					.servicePointId(syncSuggestionRequest.getServicePointId())
-					.createdAt(syncSuggestionRequest.getCreatedAt())
-					.onlineUploadDateTime(LocalDateTime.now())
-					.build();
-			if (syncSuggestionRequest.getId() != null) {
-				suggestionRequest.setId(syncSuggestionRequest.getId());
-			}
-			if (suggestionRequest.getStatus() == ClaimStatus.TEMP_SAVED) {
+			try {
+				suggestionRequest = SuggestionRequest
+						.builder()
+						.status(syncSuggestionRequest.getStatus())
+						.code(syncSuggestionRequest.getCode())
+						.clientFirstAndLastName(syncSuggestionRequest.getClientFirstAndLastName())
+						.address(syncSuggestionRequest.getAddress())
+						.collectionChannelId(syncSuggestionRequest.getCollectionChannelId())
+						.collectorId(syncSuggestionRequest.getCollectorId())
+						.content(syncSuggestionRequest.getContent())
+						.crew(syncSuggestionRequest.getCrew())
+						.folderCode(syncSuggestionRequest.getFolderCode())
+						.gender(syncSuggestionRequest.getGender())
+						.languageId(syncSuggestionRequest.getLanguageId())
+						.objetId(syncSuggestionRequest.getObjetId())
+						.phone(syncSuggestionRequest.getPhone())
+						.productId(syncSuggestionRequest.getProductId())
+						.receiptDateTime(syncSuggestionRequest.getReceiptDateTime())
+						.servicePointId(syncSuggestionRequest.getServicePointId())
+						.createdAt(syncSuggestionRequest.getCreatedAt())
+						.onlineUploadDateTime(LocalDateTime.now())
+						.build();
+
 				if (syncSuggestionRequest.getId() != null) {
-					// suggestionRequest.setId(syncSuggestionRequest.getId());
-					if (syncSuggestionRequest.getCollectorId() != null) {
-						SuggestionAddRequest suggestionAddRequest = SuggestionAddRequest
-								.builder()
-								.files(syncSuggestionRequest.getFiles())
-								.suggestionRequest(suggestionRequest)
-								.build();
-
-						try {
-							suggestionServiceImpl.saveSuggestionOffline(suggestionAddRequest,
-									syncSuggestionRequest.getStatus());
-						} catch (Exception e) {
-							throw e;
-						}
-					}
-				} else {
-					if (syncSuggestionRequest.getCollectorId() != null) {
-						SuggestionAddRequest suggestionAddRequest = SuggestionAddRequest
-								.builder()
-								.files(syncSuggestionRequest.getFiles())
-								.suggestionRequest(suggestionRequest)
-								.build();
-
-						try {
-							suggestionServiceImpl.saveSuggestionOffline(suggestionAddRequest,
-									syncSuggestionRequest.getStatus());
-						} catch (Exception e) {
-							throw e;
-						}
-					}
-
+					suggestionRequest.setId(syncSuggestionRequest.getId());
 				}
 
-			} else {
-				if (syncSuggestionRequest.getCollectorId() != null) {
-					SuggestionAddRequest suggestionAddRequest = SuggestionAddRequest
-							.builder()
-							.files(syncSuggestionRequest.getFiles())
-							.suggestionRequest(suggestionRequest)
-							.build();
-
-					try {
-						suggestionServiceImpl.saveSuggestionOffline(suggestionAddRequest,
-								syncSuggestionRequest.getStatus());
-					} catch (Exception e) {
-						throw e;
-					}
+				if (syncSuggestionRequest.getCollectorId() == null) {
+					continue;
 				}
+
+				SuggestionAddRequest suggestionAddRequest = SuggestionAddRequest
+						.builder()
+						.files(syncSuggestionRequest.getFiles())
+						.suggestionRequest(suggestionRequest)
+						.build();
+
+				suggestionServiceImpl.saveSuggestionOffline(suggestionAddRequest, syncSuggestionRequest.getStatus());
+			} catch (Exception e) {
+				String reason = describeSyncFailure(e);
+				log.warn("Sync suggestion échouée pour le code {} (collecteur {}) : {}",
+						syncSuggestionRequest.getCode(), syncSuggestionRequest.getCollectorId(), reason, e);
+				failedCodes.add(syncSuggestionRequest.getCode());
+				failureDetails.add(syncSuggestionRequest.getCode() + " : " + reason);
 			}
-
-			// try {
-			// suggestionServiceImpl.saveSuggestionOffline(suggestionAddRequest,
-			// syncSuggestionRequest.getStatus());
-			// // TreatSuggestionRequest treatSuggestionRequest = TreatSuggestionRequest
-			// // .builder()
-			// // .accepted(syncSuggestionRequest.isAccepted())
-			// // .commentaire(syncSuggestionRequest.getCommentaire())
-			// // .treatorId(connectedUser.getId())
-			// // .id(suggestion.getId())
-			// // .build();
-			// // suggestion = suggestionServiceImpl.treatSuggestion(suggestion,
-			// connectedUser,
-			// // treatSuggestionRequest);
-			// } catch (Exception e) {
-			// throw e;
-			// // System.out.println("Error happened" + e.getMessage());
-			// // apiResponseDto = ApiResponseDto
-			// // .builder()
-			// // .content(ErrorResponse.builder().title("Une erreur est survenue")
-			// // .message("Impossible de sauvegarder la suggestion de "
-			// // + syncSuggestionRequest
-			// // .getClientFirstAndLastName()))
-			// // .status(false)
-			// // .build();
-			// // return ResponseEntity.ok(apiResponseDto);
-			// }
-			// // suggestions.add(suggestion);
 		}
+
+		return failedCodes;
+	}
+
+	// Raison lisible d'un échec de synchronisation : le message de l'exception, sinon son type
+	// (un NullPointerException ou un IllegalArgumentException n'a souvent aucun message).
+	private String describeSyncFailure(Exception e) {
+		String message = e.getMessage();
+		if (message == null || message.isBlank()) {
+			return e.getClass().getSimpleName();
+		}
+		return message;
 	}
 }

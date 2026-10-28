@@ -299,7 +299,7 @@ public class DenunciationController {
                 || (claim.getTransmittedTo() != null && claim.getTransmittedTo().getId().equals(raId)))
                 .collect(Collectors.toList());
             // plaintes pour lesquelles le RA est invité dans une session de chat
-            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, new ArrayList<>(allClaims));
+            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, new ArrayList<>(allClaims), ClaimType.DENUNCIACION);
         }else if (connectedUser.canAffectTreatment() || (connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 || connectedUser.getAdditionalrole().equals(Role.DE))) {
             // System.out.println(connectedUser.getPoste().getHabilitations());
@@ -315,7 +315,7 @@ public class DenunciationController {
             }
 
             if (connectedUser.getAdditionalrole().equals(Role.DE)) {
-                allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims);
+                allClaims = service.getClaimsWhenUserIsInGuestChatSuper(connectedUser, allClaims, ClaimType.DENUNCIACION);
             }
         }else {
             // voir les Dénonciations qu'on à affecter à l'utilisateur et
@@ -323,7 +323,7 @@ public class DenunciationController {
                     ClaimType.DENUNCIACION, ClaimStatus.SAVED, connectedUser,
                     Arrays.asList(ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
-            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims);
+            allClaims = service.getClaimsWhenUserIsInGuestChat(connectedUser, allClaims, ClaimType.DENUNCIACION);
             allClaims = service.addDisapprovedClaimsAuthoredBy(connectedUser, ClaimType.DENUNCIACION, allClaims);
 
         }

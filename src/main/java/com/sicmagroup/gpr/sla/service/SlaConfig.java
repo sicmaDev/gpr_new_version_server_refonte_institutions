@@ -121,7 +121,7 @@ public class SlaConfig {
     public Map<String, String> all() {
         Map<String, String> out = new HashMap<>();
         out.put(ENABLED, String.valueOf(enabled()));
-        out.put(TIMEZONE, get(TIMEZONE, "Africa/Porto-Novo"));
+        out.put(TIMEZONE, get(TIMEZONE, com.sicmagroup.gpr.GprApplication.resolveTimezone()));
         out.put(REGULATORY_DAYS, String.valueOf(regulatoryDays()));
         out.put(REGULATORY_WARNING_DAYS, String.valueOf(regulatoryWarningDays()));
         out.put(AUTO_ESCALATION, String.valueOf(autoEscalation()));

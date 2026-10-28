@@ -133,7 +133,9 @@ Les résultats finaux sont dans le §9.
 
 ## 8. À surveiller en production (AlmaLinux)
 
-- **Fuseau horaire du serveur** : toutes les dates sont locales au serveur. Il doit être réglé sur `Africa/Porto-Novo`.
+- **Fuseau horaire** : toutes les dates sont locales au fuseau de l'institution, réglé par la variable `GPR_TIMEZONE`
+  (identifiant IANA, par défaut `Africa/Porto-Novo` ; ex. `Africa/Abidjan` pour une institution en UTC). Il s'applique
+  à la JVM, à la connexion à la base et aux relances planifiées.
 - **Une seule instance** de GPR fait tourner la tâche de contrôle. Si plusieurs instances tournent, les alertes restent
   envoyées **une seule fois** (clé de déduplication unique en base), mais il vaut mieux n'en avoir qu'une.
 - **Réglages e-mail et SMS** : sans eux, les notifications ne partent pas (le SLA le note dans les journaux et continue).

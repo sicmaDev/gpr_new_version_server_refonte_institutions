@@ -27,8 +27,9 @@ COPY target/gpr-0.0.1-SNAPSHOT.jar /app
 # Exposer le port
 EXPOSE 9000
 
-# Fuseau horaire : déjà forcé dans GprApplication ; -Duser.timezone est une ceinture de sécurité
-ENV TZ=Africa/Porto-Novo
+# Fuseau horaire de l'institution (identifiant IANA), modifiable au lancement : docker run -e GPR_TIMEZONE=Africa/Abidjan ...
+# GprApplication l'applique à la JVM ; -Duser.timezone et TZ sont une ceinture de sécurité.
+ENV GPR_TIMEZONE=Africa/Porto-Novo
 
-# Commande pour exécuter l'application
-CMD ["java", "-Duser.timezone=Africa/Porto-Novo", "-jar", "gpr-0.0.1-SNAPSHOT.jar"]
+# Commande pour exécuter l'application (forme shell pour lire GPR_TIMEZONE au lancement)
+CMD ["sh", "-c", "export TZ=\"$GPR_TIMEZONE\"; exec java -Duser.timezone=\"$GPR_TIMEZONE\" -jar gpr-0.0.1-SNAPSHOT.jar"]
