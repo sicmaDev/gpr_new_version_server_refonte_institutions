@@ -36,3 +36,9 @@ backend-img.tar
 /src/ressources/application.properties
 ### Logs ### 
 *.log
+
+### Fichiers créés à l'exécution (jamais dans Git) ###
+# Licence (série, demande d'activation) : générée par l'application
+data.txt
+# Rapports de plantage de la JVM
+hs_err_pid*.log
