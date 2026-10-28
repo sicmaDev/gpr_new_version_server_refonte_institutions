@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,4 +40,18 @@ public class Template {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    // Auteur du modèle (identifiant et nom seulement : l'entité User n'est jamais renvoyée au navigateur).
+    // Null pour les modèles créés avant cette règle : ils ne sont visibles que par Pilote, DE et H14.
+    private Long authorId;
+
+    private String authorName;
+
+    // Choix d'un RA : modèle visible par les agents de son point de service et des points rattachés.
+    @Column(columnDefinition = "boolean default false")
+    private Boolean sharedWithAgents;
+
+    // Calculé pour l'utilisateur connecté (modifier / supprimer autorisé), jamais enregistré.
+    @Transient
+    private Boolean canEdit;
 }

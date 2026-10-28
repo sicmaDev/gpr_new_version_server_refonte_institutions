@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -529,7 +530,6 @@ public class ReportController {
 	public ResponseEntity<ApiResponseDto> createOrUpdateTemplate(@RequestBody Template request) {
 		try {
 			Template result = templateService.createOrUpdate(request);
-			System.out.println("TemplateRequest" + result);
 			ApiResponseDto apiResponseDto = ApiResponseDto
 					.builder()
 					.status(true)
@@ -537,6 +537,8 @@ public class ReportController {
 					.build();
 			return ResponseEntity.ok(apiResponseDto);
 
+		} catch (AccessDeniedException e) {
+			return templateForbidden(e);
 		} catch (Exception e) {
 			ApiResponseDto apiResponseDto = ApiResponseDto
 					.builder()
@@ -606,6 +608,8 @@ public class ReportController {
 					.content("Suppression réussie")
 					.build();
 			return ResponseEntity.ok(apiResponseDto);
+		} catch (AccessDeniedException e) {
+			return templateForbidden(e);
 		} catch (Exception e) {
 			e.printStackTrace();
 			apiResponseDto = ApiResponseDto
@@ -618,5 +622,14 @@ public class ReportController {
 					.build();
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
 		}
+	}
+
+	// Modèle d'un autre utilisateur : seuls l'auteur et Pilote / DE / H14 peuvent le modifier ou le supprimer.
+	private ResponseEntity<ApiResponseDto> templateForbidden(AccessDeniedException e) {
+		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponseDto
+				.builder()
+				.status(false)
+				.content(ErrorResponse.builder().title("FORBIDDEN").message(e.getMessage()).build())
+				.build());
 	}
 }

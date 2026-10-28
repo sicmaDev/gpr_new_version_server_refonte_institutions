@@ -5,6 +5,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -139,6 +140,18 @@ public class ServicePointServiceImpl implements ServicePointService {
         }
 
         return result;
+    }
+
+    // Inverse de getAllDescendants : le point de service lui-même puis ceux auxquels il est
+    // rattaché (parent, grand-parent, etc., via direction_id). Le "visited" protège aussi
+    // contre une boucle dans les données.
+    public Set<Long> getSelfAndAncestorIds(Long servicePointId) {
+        Set<Long> visited = new LinkedHashSet<>();
+        Long currentId = servicePointId;
+        while (currentId != null && visited.add(currentId)) {
+            currentId = repository.findById(currentId).map(ServicePoint::getDirection_id).orElse(null);
+        }
+        return visited;
     }
 
 
