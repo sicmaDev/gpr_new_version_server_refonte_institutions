@@ -148,6 +148,9 @@ public class ReportController {
 				// et tous ceux qui lui sont rattachés (fils, petits-fils, ...).
 				// Les autres rôles (PILOTE, DE, H5, ...) gardent l'accès complet.
 				FilterRequest request = buildRaScopedFilterOrNull();
+				// Copie du filtre pour les tableaux récapitulatifs, prise avant les graphiques : ceux-ci
+				// ajustent le filtre partagé (états remis à null) et faussaient les tableaux.
+				FilterRequest filtreTableaux = FilterRequest.copieDe(request);
 
 				GlobalReport globalReport = GlobalReport
 						.builder()
@@ -227,25 +230,25 @@ public class ReportController {
 
 				StatisticReport statisticReport = StatisticReport
 						.builder()
-						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(request),
-								serviceStatsClaim.totalByGravity(request), serviceStatsClaim.tauxSatisfaction(request),
-								serviceStatsClaim.totalReclamantSatisfait(request),
-								serviceStatsClaim.totalTreat(request), serviceStatsClaim.totalTreatByGravity(request),
-								serviceStatsClaim.totalTreatByRespectTiming(request), serviceStatsClaim.totalUnTreat(request),
-								serviceStatsClaim.totalUnTreatByGravity(request),
-								serviceStatsClaim.pourcentageReclamationsTraitees(request),
-								serviceStatsClaim.pourcentageReelReclamationsTraitees(request),
-								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(request)
+						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(filtreTableaux),
+								serviceStatsClaim.totalByGravity(filtreTableaux), serviceStatsClaim.tauxSatisfaction(filtreTableaux),
+								serviceStatsClaim.totalReclamantSatisfait(filtreTableaux),
+								serviceStatsClaim.totalTreat(filtreTableaux), serviceStatsClaim.totalTreatByGravity(filtreTableaux),
+								serviceStatsClaim.totalTreatByRespectTiming(filtreTableaux), serviceStatsClaim.totalUnTreat(filtreTableaux),
+								serviceStatsClaim.totalUnTreatByGravity(filtreTableaux),
+								serviceStatsClaim.pourcentageReclamationsTraitees(filtreTableaux),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(filtreTableaux),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(filtreTableaux)
 								))
-						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(request),
-								serviceStatsDenun.totalByGravity(request),
-								serviceStatsDenun.totalTreat(request),
-								serviceStatsDenun.totalTreatByGravity(request),
-								serviceStatsDenun.totalTreatByRespectTiming(request),
-								serviceStatsDenun.totalUnTreat(request), serviceStatsDenun.totalUnTreatByGravity(request)))
+						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(filtreTableaux),
+								serviceStatsDenun.totalByGravity(filtreTableaux),
+								serviceStatsDenun.totalTreat(filtreTableaux),
+								serviceStatsDenun.totalTreatByGravity(filtreTableaux),
+								serviceStatsDenun.totalTreatByRespectTiming(filtreTableaux),
+								serviceStatsDenun.totalUnTreat(filtreTableaux), serviceStatsDenun.totalUnTreatByGravity(filtreTableaux)))
 						.SuggestStatsAndValue(
-								Arrays.asList(serviceStatsSuggest.totalSaved(request),
-										serviceStatsSuggest.totalSuggest(request)))
+								Arrays.asList(serviceStatsSuggest.totalSaved(filtreTableaux),
+										serviceStatsSuggest.totalSuggest(filtreTableaux)))
 						.build();
 				reportGlobalResponse.setStatistic(statisticReport);
 
@@ -285,6 +288,9 @@ public class ReportController {
 				// Un RA ne peut pas élargir son périmètre en modifiant le filtre envoyé
 				// depuis le frontend : on écrase servicePoints avec son périmètre réel.
 				enforceRaScope(request);
+				// Copie du filtre pour les tableaux récapitulatifs, prise avant les graphiques : ceux-ci
+				// ajustent le filtre partagé (états remis à null) et faussaient les tableaux.
+				FilterRequest filtreTableaux = FilterRequest.copieDe(request);
 
 				GlobalReport globalReport = GlobalReport
 						.builder()
@@ -400,25 +406,25 @@ public class ReportController {
 
 				StatisticReport statisticReport = StatisticReport
 						.builder()
-						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(request),
-								serviceStatsClaim.totalByGravity(request), serviceStatsClaim.tauxSatisfaction(request),
-								serviceStatsClaim.totalReclamantSatisfait(request),
-								serviceStatsClaim.totalTreat(request), serviceStatsClaim.totalTreatByGravity(request),
-								serviceStatsClaim.totalTreatByRespectTiming(request),
-								serviceStatsClaim.totalUnTreat(request),
-								serviceStatsClaim.totalUnTreatByGravity(request),
-								serviceStatsClaim.pourcentageReclamationsTraitees(request),
-								serviceStatsClaim.pourcentageReelReclamationsTraitees(request),
-								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(request) 
+						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(filtreTableaux),
+								serviceStatsClaim.totalByGravity(filtreTableaux), serviceStatsClaim.tauxSatisfaction(filtreTableaux),
+								serviceStatsClaim.totalReclamantSatisfait(filtreTableaux),
+								serviceStatsClaim.totalTreat(filtreTableaux), serviceStatsClaim.totalTreatByGravity(filtreTableaux),
+								serviceStatsClaim.totalTreatByRespectTiming(filtreTableaux),
+								serviceStatsClaim.totalUnTreat(filtreTableaux),
+								serviceStatsClaim.totalUnTreatByGravity(filtreTableaux),
+								serviceStatsClaim.pourcentageReclamationsTraitees(filtreTableaux),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(filtreTableaux),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(filtreTableaux) 
 								))
-						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(request),
-								serviceStatsDenun.totalSavedClaim(request), serviceStatsDenun.totalTreat(request),
-								serviceStatsDenun.totalTreatByGravity(request),
-								serviceStatsDenun.totalTreatByRespectTiming(request),
-								serviceStatsDenun.totalUnTreat(request),
-								serviceStatsDenun.totalUnTreatByGravity(request)))
-						.SuggestStatsAndValue(Arrays.asList(serviceStatsSuggest.totalSaved(request),
-								serviceStatsSuggest.totalSuggest(request)))
+						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(filtreTableaux),
+								serviceStatsDenun.totalSavedClaim(filtreTableaux), serviceStatsDenun.totalTreat(filtreTableaux),
+								serviceStatsDenun.totalTreatByGravity(filtreTableaux),
+								serviceStatsDenun.totalTreatByRespectTiming(filtreTableaux),
+								serviceStatsDenun.totalUnTreat(filtreTableaux),
+								serviceStatsDenun.totalUnTreatByGravity(filtreTableaux)))
+						.SuggestStatsAndValue(Arrays.asList(serviceStatsSuggest.totalSaved(filtreTableaux),
+								serviceStatsSuggest.totalSuggest(filtreTableaux)))
 						.build();
 				reportGlobalResponse.setStatistic(statisticReport);
 
