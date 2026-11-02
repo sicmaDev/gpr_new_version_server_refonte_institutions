@@ -30,7 +30,18 @@ public class StatsSuggest {
     private final ServicePointRepository spRepository;
     private final ObjetRepository oRepository;
 
+    // Une suggestion n'a pas d'objet : sous un filtre par objet, ses lignes n'ont pas de valeur
+    // (null, affiché « non applicable » par l'interface) plutôt qu'un nombre trompeur.
+    private static boolean filtreParObjet(@Nullable FilterRequest request) {
+        return request != null && request.getObjets() != null && !request.getObjets().isEmpty();
+    }
+
     public HashMap<String, Double> totalSaved(@Nullable FilterRequest request) {
+        if (filtreParObjet(request)) {
+            HashMap<String, Double> resultat = new HashMap<>();
+            resultat.put("Nombre de suggestions Enregistrées", null);
+            return resultat;
+        }
         Long total = 0L;
         if (request != null) {
             total = suggestionRepository.countSuggestByCriterias(request);
@@ -44,6 +55,11 @@ public class StatsSuggest {
 
     public HashMap<String, Double> totalSuggest(@Nullable FilterRequest request) {
         HashMap<String, Double> resultat = new HashMap<>();
+        if (filtreParObjet(request)) {
+            resultat.put("Nombre de suggestion Prises en compte", null);
+            resultat.put("Nombre de suggestion Non Prises en compte", null);
+            return resultat;
+        }
         if (request != null) {
             if (request.getObjets() != null && request.getObjets().isEmpty()) {
                 List<SuggestTotalPerStatusPro> listClaimProjection = suggestionRepository

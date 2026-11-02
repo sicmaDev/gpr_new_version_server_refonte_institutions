@@ -25,6 +25,8 @@ import com.sicmagroup.gpr.repository.CollectionChannelRespository;
 
 import lombok.RequiredArgsConstructor;
 
+// Chaque calcul travaille sur sa propre copie du filtre (FilterRequest.copieDe) : le filtre partagé
+// par les tableaux récapitulatifs n'est jamais modifié.
 @Service
 @RequiredArgsConstructor
 public class StatsDenun {
@@ -66,7 +68,8 @@ public class StatsDenun {
                         key = "Nombre de dénonciations à niveau de gravité mineur enregistrées";
                         break;
                 }
-                resultat.put(key, claimPerObjLevelPro.getTotal().doubleValue());
+                // Une ligne par objet : on additionne les objets d'un même niveau de gravité.
+                resultat.put(key, resultat.getOrDefault(key, 0.0) + claimPerObjLevelPro.getTotal().doubleValue());
             }
 
         } else {
@@ -134,6 +137,7 @@ public class StatsDenun {
     }
 
     public HashMap<String, Double> totalUnTreat(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         int total = 0;
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.TEMP_SAVED);
@@ -164,6 +168,7 @@ public class StatsDenun {
     }
 
     public HashMap<String, Double> totalUnTreatByGravity(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.TEMP_SAVED);
         resultat.put("Nombre de dénonciations à niveau de gravité Grave non traitées", 0D);
@@ -205,7 +210,7 @@ public class StatsDenun {
                     resultat.replace("Nombre de dénonciations à niveau de gravité Moyen non traitées", oldVal + 1);
                     break;
                 case MINEUR:
-                    oldVal = resultat.get("Nombre de dénonciations à niveau de gravité Moyen non traitées");
+                    oldVal = resultat.get("Nombre de dénonciations à niveau de gravité Faible non traitées");
                     resultat.replace("Nombre de dénonciations à niveau de gravité Faible non traitées", oldVal + 1);
                     break;
             }
@@ -215,6 +220,7 @@ public class StatsDenun {
     }
 
     public HashMap<String, Double> totalTreat(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT);
         long total = 0;
@@ -244,6 +250,7 @@ public class StatsDenun {
     }
 
     public HashMap<String, Double> totalTreatByGravity(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT);
         resultat.put("Nombre de dénonciations à niveau de gravité Grave traitées", 0D);
@@ -294,6 +301,7 @@ public class StatsDenun {
     }
 
     public HashMap<String, Double> totalTreatByRespectTiming(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         resultat.put("Nombre de dénonciations traitées dans le délai", 0D);
         resultat.put("Nombre de dénonciations à niveau de gravité Mineur traitées dans le délai", 0D);

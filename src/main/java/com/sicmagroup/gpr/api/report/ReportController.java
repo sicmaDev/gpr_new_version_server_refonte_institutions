@@ -3,14 +3,13 @@ package com.sicmagroup.gpr.api.report;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.sicmagroup.gpr.service.auth.AuthenticationServiceImpl;
 import com.sicmagroup.gpr.service.report.BceaoReportService;
+import com.sicmagroup.gpr.service.report.PerimetreRapport;
 import com.sicmagroup.gpr.service.report.ReportServiceImpl;
 import com.sicmagroup.gpr.service.report.StatsClaim;
 import com.sicmagroup.gpr.service.report.StatsDenun;
 import com.sicmagroup.gpr.service.report.StatsSuggest;
 import com.sicmagroup.gpr.service.report.TemplateServiceImpl;
-import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
 
 import lombok.RequiredArgsConstructor;
@@ -25,8 +24,6 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,10 +39,7 @@ import com.sicmagroup.gpr.domain.dto.reports.BandChart.BandChart;
 import com.sicmagroup.gpr.domain.dto.reports.StackedBar.StackedBar;
 import com.sicmagroup.gpr.domain.dto.reports.pieChart.PieChartDto;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
-import com.sicmagroup.gpr.domain.enumeration.Role;
-import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.domain.model.Template;
-import com.sicmagroup.gpr.domain.model.User;
 
 @RestController
 @RequestMapping("/api/v1/report")
@@ -57,55 +51,17 @@ public class ReportController {
 	private final StatsSuggest serviceStatsSuggest;
 	private final BceaoReportService bceaoReportService;
 	private final TemplateServiceImpl templateService;
-	private final AuthenticationServiceImpl authService;
-	private final ServicePointServiceImpl spServiceImpl;
+	private final PerimetreRapport perimetre;
 
-	// Ni RA ni élevé (H6/PILOTE/DE) ne doit voir, sur le Rapport Global (filtré ou
-	// non), que son point de service et TOUS ceux qui lui sont rattachés — fils,
-	// petits-fils, etc. (parcours récursif, comme pour l'écran Mesure de
-	// satisfaction). Ça couvre aussi bien un RA qu'un simple titulaire de H11 qui
-	// n'est ni RA ni PILOTE/DE/H6 — le frontend traite déjà ces deux cas de la
-	// même façon (isElevatedUser = H6 || PILOTE || DE, indépendant de isRa()).
-	private boolean isElevatedForReport(User user) {
-		boolean hasH6 = user.getPoste() != null && user.getPoste().getHabilitations() != null
-				&& Arrays.stream(user.getPoste().getHabilitations().split(","))
-						.map(String::trim)
-						.anyMatch(h -> h.equals("H6"));
-		Role role = user.getAdditionalrole();
-		return hasH6 || role == Role.PILOTE || role == Role.DE;
-	}
-
-	private User getConnectedUserOrNull() {
-		try {
-			UserDetails collectorDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication()
-					.getPrincipal();
-			return authService.getByEmail(collectorDetails.getUsername());
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	// Un agent simple (H11, ni RA ni élevé) ne voit que sa PROPRE agence — les
-	// agences rattachées ne sont ajoutées que pour un RA. C'est la seule
-	// différence entre les deux profils non-élevés.
-	private List<Long> computeScopedServicePointIds(User connectedUser) {
-		ServicePoint servicePoint = connectedUser.getServicePoint();
-		List<Long> ids = new ArrayList<>();
-		ids.add(servicePoint.getId());
-		if (connectedUser.isRa()) {
-			for (ServicePoint descendant : spServiceImpl.getAllDescendants(servicePoint.getId())) {
-				ids.add(descendant.getId());
-			}
-		}
-		return ids;
-	}
+	// Périmètre d'agences (élevé, RA, agent H11) : règles uniques dans PerimetreRapport,
+	// partagées avec la carte du rapport.
 
 	// Utilisé par /global : construit un FilterRequest ne portant que le
 	// périmètre d'agences de l'utilisateur connecté, sauf s'il est élevé
 	// (H6/PILOTE/DE), auquel cas on retourne null pour préserver l'accès complet.
 	private FilterRequest buildRaScopedFilterOrNull() {
-		User connectedUser = getConnectedUserOrNull();
-		if (connectedUser == null || isElevatedForReport(connectedUser)) {
+		List<Long> agences = perimetre.agencesImposeesOuNull();
+		if (agences == null) {
 			return null;
 		}
 		// Les autres listes sont initialisées vides (pas null) pour matcher
@@ -115,7 +71,7 @@ public class ReportController {
 		// laisser ces champs à null changerait leur comportement par rapport à un
 		// filtre "normal" qui ne restreint que par point de service.
 		return FilterRequest.builder()
-				.servicePoints(computeScopedServicePointIds(connectedUser))
+				.servicePoints(agences)
 				.objets(new ArrayList<>())
 				.etats(new ArrayList<>())
 				.products(new ArrayList<>())
@@ -130,9 +86,9 @@ public class ReportController {
 	// simple titulaire de H11, il ne doit pas pouvoir élargir son périmètre en
 	// modifiant la requête).
 	private void enforceRaScope(FilterRequest request) {
-		User connectedUser = getConnectedUserOrNull();
-		if (connectedUser != null && !isElevatedForReport(connectedUser)) {
-			request.setServicePoints(computeScopedServicePointIds(connectedUser));
+		List<Long> agences = perimetre.agencesImposeesOuNull();
+		if (agences != null) {
+			request.setServicePoints(agences);
 		}
 	}
 
@@ -148,6 +104,9 @@ public class ReportController {
 				// et tous ceux qui lui sont rattachés (fils, petits-fils, ...).
 				// Les autres rôles (PILOTE, DE, H5, ...) gardent l'accès complet.
 				FilterRequest request = buildRaScopedFilterOrNull();
+				// Copie du filtre pour les tableaux récapitulatifs, prise avant les graphiques : ceux-ci
+				// ajustent le filtre partagé (états remis à null) et faussaient les tableaux.
+				FilterRequest filtreTableaux = FilterRequest.copieDe(request);
 
 				GlobalReport globalReport = GlobalReport
 						.builder()
@@ -227,25 +186,25 @@ public class ReportController {
 
 				StatisticReport statisticReport = StatisticReport
 						.builder()
-						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(request),
-								serviceStatsClaim.totalByGravity(request), serviceStatsClaim.tauxSatisfaction(request),
-								serviceStatsClaim.totalReclamantSatisfait(request),
-								serviceStatsClaim.totalTreat(request), serviceStatsClaim.totalTreatByGravity(request),
-								serviceStatsClaim.totalTreatByRespectTiming(request), serviceStatsClaim.totalUnTreat(request),
-								serviceStatsClaim.totalUnTreatByGravity(request),
-								serviceStatsClaim.pourcentageReclamationsTraitees(request),
-								serviceStatsClaim.pourcentageReelReclamationsTraitees(request),
-								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(request)
+						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(filtreTableaux),
+								serviceStatsClaim.totalByGravity(filtreTableaux), serviceStatsClaim.tauxSatisfaction(filtreTableaux),
+								serviceStatsClaim.totalReclamantSatisfait(filtreTableaux),
+								serviceStatsClaim.totalTreat(filtreTableaux), serviceStatsClaim.totalTreatByGravity(filtreTableaux),
+								serviceStatsClaim.totalTreatByRespectTiming(filtreTableaux), serviceStatsClaim.totalUnTreat(filtreTableaux),
+								serviceStatsClaim.totalUnTreatByGravity(filtreTableaux),
+								serviceStatsClaim.pourcentageReclamationsTraitees(filtreTableaux),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(filtreTableaux),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(filtreTableaux)
 								))
-						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(request),
-								serviceStatsDenun.totalByGravity(request),
-								serviceStatsDenun.totalTreat(request),
-								serviceStatsDenun.totalTreatByGravity(request),
-								serviceStatsDenun.totalTreatByRespectTiming(request),
-								serviceStatsDenun.totalUnTreat(request), serviceStatsDenun.totalUnTreatByGravity(request)))
+						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(filtreTableaux),
+								serviceStatsDenun.totalByGravity(filtreTableaux),
+								serviceStatsDenun.totalTreat(filtreTableaux),
+								serviceStatsDenun.totalTreatByGravity(filtreTableaux),
+								serviceStatsDenun.totalTreatByRespectTiming(filtreTableaux),
+								serviceStatsDenun.totalUnTreat(filtreTableaux), serviceStatsDenun.totalUnTreatByGravity(filtreTableaux)))
 						.SuggestStatsAndValue(
-								Arrays.asList(serviceStatsSuggest.totalSaved(request),
-										serviceStatsSuggest.totalSuggest(request)))
+								Arrays.asList(serviceStatsSuggest.totalSaved(filtreTableaux),
+										serviceStatsSuggest.totalSuggest(filtreTableaux)))
 						.build();
 				reportGlobalResponse.setStatistic(statisticReport);
 
@@ -285,6 +244,9 @@ public class ReportController {
 				// Un RA ne peut pas élargir son périmètre en modifiant le filtre envoyé
 				// depuis le frontend : on écrase servicePoints avec son périmètre réel.
 				enforceRaScope(request);
+				// Copie du filtre pour les tableaux récapitulatifs, prise avant les graphiques : ceux-ci
+				// ajustent le filtre partagé (états remis à null) et faussaient les tableaux.
+				FilterRequest filtreTableaux = FilterRequest.copieDe(request);
 
 				GlobalReport globalReport = GlobalReport
 						.builder()
@@ -400,25 +362,25 @@ public class ReportController {
 
 				StatisticReport statisticReport = StatisticReport
 						.builder()
-						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(request),
-								serviceStatsClaim.totalByGravity(request), serviceStatsClaim.tauxSatisfaction(request),
-								serviceStatsClaim.totalReclamantSatisfait(request),
-								serviceStatsClaim.totalTreat(request), serviceStatsClaim.totalTreatByGravity(request),
-								serviceStatsClaim.totalTreatByRespectTiming(request),
-								serviceStatsClaim.totalUnTreat(request),
-								serviceStatsClaim.totalUnTreatByGravity(request),
-								serviceStatsClaim.pourcentageReclamationsTraitees(request),
-								serviceStatsClaim.pourcentageReelReclamationsTraitees(request),
-								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(request) 
+						.ClaimStatsAndValue(Arrays.asList(serviceStatsClaim.totalSavedClaim(filtreTableaux),
+								serviceStatsClaim.totalByGravity(filtreTableaux), serviceStatsClaim.tauxSatisfaction(filtreTableaux),
+								serviceStatsClaim.totalReclamantSatisfait(filtreTableaux),
+								serviceStatsClaim.totalTreat(filtreTableaux), serviceStatsClaim.totalTreatByGravity(filtreTableaux),
+								serviceStatsClaim.totalTreatByRespectTiming(filtreTableaux),
+								serviceStatsClaim.totalUnTreat(filtreTableaux),
+								serviceStatsClaim.totalUnTreatByGravity(filtreTableaux),
+								serviceStatsClaim.pourcentageReclamationsTraitees(filtreTableaux),
+								serviceStatsClaim.pourcentageReelReclamationsTraitees(filtreTableaux),
+								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(filtreTableaux) 
 								))
-						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(request),
-								serviceStatsDenun.totalSavedClaim(request), serviceStatsDenun.totalTreat(request),
-								serviceStatsDenun.totalTreatByGravity(request),
-								serviceStatsDenun.totalTreatByRespectTiming(request),
-								serviceStatsDenun.totalUnTreat(request),
-								serviceStatsDenun.totalUnTreatByGravity(request)))
-						.SuggestStatsAndValue(Arrays.asList(serviceStatsSuggest.totalSaved(request),
-								serviceStatsSuggest.totalSuggest(request)))
+						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(filtreTableaux),
+								serviceStatsDenun.totalSavedClaim(filtreTableaux), serviceStatsDenun.totalTreat(filtreTableaux),
+								serviceStatsDenun.totalTreatByGravity(filtreTableaux),
+								serviceStatsDenun.totalTreatByRespectTiming(filtreTableaux),
+								serviceStatsDenun.totalUnTreat(filtreTableaux),
+								serviceStatsDenun.totalUnTreatByGravity(filtreTableaux)))
+						.SuggestStatsAndValue(Arrays.asList(serviceStatsSuggest.totalSaved(filtreTableaux),
+								serviceStatsSuggest.totalSuggest(filtreTableaux)))
 						.build();
 				reportGlobalResponse.setStatistic(statisticReport);
 

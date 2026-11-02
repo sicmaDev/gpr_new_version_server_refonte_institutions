@@ -23,6 +23,8 @@ import io.micrometer.common.lang.Nullable;
 
 import lombok.RequiredArgsConstructor;
 
+// Chaque calcul travaille sur sa propre copie du filtre (FilterRequest.copieDe) : le filtre partagé
+// par les tableaux récapitulatifs n'est jamais modifié.
 @Service
 @RequiredArgsConstructor
 public class StatsClaim {
@@ -63,7 +65,8 @@ public class StatsClaim {
                     
                     
                 }
-                resultat.put(key, claimPerObjLevelPro.getTotal().doubleValue());
+                // Une ligne par objet : on additionne les objets d'un même niveau de gravité.
+                resultat.put(key, resultat.getOrDefault(key, 0.0) + claimPerObjLevelPro.getTotal().doubleValue());
             }
 
         } else {
@@ -143,6 +146,7 @@ public class StatsClaim {
     }
 
     public HashMap<String, Double> totalUnTreat(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         int total = 0;
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
@@ -182,6 +186,7 @@ public class StatsClaim {
     }
 
     public HashMap<String, Double> totalUnTreatByGravity(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         int total = 0;
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
@@ -243,6 +248,7 @@ public class StatsClaim {
     }
 
     public HashMap<String, Double> totalTreat(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.CLASSED, ClaimStatus.LITIGATION, ClaimStatus.PARTIAL_SATISFIED);
@@ -273,6 +279,7 @@ public class StatsClaim {
     }
 
     public HashMap<String, Double> totalTreatByGravity(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         int total = 0;
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
@@ -327,6 +334,7 @@ public class StatsClaim {
     }
 
     public HashMap<String, Double> totalTreatByRespectTiming(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         resultat.put("Nombre de réclamations traitées dans le délai", 0D);
         resultat.put("Nombre de réclamations à niveau de gravité Mineur traitées dans le délai", 0D);
@@ -489,6 +497,7 @@ public class StatsClaim {
     // }
 
     public HashMap<String, Double> totalReclamantSatisfait(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
         HashMap<String, Double> resultat = new HashMap<>();
         resultat.put("Nombre de réclamations à réclamants satisfaits", 0D);
 
@@ -520,6 +529,8 @@ public class StatsClaim {
     }
 
     public HashMap<String, Double> tauxSatisfaction(@Nullable FilterRequest request) {
+        request = FilterRequest.copieDe(request);
+        List<ClaimStatus> etatsChoisis = request == null ? null : request.getEtats();
         HashMap<String, Double> resultat = new HashMap<>();
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.SATISFIED);
         List<Claim> claimsTreat = new ArrayList<>();
@@ -546,7 +557,22 @@ public class StatsClaim {
 
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.PARTIAL_SATISFIED,ClaimStatus.CLASSED,ClaimStatus.LITIGATION);
-        List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+        List<Claim> allClaims = new ArrayList<>();
+        if (request != null) {
+            // Dénominateur : les réclamations clôturées du même filtre (agence, période, objet...),
+            // pas toutes celles de l'institution.
+            List<ClaimStatus> statusDenominateur = new ArrayList<>(allSatisfaction);
+            if (etatsChoisis != null && !etatsChoisis.isEmpty()) {
+                statusDenominateur.retainAll(etatsChoisis);
+            }
+            if (!statusDenominateur.isEmpty()) {
+                FilterRequest filtreDenominateur = FilterRequest.copieDe(request);
+                filtreDenominateur.setEtats(statusDenominateur);
+                allClaims = claimRepository.countClaimByCriteriaAndStatusIn(filtreDenominateur, ClaimType.CLAIM);
+            }
+        } else {
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+        }
         // System.out.println("Taux");
         resultat.replace("Taux de satisfaction(%)",
                 Utils.parseDouble(
@@ -595,6 +621,22 @@ public class StatsClaim {
         return resultat;
     }
 
+    // Réclamations du filtre, brouillons exclus : avec un filtre par état, celles de ces états, sinon toutes.
+    // (countClaimByCriteriaAndStatusNot exclurait les états choisis et ramènerait les brouillons, sans objet.)
+    private List<Claim> reclamationsDuFiltre(FilterRequest request) {
+        FilterRequest copie = FilterRequest.copieDe(request);
+        if (copie.getEtats() != null && !copie.getEtats().isEmpty()) {
+            List<ClaimStatus> etats = new ArrayList<>(copie.getEtats());
+            etats.remove(ClaimStatus.TEMP_SAVED);
+            if (etats.isEmpty()) {
+                return new ArrayList<>();
+            }
+            copie.setEtats(etats);
+            return claimRepository.countClaimByCriteriaAndStatusIn(copie, ClaimType.CLAIM);
+        }
+        return claimRepository.countClaimByCriteriaAndStatusNot(copie, ClaimType.CLAIM);
+    }
+
     public HashMap<String, Double> pourcentageReelReclamationsTraitees(@Nullable FilterRequest request) {
         HashMap<String, Double> resultat = new HashMap<>();
         resultat.put("Pourcentage réel réclamations traitées (%)", 0D);  // Initialisation avec 0%
@@ -611,7 +653,7 @@ public class StatsClaim {
     
         // Récupération des réclamations selon le filtre
         List<Claim> allClaims = (request != null)
-                ? claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.CLAIM)
+                ? reclamationsDuFiltre(request)
                 : claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
         List<Claim> allExpiredClaims = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
@@ -662,7 +704,7 @@ public class StatsClaim {
         try {
             // Récupération des réclamations selon le filtre
             allClaims = (request != null)
-                    ? claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.CLAIM)
+                    ? reclamationsDuFiltre(request)
                     : claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
     
             // Filtrage des réclamations échues
