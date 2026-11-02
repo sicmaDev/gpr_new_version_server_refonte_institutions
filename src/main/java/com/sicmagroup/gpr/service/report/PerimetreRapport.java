@@ -1,4 +1,4 @@
-package com.sicmagroup.gpr.service.report.carte;
+package com.sicmagroup.gpr.service.report;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,17 +16,18 @@ import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 
 import lombok.RequiredArgsConstructor;
 
-// Périmètre d'agences du rapport Global pour la carte : MÊMES règles que ReportController
-// (isElevatedForReport, computeScopedServicePointIds, enforceRaScope). Ces méthodes y sont privées et
-// ReportController ne devait pas être modifié : la logique est reprise à l'identique, en réutilisant
-// ServicePointServiceImpl.getAllDescendants. À factoriser le jour où ReportController pourra être touché.
+// Périmètre d'agences du rapport Global, partagé par ReportController (rapport) et la carte.
+// Ni RA ni élevé (H6/PILOTE/DE) ne doit voir, sur le Rapport Global (filtré ou non), que son point
+// de service et ceux qui lui sont rattachés (fils, petits-fils, etc., parcours récursif comme pour
+// l'écran Mesure de satisfaction). Le frontend traite RA et simple titulaire de H11 de la même façon
+// (isElevatedUser = H6 || PILOTE || DE, indépendant de isRa()).
 @Component
 @RequiredArgsConstructor
 public class PerimetreRapport {
 	private final AuthenticationServiceImpl authService;
 	private final ServicePointServiceImpl spServiceImpl;
 
-	// H6, PILOTE ou DE : tout le périmètre (copie de ReportController.isElevatedForReport).
+	// H6, PILOTE ou DE : tout le périmètre.
 	public boolean estEleve(User user) {
 		boolean hasH6 = user.getPoste() != null && user.getPoste().getHabilitations() != null
 				&& Arrays.stream(user.getPoste().getHabilitations().split(","))
@@ -45,7 +46,8 @@ public class PerimetreRapport {
 		}
 	}
 
-	// Sa propre agence ; un RA y ajoute toutes les agences rattachées (copie de computeScopedServicePointIds).
+	// Un agent simple (H11, ni RA ni élevé) ne voit que sa PROPRE agence ; les agences rattachées
+	// ne sont ajoutées que pour un RA. C'est la seule différence entre les deux profils non élevés.
 	public List<Long> agencesDuPerimetre(User user) {
 		ServicePoint servicePoint = user.getServicePoint();
 		List<Long> ids = new ArrayList<>();
@@ -58,7 +60,8 @@ public class PerimetreRapport {
 		return ids;
 	}
 
-	// null = aucune restriction (élevé) ; sinon la liste imposée, comme enforceRaScope / buildRaScopedFilterOrNull.
+	// null = aucune restriction (élevé, ou pas d'utilisateur connecté) ; sinon les agences imposées,
+	// qui remplacent toujours celles envoyées par le client.
 	public List<Long> agencesImposeesOuNull() {
 		User user = utilisateurConnecteOuNull();
 		if (user == null || estEleve(user)) {

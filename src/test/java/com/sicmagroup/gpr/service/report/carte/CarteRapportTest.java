@@ -8,9 +8,10 @@ import com.sicmagroup.gpr.domain.enumeration.Role;
 import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.ServicePointLocalisation;
 import com.sicmagroup.gpr.domain.model.User;
+import com.sicmagroup.gpr.service.report.PerimetreRapport;
 
 /**
- * Carte du rapport Global : règles de saisie de la localisation et périmètre « élevé » (mêmes règles que ReportController).
+ * Carte du rapport Global : règles de saisie de la localisation et périmètre « élevé » (PerimetreRapport, partagé avec le rapport).
  * Sans base de données.
  */
 class CarteRapportTest {

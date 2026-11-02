@@ -13,6 +13,7 @@ import com.sicmagroup.gpr.api.report.FilterRequest;
 import com.sicmagroup.gpr.domain.dto.reports.StackedBar.StackedBar;
 import com.sicmagroup.gpr.domain.model.ServicePointLocalisation;
 import com.sicmagroup.gpr.repository.ServicePointLocalisationRepository;
+import com.sicmagroup.gpr.service.report.PerimetreRapport;
 import com.sicmagroup.gpr.service.report.ReportServiceImpl;
 import com.sicmagroup.gpr.service.report.StatsClaim;
 import com.sicmagroup.gpr.service.report.StatsDenun;
@@ -91,7 +92,7 @@ public class CarteRapportService {
 		return taux;
 	}
 
-	// Les méthodes Stats* modifient le filtre reçu (setEtats) : chaque appel reçoit sa propre copie.
+	// Le filtre de la page restreint à une agence (listes absentes remplacées par des listes vides).
 	private FilterRequest pour(FilterRequest filtre, Long agence) {
 		return copie(filtre, List.of(agence));
 	}
