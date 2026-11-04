@@ -42,3 +42,8 @@ backend-img.tar
 data.txt
 # Rapports de plantage de la JVM
 hs_err_pid*.log
+# Outils de test : profil du navigateur de test et captures (créés à l'exécution)
+outils-tests/edge-cdp/
+outils-tests/shots/
+# Rapports de plantage de Git Bash
+*.stackdump

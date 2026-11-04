@@ -1,0 +1,5 @@
+window.__champ = (motif) => { const lab=[...document.querySelector(".card-panel").querySelectorAll("label")].find(l=>new RegExp(motif.source,"i").test(l.innerText)); return lab.parentElement.querySelector("input,select"); };
+window.__vider = async (el, texte) => { await __annonce(texte); await __montrer(el); const s=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set; s.call(el,""); el.dispatchEvent(new Event("input",{bubbles:true})); await __p(800); };
+window.__choixSelect = async (el, val, texte) => { await __annonce(texte); await __montrer(el); const s=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set; s.call(el,val); el.dispatchEvent(new Event("change",{bubbles:true})); await __p(1000); };
+window.__enregistrer = async (texte) => { const b=[...document.querySelector(".card-panel").querySelectorAll("button")].find(b=>b.innerText.trim()==="Enregistrer"); await __cliquer(b, texte||"Clic sur « Enregistrer »"); return await __message(); };
+true
