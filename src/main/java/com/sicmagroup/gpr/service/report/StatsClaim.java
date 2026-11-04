@@ -720,7 +720,10 @@ public class StatsClaim {
                     .filter(claim -> {
                         LocalDateTime supposedFinalTreatmentDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
                         List<Solution> solutions = claim.getSolutions();
-                        LocalDateTime measureDate = (solutions != null && !solutions.isEmpty()) 
+                        // Dernière solution sans mesure de satisfaction : pas encore comptée comme traitée dans le délai
+                        // (sinon tout le rapport Global, et son export Power BI, échouait)
+                        LocalDateTime measureDate = (solutions != null && !solutions.isEmpty()
+                                && solutions.get(solutions.size() - 1).getSatisfactionMeasure() != null)
                                 ? solutions.get(solutions.size() - 1).getSatisfactionMeasure().getMeasureDateTime()
                                 : null;
     

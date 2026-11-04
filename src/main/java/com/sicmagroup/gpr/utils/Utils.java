@@ -69,6 +69,12 @@ public class Utils {
         return code != null ? code : "";
     }
 
+    // Intitulé saisi dans une page de configuration : espaces retirés au début et à la fin, espaces multiples
+    // réduits à un seul. La base ignore déjà les majuscules : « site web » et « Site   web » deviennent un doublon.
+    public static String nettoyerLibelle(String libelle) {
+        return libelle == null ? null : libelle.trim().replaceAll("\\s+", " ");
+    }
+
     public static String guessFileExtension(String dataString) {
         String type = "";
         if (dataString.contains("application/pdf")) {
@@ -273,10 +279,12 @@ public class Utils {
             }
 
         } catch (MailException ex) {
+            // Raison de l'échec gardée dans le journal du serveur (le mot de passe n'y figure pas)
+            System.err.println("Test mail non envoyé : " + ex.getMessage());
             return false;
 
         } catch (Exception e) {
-
+            System.err.println("Test mail non envoyé : " + e.getMessage());
             return false;
         }
 

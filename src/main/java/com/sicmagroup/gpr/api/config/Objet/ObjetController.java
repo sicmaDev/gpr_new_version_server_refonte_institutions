@@ -31,6 +31,7 @@ import com.sicmagroup.gpr.domain.model.ExistingSolution;
 import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.service.categorieObjet.CategorieObjetServiceImpl;
 import com.sicmagroup.gpr.service.objet.ObjetServcieImpl;
+import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -339,11 +340,22 @@ public class ObjetController {
                     .build();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         }
+        // Même plafond que l'écran (MAX_SUBJECT_DURATION côté interface) : un appel direct ne doit pas le contourner
+        if (objetDto.getProcessingTime() > DELAI_MAX_JOURS) {
+            ApiResponseDto trop = ApiResponseDto.builder().status(false)
+                    .content(ErrorResponse.builder().title("Délai invalide")
+                            .message("Le délai de traitement ne peut pas dépasser " + DELAI_MAX_JOURS + " jours.").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(trop);
+        }
         return null;
     }
 
+    private static final int DELAI_MAX_JOURS = 30;
+
     private Objet convertFromDtoToEntity(ObjetDto objetDto) throws NotFoundException {
         Objet objet = modelMapper.map(objetDto, Objet.class);
+        objet.setLibelle(Utils.nettoyerLibelle(objet.getLibelle()));
         if (objetDto.getCategorie() != null) {
             try {
                 objet.setCategorie(categorieObjetServiceImpl.getOneById(objetDto.getCategorie()));

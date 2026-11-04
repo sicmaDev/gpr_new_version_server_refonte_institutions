@@ -105,6 +105,14 @@ public class UserController {
                     .content(ErrorResponse.builder().title("NOT FOUND").message("User not found").build())
                     .build();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(apiResponseDto);
+        } catch (IllegalStateException e) {
+            // Quota de la licence atteint à la validation d'une demande d'inscription
+            apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Quota atteint").message(e.getMessage()).build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         }
     }
 

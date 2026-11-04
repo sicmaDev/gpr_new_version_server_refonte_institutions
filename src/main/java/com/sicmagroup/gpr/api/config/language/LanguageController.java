@@ -24,6 +24,7 @@ import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.LanguageDto;
 import com.sicmagroup.gpr.domain.model.Language;
 import com.sicmagroup.gpr.service.language.LanguageServiceImpl;
+import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -254,6 +255,7 @@ public class LanguageController {
 
     private Language convertFromDtoToEntity(LanguageDto languageDto) throws NotFoundException {
         Language language = modelMapper.map(languageDto, Language.class);
+        language.setLibelle(Utils.nettoyerLibelle(language.getLibelle()));
 
         if (language.getId() != null) {
             Language oldLanguage = languageServiceImpl.getById(language.getId());

@@ -26,16 +26,32 @@ public class ExistingSolutionServiceImpl implements ExistingSolutionService {
         return repository.findAll();
     }
 
+    // Une même solution (sans tenir compte des majuscules ni des espaces en trop) ne peut exister
+    // qu'une fois pour un objet : sinon elle s'affiche en double au traitement. idExclu : la solution modifiée.
+    private void verifierDoublon(Objet objet, String contenu, Long idExclu) throws Exception {
+        String cle = normaliser(contenu);
+        boolean doublon = repository.findByObjet(objet).stream()
+                .anyMatch(s -> !s.getId().equals(idExclu) && normaliser(s.getContent()).equals(cle));
+        if (doublon) {
+            throw new Exception("Cette solution existe déjà pour l'objet « " + objet.getLibelle() + " ».");
+        }
+    }
+
+    private static String normaliser(String texte) {
+        return texte == null ? "" : texte.trim().replaceAll("\\s+", " ").toLowerCase();
+    }
+
     @Override
     public ExistingSolution saveOne(AddExistingSolutionRequest request) throws Exception {
+        Objet objet = objetRepository.findById(request.getObjet()).orElseThrow(
+                () -> new Exception("L'objet sélectionné n'existe pas. Réessayez ou contactez le support."));
+        verifierDoublon(objet, request.getContent(), null);
         ExistingSolution existingSolution = ExistingSolution
                 .builder()
                 .content(request.getContent())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
-                .objet(objetRepository.findById(request.getObjet()).orElseThrow(
-                        () -> new Exception("L'objet sélectionné n'existe pas. Réessayez ou contactez le support.")))
-                        
+                .objet(objet)
                 .build();
         existingSolution = repository.save(existingSolution);
 
@@ -46,9 +62,11 @@ public class ExistingSolutionServiceImpl implements ExistingSolutionService {
     public ExistingSolution updateOne(UpdateExistingSolutionRequest request) throws Exception {
         ExistingSolution existingSolution = repository.findById(request.getId())
                 .orElseThrow(() -> new Exception("La solution sélectionnée n'existe pas. Réessayez ou contactez le support."));
+        Objet objet = objetRepository.findById(request.getObjet()).orElseThrow(
+                () -> new Exception("L'objet sélectionné n'existe pas. Réessayez ou contactez le support."));
+        verifierDoublon(objet, request.getContent(), existingSolution.getId());
         existingSolution.setContent(request.getContent());
-        existingSolution.setObjet(objetRepository.findById(request.getObjet()).orElseThrow(
-                () -> new Exception("L'objet sélectionné n'existe pas. Réessayez ou contactez le support.")));
+        existingSolution.setObjet(objet);
                 existingSolution.setUpdatedAt(LocalDateTime.now());
         existingSolution = repository.save(existingSolution);
         return existingSolution;

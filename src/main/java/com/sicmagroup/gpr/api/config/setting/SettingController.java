@@ -269,8 +269,24 @@ public class SettingController {
     public ResponseEntity<ApiResponseDto> configMail(@RequestBody MailRequest request) {
         ObjectMapper Obj = new ObjectMapper();
 
+        // Sans serveur, port ou adresse d'envoi, plus aucun mail ne pourrait partir : enregistrement refusé
+        if (estVide(request.getHost()) || estVide(request.getPort()) || estVide(request.getUser())) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Champs obligatoires")
+                            .message("Le serveur, le port et l'utilisateur mail sont obligatoires.").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        }
+
         try {
             Setting settingOld = serviceImpl.getbySlug(Constante.MAIL_SLUG);
+            // Le mot de passe n'est jamais envoyé au navigateur : laissé vide, on garde celui déjà enregistré
+            if (!Boolean.FALSE.equals(request.getAuthRequired()) && estVide(request.getPwd())) {
+                MailRequest ancien = Obj.readValue(settingOld.getValue(), MailRequest.class);
+                request.setPwd(ancien.getPwd());
+            }
             String jsonStr = Obj.writeValueAsString(request);
             UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
                     .libelle(Constante.MAIL_SLUG)
@@ -899,6 +915,10 @@ public class SettingController {
         String saltStr = salt.toString();
         return saltStr;
 
+    }
+
+    private static boolean estVide(String texte) {
+        return texte == null || texte.trim().isEmpty();
     }
 
 }

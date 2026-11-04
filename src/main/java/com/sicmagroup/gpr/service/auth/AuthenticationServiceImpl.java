@@ -5,17 +5,23 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -191,7 +197,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         if (license != "" && totalUser != 0) {
 
-            long totalActuUser = userRepository.count();
+            long totalActuUser = userRepository.countComptesLicence();
             if (totalActuUser < totalUser) {
                 // possible de créer un nouvel user
                 User user = User.builder()
@@ -373,7 +379,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         if (!license.isEmpty() && totalUser != 0) {
-            long totalActuUser = userRepository.count();
+            long totalActuUser = userRepository.countComptesLicence();
             if (totalActuUser < totalUser) {
                 String code = "usr-" + UUID.randomUUID().toString().substring(0, 5);
                 while (userRepository.findByCode(code).isPresent()) {
@@ -397,7 +403,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .build();
 
                 userRepository.save(user);
-                notifyUserQuotaIfCrossed(totalActuUser, totalUser);
+                // Pas d'alerte de quota ici : la demande en attente ne prend sa place qu'à la validation (enabledUser).
 
                 // Envoi de mail en parallèle
                 // CompletableFuture.runAsync(() -> {
@@ -1719,14 +1725,30 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public User enabledUser(Long id) throws NotFoundException {
         User userOld = userRepository.getReferenceById(id);
+        // Une demande d'inscription en attente ne compte pas dans le quota de la licence : elle le prend à sa validation.
+        boolean validationDemande = userOld.isRattached() && userOld.isDeleted();
+        int maxUsers = 0;
+        long comptesAvant = 0;
+        if (validationDemande) {
+            maxUsers = getMaxUsersFromLicense();
+            comptesAvant = userRepository.countComptesLicence();
+            if (maxUsers > 0 && comptesAvant >= maxUsers) {
+                throw new IllegalStateException("Nombre maximum de comptes atteint (" + maxUsers + "). Contactez SICMA pour augmenter cette limite.");
+            }
+        }
         userOld.setDeleted(false);
         userOld.setDeletedAt(LocalDateTime.now());
+        // Une fois validée, la demande devient un compte ordinaire (une désactivation future ne la refera pas passer « en attente »).
+        userOld.setRattached(false);
         userOld = userRepository.save(userOld);
+        if (validationDemande) {
+            notifyUserQuotaIfCrossed(comptesAvant, maxUsers);
+        }
 
         final User userForMail = userOld;
         String statusText;
 
-        if (userForMail.isRattached()) {
+        if (validationDemande) {
             statusText = "validé";
         } else{
             statusText = "réactivé";
@@ -1800,6 +1822,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public boolean isTheLastH12(User user){
         // List<User> users = userRepository.fin
         // List<
+        // Un compte désactivé n'est déjà plus compté parmi les comptes actifs : il ne peut pas être « le dernier »
+        if (user.isDeleted()) {
+            return false;
+        }
         if(user.getPoste().getHabilitations().contains(Habilitation.H12.name())){
             List<Poste> postes = posteRepository.findByHabilitationsContaining(Habilitation.H12.name());
             int numbreUser = 0;
@@ -2297,7 +2323,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         User currentUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
 
-        boolean isPilote = Role.PILOTE.equals(currentUser.getAdditionalrole());
+        // Le directeur (DE) voit toutes les statistiques de l'institution, comme le pilote.
+        boolean isPilote = Role.PILOTE.equals(currentUser.getAdditionalrole()) || Role.DE.equals(currentUser.getAdditionalrole());
         boolean isRA = currentUser.isRa();
 
         List<Claim> claims;
@@ -2309,6 +2336,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         String scopeLabel = null;
         int subAgencesCount = 0;
         List<Map<String, Object>> agencesStats = null;
+        List<Map<String, Object>> repartitionAgent = null;
 
         if (isPilote) {
             // Pilote → toutes les données (comportement actuel)
@@ -2355,6 +2383,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             retardClaims.addAll(computeAlerts(denunsForAlert, ClaimType.DENUNCIACION));
 
             if (isDirection) {
+                Set<Long> idsEnRetard = retardClaims.stream().map(AlertDto::getClaimId).filter(Objects::nonNull).collect(Collectors.toSet());
                 agencesStats = new ArrayList<>();
                 for (ServicePoint sp : spList) {
                     Long spId = sp.getId();
@@ -2365,8 +2394,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     long spDenunsTrait   = denuns.stream().filter(d -> d.getServicePoint() != null && d.getServicePoint().getId().equals(spId) && ClaimStatus.TREAT.equals(d.getStatus())).count();
                     long spSuggests      = suggestions.stream().filter(s -> s.getServiceIndexe() != null && s.getServiceIndexe().getId().equals(spId)).count();
                     long spSuggestsTrait = suggestions.stream().filter(s -> s.getServiceIndexe() != null && s.getServiceIndexe().getId().equals(spId) && ClaimStatus.TREAT.equals(s.getStatus())).count();
-                    long spRetard        = claimsForAlert.stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId)).count()
-                                        + denunsForAlert.stream().filter(d -> d.getServicePoint() != null && d.getServicePoint().getId().equals(spId)).count();
+                    // Seuls les dossiers réellement en retard (liste retardClaims, celle de la carte « En retard de traitement ») :
+                    // avant, la colonne comptait tous les dossiers non clôturés de l'agence.
+                    long spRetard        = claimsForAlert.stream().filter(c -> c.getServicePoint() != null && c.getServicePoint().getId().equals(spId) && idsEnRetard.contains(c.getId())).count()
+                                        + denunsForAlert.stream().filter(d -> d.getServicePoint() != null && d.getServicePoint().getId().equals(spId) && idsEnRetard.contains(d.getId())).count();
                     Map<String, Object> stat = new HashMap<>();
                     stat.put("agenceLabel",     sp.getLibelle());
                     stat.put("claims",          spClaims);
@@ -2382,10 +2413,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             }
 
         } else {
-            // User simple → filtre par (collector OU treatmentAffectedTo) ET point de service
+            // User simple → ce qu'il a fait lui-même : dossiers qu'il a saisis ou qui lui sont affectés, quelle que soit
+            // l'agence du dossier (avant, seuls ceux de sa propre agence comptaient : un agent qui saisit pour d'autres agences voyait 0).
             Long userId = currentUser.getId();
             ServicePoint userSp = currentUser.getServicePoint();
-            Long spId = userSp != null ? userSp.getId() : null;
 
             List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
             List<Claim> allDenuns = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
@@ -2393,32 +2424,27 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
             claims = allClaims.stream()
                     .filter(c -> ((c.getCollector() != null && c.getCollector().getId().equals(userId))
-                               || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId)))
-                            && (spId == null || (c.getServicePoint() != null && c.getServicePoint().getId().equals(spId))))
+                               || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId))))
                     .collect(Collectors.toList());
             denuns = allDenuns.stream()
                     .filter(d -> ((d.getCollector() != null && d.getCollector().getId().equals(userId))
-                               || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId)))
-                            && (spId == null || (d.getServicePoint() != null && d.getServicePoint().getId().equals(spId))))
+                               || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId))))
                     .collect(Collectors.toList());
             suggestions = allSuggestions.stream()
-                    .filter(s -> (s.getCollecteur() != null && s.getCollecteur().getId().equals(userId))
-                            && (spId == null || (s.getServiceIndexe() != null && s.getServiceIndexe().getId().equals(spId))))
+                    .filter(s -> (s.getCollecteur() != null && s.getCollecteur().getId().equals(userId)))
                     .collect(Collectors.toList());
 
             List<Claim> claimsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED))
-                    .stream().filter(c -> ((c.getCollector() != null && c.getCollector().getId().equals(userId))
-                                       || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId)))
-                            && (spId == null || (c.getServicePoint() != null && c.getServicePoint().getId().equals(spId))))
+                    .stream().filter(c -> !c.isDeleted() && ((c.getCollector() != null && c.getCollector().getId().equals(userId))
+                                       || (c.getTreatmentAffectedTo() != null && c.getTreatmentAffectedTo().getId().equals(userId))))
                     .collect(Collectors.toList());
             List<Claim> denunsForAlert = claimRepository.findByTypeAndStatusNotIn(ClaimType.DENUNCIACION,
                     Arrays.asList(ClaimStatus.CLASSED, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.TEMP_SAVED, ClaimStatus.TREAT))
-                    .stream().filter(d -> ((d.getCollector() != null && d.getCollector().getId().equals(userId))
-                                       || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId)))
-                            && (spId == null || (d.getServicePoint() != null && d.getServicePoint().getId().equals(spId))))
+                    .stream().filter(d -> !d.isDeleted() && ((d.getCollector() != null && d.getCollector().getId().equals(userId))
+                                       || (d.getTreatmentAffectedTo() != null && d.getTreatmentAffectedTo().getId().equals(userId))))
                     .collect(Collectors.toList());
             retardClaims = computeAlerts(claimsForAlert, ClaimType.CLAIM);
             retardClaims.addAll(computeAlerts(denunsForAlert, ClaimType.DENUNCIACION));
@@ -2427,6 +2453,39 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 scopeType = "AGENCE";
                 scopeLabel = userSp.getLibelle();
             }
+
+            // Détail par agence des dossiers de l'agent : il peut en avoir enregistré pour d'autres agences que la sienne.
+            Map<Long, Map<String, Object>> parAgence = new LinkedHashMap<>();
+            java.util.function.BiConsumer<ServicePoint, String> compter = (sp, cle) -> {
+                Long id = sp != null ? sp.getId() : 0L;
+                Map<String, Object> ligne = parAgence.computeIfAbsent(id, k -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("agence", sp != null ? sp.getLibelle() : "Sans agence");
+                    m.put("agenceActuelle", sp != null && userSp != null && sp.getId().equals(userSp.getId()));
+                    m.put("reclamations", 0L);
+                    m.put("denonciations", 0L);
+                    m.put("suggestions", 0L);
+                    return m;
+                });
+                ligne.put(cle, (Long) ligne.get(cle) + 1);
+            };
+            claims.forEach(c -> compter.accept(c.getServicePoint(), "reclamations"));
+            denuns.forEach(d -> compter.accept(d.getServicePoint(), "denonciations"));
+            suggestions.forEach(s -> compter.accept(s.getServiceIndexe(), "suggestions"));
+            if (userSp != null && !parAgence.containsKey(userSp.getId())) {
+                // L'agence actuelle apparaît toujours, même sans dossier, pour la distinguer des autres agences.
+                Map<String, Object> m = new HashMap<>();
+                m.put("agence", userSp.getLibelle());
+                m.put("agenceActuelle", true);
+                m.put("reclamations", 0L);
+                m.put("denonciations", 0L);
+                m.put("suggestions", 0L);
+                parAgence.put(userSp.getId(), m);
+            }
+            List<Map<String, Object>> repartition = new ArrayList<>(parAgence.values());
+            repartition.sort(Comparator.comparing((Map<String, Object> m) -> !(Boolean) m.get("agenceActuelle"))
+                    .thenComparing(m -> -((Long) m.get("reclamations") + (Long) m.get("denonciations") + (Long) m.get("suggestions"))));
+            repartitionAgent = repartition;
         }
 
         // ── Calcul des KPI communs à partir des listes filtrées ──
@@ -2452,6 +2511,19 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             }
         }
 
+        // Valeurs lues par le tableau de bord, sur tous les dossiers du périmètre (réclamations, dénonciations, suggestions).
+        List<ClaimStatus> tousStatuts = new ArrayList<>();
+        claims.forEach(c -> tousStatuts.add(c.getStatus()));
+        denuns.forEach(d -> tousStatuts.add(d.getStatus()));
+        suggestions.forEach(s -> tousStatuts.add(s.getStatus()));
+        Map<String, Long> dossiersParStatut = tousStatuts.stream().filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(Enum::name, LinkedHashMap::new, Collectors.counting()));
+        dashboard.put("dossiersParStatut", dossiersParStatut);
+        dashboard.put("totalAffected", tousStatuts.stream().filter(s -> s == ClaimStatus.AFFECTED).count());
+        dashboard.put("totalTreat", tousStatuts.stream().filter(treatClaimStatus::contains).count());
+        // Réclamations traitées dont la satisfaction du client n'a pas encore été mesurée
+        dashboard.put("claimsAwaitingMeasure", claims.stream().filter(c -> c.getStatus() == ClaimStatus.TREAT).count());
+
         // Taux de satisfaction
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION);
@@ -2462,7 +2534,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (claimsSatisfied == 0) {
             tauxSatisfactionFormate = "0";
         } else {
-            DecimalFormat df = new DecimalFormat("#.00");
+            // Point décimal quelle que soit la langue du serveur : la page lit ce texte comme un nombre (« 23,08 » donnait 0 %).
+            DecimalFormat df = new DecimalFormat("#.00", DecimalFormatSymbols.getInstance(Locale.ROOT));
             tauxSatisfactionFormate = df.format(Utils.percentCalculator(claimsSatisfied, claimsForSatisfaction));
         }
         dashboard.put("tauxSatisfaction", tauxSatisfactionFormate);
@@ -2481,10 +2554,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         if (agencesStats != null) {
             dashboard.put("agencesStats", agencesStats);
         }
+        if (repartitionAgent != null) {
+            dashboard.put("repartitionAgent", repartitionAgent);
+        }
 
         // Quota de comptes utilisateurs (licence) - alimente la bannière d'alerte 80% du dashboard admin
         int maxUsers = getMaxUsersFromLicense();
-        long currentUsers = userRepository.count();
+        long currentUsers = userRepository.countComptesLicence();
         dashboard.put("userQuotaTotal", maxUsers);
         dashboard.put("userQuotaUsed", currentUsers);
         dashboard.put("userQuotaPct", maxUsers > 0 ? Math.round((currentUsers * 100.0) / maxUsers) : 0);

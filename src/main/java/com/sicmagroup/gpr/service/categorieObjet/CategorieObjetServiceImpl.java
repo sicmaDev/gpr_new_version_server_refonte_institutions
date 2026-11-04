@@ -1,5 +1,6 @@
 package com.sicmagroup.gpr.service.categorieObjet;
 
+import com.sicmagroup.gpr.utils.Utils;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -27,7 +28,7 @@ public class CategorieObjetServiceImpl implements CategorieObjetService {
     public CategorieObjet saveOne(CategorieObjetRequest request) {
         CategorieObjet categorieObjet = CategorieObjet
                 .builder()
-                .libelle(request.getLibelle())
+                .libelle(Utils.nettoyerLibelle(request.getLibelle()))
                 .description(request.getDescription())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -40,7 +41,7 @@ public class CategorieObjetServiceImpl implements CategorieObjetService {
     public CategorieObjet updateOne(UpdateCategorieObjetRequest request) throws Exception {
         CategorieObjet categorieObjet = repository.findById(request.getId())
                 .orElseThrow(() -> new Exception("La categorie à mettre à jour est introuvable"));
-        categorieObjet.setLibelle(request.getLibelle());
+        categorieObjet.setLibelle(Utils.nettoyerLibelle(request.getLibelle()));
         categorieObjet.setDescription(request.getDescription());
         categorieObjet.setUpdatedAt(LocalDateTime.now());
         return repository.save(categorieObjet);

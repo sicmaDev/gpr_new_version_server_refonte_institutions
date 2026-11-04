@@ -24,6 +24,7 @@ import com.sicmagroup.gpr.domain.dto.CollectionChannelDto;
 import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.model.CollectionChannel;
 import com.sicmagroup.gpr.service.collectionChannel.CollectionChannelServiceImpl;
+import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -252,6 +253,7 @@ public class CollectionChannelController {
     private CollectionChannel convertFromDtoToEntity(CollectionChannelDto collectionChannelDto)
             throws NotFoundException {
         CollectionChannel collectionChannel = modelMapper.map(collectionChannelDto, CollectionChannel.class);
+        collectionChannel.setLibelle(Utils.nettoyerLibelle(collectionChannel.getLibelle()));
 
         if (collectionChannel.getId() != null) {
             CollectionChannel oldCollectionChannel = service.getById(collectionChannel.getId());

@@ -45,4 +45,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByServicePoint(ServicePoint servicePoint);
     @Query("SELECT u FROM User u WHERE u.servicePoint.id = :servicePointId AND u.isRa = true AND u.isDeleted = false")
     Optional<User> findRaByServicePointId(@Param("servicePointId") Long servicePointId);
+
+    // Comptes pris sur le quota de la licence : actifs et désactivés, sans les demandes d'inscription en attente.
+    @Query("SELECT COUNT(u) FROM User u WHERE NOT (u.isRattached = true AND u.isDeleted = true)")
+    long countComptesLicence();
 }
