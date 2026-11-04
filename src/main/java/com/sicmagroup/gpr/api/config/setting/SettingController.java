@@ -357,8 +357,26 @@ public class SettingController {
     public ResponseEntity<ApiResponseDto> configSms(@RequestBody SmsRequest request) {
         ObjectMapper Obj = new ObjectMapper();
 
+        // Sans ces réglages, plus aucun SMS ne pourrait partir : enregistrement refusé
+        if (estVide(request.getUrl()) || estVide(request.getLibId()) || estVide(request.getValId()) || estVide(request.getLibMdp())
+                || estVide(request.getLibEmetteur()) || estVide(request.getValEmetteur())
+                || estVide(request.getLibDestinataire()) || estVide(request.getLibMessage())) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Champs obligatoires")
+                            .message("Tous les paramètres SMS sont obligatoires.").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        }
+
         try {
             Setting settingOld = serviceImpl.getbySlug(Constante.SMS_SLUG);
+            // Le mot de passe n'est jamais envoyé au navigateur : laissé vide, on garde celui déjà enregistré
+            if (estVide(request.getValMdp())) {
+                SmsRequest ancien = Obj.readValue(settingOld.getValue(), SmsRequest.class);
+                request.setValMdp(ancien.getValMdp());
+            }
             String jsonStr = Obj.writeValueAsString(request);
             UpdateSettingRequest majSettingRequest = UpdateSettingRequest.builder()
                     .libelle(Constante.SMS_SLUG)
@@ -385,6 +403,15 @@ public class SettingController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
         } catch (Exception e) {
             if (e.getMessage().equals("The choosen setting doesn't exist")) {
+                if (estVide(request.getValMdp())) {
+                    ApiResponseDto apiResponseDto = ApiResponseDto
+                            .builder()
+                            .status(false)
+                            .content(ErrorResponse.builder().title("Champs obligatoires")
+                                    .message("Le mot de passe SMS est obligatoire.").build())
+                            .build();
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+                }
                 // Getting organisation object as a json string
                 String jsonStr;
                 try {
@@ -807,6 +834,15 @@ public class SettingController {
     
     @PostMapping(value = "/key/generate")
     public ResponseEntity<ApiResponseDto> generateApiKey(@RequestBody ApiKeyRequest request) {
+        if (estVide(request.getLibelle())) {
+            ApiResponseDto apiResponseDto = ApiResponseDto
+                    .builder()
+                    .status(false)
+                    .content(ErrorResponse.builder().title("Champs obligatoires")
+                            .message("Le libellé de la clé est obligatoire.").build())
+                    .build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
+        }
 
         ApiKey apiKey = ApiKey.builder().build();
         try {
@@ -815,7 +851,7 @@ public class SettingController {
             String api_secret = generateRandomString(6);
 
             apiKey.setCle(api_key);
-            apiKey.setName(request.getLibelle());
+            apiKey.setName(Utils.nettoyerLibelle(request.getLibelle()));
             apiKey.setDescription(request.getDescription());
             apiKey.setSecret(passwordEncoder.encode(api_secret));
 

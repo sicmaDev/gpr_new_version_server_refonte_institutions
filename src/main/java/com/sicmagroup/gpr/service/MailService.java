@@ -185,8 +185,16 @@ public class MailService {
     private void logMail(String to, String subject, String body, boolean success, SmsType type, Long claimId,
             Long suggestId) {
         String content = "Objet : " + (subject == null ? "" : subject.trim()) + "\n\n"
-                + OutgoingMessageLogger.htmlToText(body);
+                + masquerMotDePasse(OutgoingMessageLogger.htmlToText(body));
         OutgoingMessageLogger.record(MessageChannel.MAIL, type, to, content, success, claimId, suggestId);
+    }
+
+    // L'archive des envois est lisible à l'écran et exportable : un mot de passe n'y est jamais conservé.
+    private static final java.util.regex.Pattern MOT_DE_PASSE_AFFICHE = java.util.regex.Pattern
+            .compile("(mot de passe[^:\\n]{0,30}:\\s*)\\S+", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    static String masquerMotDePasse(String texte) {
+        return texte == null ? null : MOT_DE_PASSE_AFFICHE.matcher(texte).replaceAll("$1********");
     }
 
     // Le mail part en HTML : un texte brut est échappé et garde ses retours à la ligne ; un message qui

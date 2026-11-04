@@ -24,6 +24,7 @@ import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.ExternalRecourseDto;
 import com.sicmagroup.gpr.domain.model.ExternalRecourse;
 import com.sicmagroup.gpr.service.externalRecourse.ExternalRecourseServiceImpl;
+import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -254,6 +255,7 @@ public class ExternalRecourseController {
 
     private ExternalRecourse convertFromDtoToEntity(ExternalRecourseDto externalRecourseDto) throws NotFoundException {
         ExternalRecourse externalRecourse = modelMapper.map(externalRecourseDto, ExternalRecourse.class);
+        externalRecourse.setLibelle(Utils.nettoyerLibelle(externalRecourse.getLibelle()));
 
         if (externalRecourse.getId() != null) {
             ExternalRecourse oldExternalRecourse;

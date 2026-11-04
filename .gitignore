@@ -47,3 +47,4 @@ outils-tests/edge-cdp/
 outils-tests/shots/
 # Rapports de plantage de Git Bash
 *.stackdump
+outils-tests/telechargements/
