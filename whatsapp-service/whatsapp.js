@@ -1015,11 +1015,30 @@ async function sendSolutionAudioWithSurvey(to, audioBase64, mimeType, audio2Base
   return surveyMessageId;
 }
 
+// Bénin : un compte WhatsApp peut être sur le nouveau numéro (229 01 + 8 chiffres) ou encore sur l'ancien
+// (229 + 8 chiffres). Le numéro saisi est essayé d'abord, puis son autre forme.
+// Rend le compte trouvé, null si aucun n'existe, undefined si la vérification n'a pas pu se faire.
+async function trouverCompteWhatsapp(digits) {
+  const formes = [digits];
+  if (/^22901\d{8}$/.test(digits)) formes.push('229' + digits.slice(5));
+  else if (/^229\d{8}$/.test(digits)) formes.push('22901' + digits.slice(3));
+  try {
+    for (const forme of formes) {
+      const [resultat] = await sock.onWhatsApp(forme);
+      if (resultat && resultat.exists) return resultat.jid;
+    }
+    return null;
+  } catch (err) {
+    console.error('[WA] Vérification du numéro impossible :', err.message);
+    return undefined;
+  }
+}
+
 // Envoie un accusé de réception WhatsApp après enregistrement d'une réclamation ou suggestion
 async function sendAcknowledgment(phone, codeClient, clientName, type) {
   const digits = phone.replace(/\D/g, '').replace(/^00/, '');
   if (digits.length < 7) throw new Error('Numéro de téléphone invalide : ' + phone);
-  const to = digits + '@s.whatsapp.net';
+  let to = digits + '@s.whatsapp.net';
 
   const MESSAGES = {
     reclamation: `Cher(e) bénéficiaire, votre réclamation a bien été prise en compte. Notre équipe dédiée s'en occupe et vous contactera prochainement. Merci de contribuer à l'amélioration de nos services.`,
@@ -1031,6 +1050,11 @@ async function sendAcknowledgment(phone, codeClient, clientName, type) {
     enqueueSend({ type: 'message', to, message: text });
     throw new Error('WhatsApp non connecté — l\'accusé de réception sera renvoyé automatiquement à la reconnexion.');
   }
+
+  // Numéro introuvable sur WhatsApp : échec signalé, sans remise en file (un nouvel essai n'y changerait rien)
+  const compte = await trouverCompteWhatsapp(digits);
+  if (compte === null) throw new Error("Ce numéro n'a pas de compte WhatsApp : " + digits);
+  if (compte) to = compte;
 
   try {
     await simulateTyping(to, 'composing');
