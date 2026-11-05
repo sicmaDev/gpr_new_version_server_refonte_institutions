@@ -24,6 +24,7 @@ import com.sicmagroup.gpr.domain.dto.ErrorResponse;
 import com.sicmagroup.gpr.domain.dto.ProductDto;
 import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.service.product.ProductServiceImpl;
+import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -250,6 +251,7 @@ public class ProductController {
 
     private Product convertFromDtoToEntity(ProductDto productDto) throws NotFoundException {
         Product product = modelMapper.map(productDto, Product.class);
+        product.setLibelle(Utils.nettoyerLibelle(product.getLibelle()));
 
         if (product.getId() != null) {
             Product oldProduct = productServiceImpl.getById(productDto.getId());

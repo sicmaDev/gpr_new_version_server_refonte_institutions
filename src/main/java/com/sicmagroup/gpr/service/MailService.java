@@ -32,6 +32,10 @@ public class MailService {
     private final SettingServiceImpl settingServiceImpl;
     private final ObjectMapper objectMapper;
 
+    // Mode test : liste d'adresses séparées par des virgules ; vide en production (aucun filtre).
+    @org.springframework.beans.factory.annotation.Value("${gpr.mail.destinataires-test:}")
+    private String destinatairesTest;
+
     public MailService(JavaMailSender mailSender, SettingServiceImpl settingServiceImpl) {
         this.mailSender = mailSender;
         this.settingServiceImpl = settingServiceImpl;
@@ -80,6 +84,7 @@ public class MailService {
                     helper.setCc(cc.split(","));
                 }
 
+                verifierDestinataires(mimeMessage);
                 mailSender.send(mimeMessage);
                 System.out.println("✅ Mail HTML envoyé à " + to);
                 logMail(to, subject, body, true, type, claimId, suggestId);
@@ -136,6 +141,7 @@ public class MailService {
             helper.setCc(cc.split(","));
         }
 
+        verifierDestinataires(mimeMessage);
         mailSender.send(mimeMessage);
     }
 
@@ -169,6 +175,7 @@ public class MailService {
                     helper.setCc(cc.split(","));
                 }
 
+                verifierDestinataires(message);
                 mailSender.send(message);
                 System.out.println(" Mail HTML envoyé à " + emails);
                 recipients.forEach(r -> logMail(r, subject, body, true, SmsType.INTERNE, null, null));
@@ -187,6 +194,18 @@ public class MailService {
         String content = "Objet : " + (subject == null ? "" : subject.trim()) + "\n\n"
                 + masquerMotDePasse(OutgoingMessageLogger.htmlToText(body));
         OutgoingMessageLogger.record(MessageChannel.MAIL, type, to, content, success, claimId, suggestId);
+    }
+
+    private void verifierDestinataires(MimeMessage message) throws jakarta.mail.MessagingException {
+        if (destinatairesTest == null || destinatairesTest.isBlank()) {
+            return;
+        }
+        List<String> autorises = List.of(destinatairesTest.toLowerCase().split(","));
+        for (jakarta.mail.Address adresse : message.getAllRecipients()) {
+            if (!autorises.contains(adresse.toString().toLowerCase())) {
+                throw new jakarta.mail.MessagingException("Envoi bloqué par le mode test");
+            }
+        }
     }
 
     // L'archive des envois est lisible à l'écran et exportable : un mot de passe n'y est jamais conservé.

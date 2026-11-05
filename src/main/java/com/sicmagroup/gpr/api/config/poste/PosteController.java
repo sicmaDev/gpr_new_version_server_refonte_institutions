@@ -25,6 +25,7 @@ import com.sicmagroup.gpr.domain.dto.PosteDto;
 import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.repository.PosteRepository;
 import com.sicmagroup.gpr.service.poste.PosteServiceImpl;
+import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -187,6 +188,16 @@ public class PosteController {
                         .build();
 
                 return ResponseEntity.ok(apiResponseDto);
+            } catch (DataIntegrityViolationException e) {
+                apiResponseDto = ApiResponseDto
+                        .builder()
+                        .status(false)
+                        .content(ErrorResponse.builder()
+                                .title("Erreur de duplication")
+                                .message("Une configuration avec le même libellé existe déjà.")
+                                .build())
+                        .build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponseDto);
             } catch (NotFoundException e) {
                 e.printStackTrace();
                 apiResponseDto = ApiResponseDto
@@ -302,6 +313,7 @@ public class PosteController {
 
     private Poste convertFromDtoToEntity(PosteDto posteDto) throws NotFoundException {
         Poste poste = modelMapper.map(posteDto, Poste.class);
+        poste.setLibelle(Utils.nettoyerLibelle(poste.getLibelle()));
 
         if (poste.getId() != null) {
             Poste oldPoste = posteServiceImpl.getById(posteDto.getId());

@@ -26,6 +26,7 @@ import com.sicmagroup.gpr.domain.model.ServicePoint;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
 import com.sicmagroup.gpr.repository.SettingRepository;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
+import com.sicmagroup.gpr.utils.Utils;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
@@ -285,6 +286,7 @@ public class ServicePointController {
 
     private ServicePoint convertFromDtoToEntity(ServicePointDto servicePointDto) throws Exception {
         ServicePoint servicePoint = modelMapper.map(servicePointDto, ServicePoint.class);
+        servicePoint.setLibelle(Utils.nettoyerLibelle(servicePoint.getLibelle()));
 
         if (servicePointDto.getId() != null) {
             ServicePoint oldServicePoint = serviceImpl.getById(servicePointDto.getId());

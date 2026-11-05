@@ -119,7 +119,7 @@ public class ClaimController {
     private static final int MAX_FILES_COUNT = 5;
     private static final int MAX_AUDIOS_COUNT = 3;
     private static final long MAX_DOC_FILE_SIZE = 10L * 1024 * 1024; // 10 Mo (documents/images)
-    private static final long MAX_AV_FILE_SIZE = 20L * 1024 * 1024; // 20 Mo (audio/vidéo)
+    private static final long MAX_AV_FILE_SIZE = 10L * 1024 * 1024; // 10 Mo (audio/vidéo)
     private static final long MAX_TOTAL_ATTACHMENTS_SIZE = 100L * 1024 * 1024; // 100 Mo cumulés
 
     private void validateAttachments(MultipartFile[] files, MultipartFile[] audios) throws Exception {
