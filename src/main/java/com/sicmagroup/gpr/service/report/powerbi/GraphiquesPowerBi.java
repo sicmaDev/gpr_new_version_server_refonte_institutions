@@ -278,7 +278,7 @@ public final class GraphiquesPowerBi {
 		// Vue d'ensemble
 		g = nouveau("global", "globalPieChartRef", null, "Répartition des réclamations, dénonciations et suggestions (%)", "anneau", true, true, principale);
 		anneau(g, simple(chemin(glob, "repartitionClaimDenunSuggest"), null), this::couleurDuType); l.add(g);
-		g = nouveau("global", "globalLineChartRef", null, "Glissement annuel des RSD", "courbes", false, true, principale);
+		g = nouveau("global", "globalLineChartRef", null, "Glissement annuel des RSD", "colonnesGroupees", false, true, principale);
 		courbes(g, multi(chemin(glob, "evolutionClaimDenunSuggestByYear"), "data"), this::couleurDuType); l.add(g);
 		g = nouveau("global", "globalByCanalPieChartRef", null, "Répartition des réclamations, dénonciations, suggestions par modalité de dépôt (%)", "progression", true, false, principale);
 		progression(g, oldReportTreatment(chemin(glob, "repartitionClaimDenuSuggestPerCanal")), null); l.add(g);

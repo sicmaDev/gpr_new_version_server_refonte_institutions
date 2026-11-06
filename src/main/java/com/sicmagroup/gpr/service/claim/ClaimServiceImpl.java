@@ -3065,30 +3065,16 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public List<Claim> restrictClaimsToMeasureScope(List<Claim> claims, User connectedUser) {
-        if (connectedUser.canMeasureClaim()) {
+        // Pilote, DE et H5 : tout le système. RA : les dossiers enregistrés dans son agence. Les autres : leurs propres dossiers.
+        if (connectedUser.canMeasureClaim() || connectedUser.getAdditionalrole().equals(Role.PILOTE)
+                || connectedUser.getAdditionalrole().equals(Role.DE)) {
             return claims;
         } else if (connectedUser.isRa()) {
             Long myServicePointId = connectedUser.getServicePoint().getId();
-            ServicePoint servicePoint = connectedUser.getServicePoint();
-            List<ServicePoint> relatedServicePoints = servicePointServiceImpl.getAllDescendants(servicePoint.getId());
-            relatedServicePoints.add(servicePoint);
-            final Set<Long> scopedServicePointIds = relatedServicePoints.stream()
-                    .map(ServicePoint::getId)
-                    .collect(Collectors.toSet());
             return claims.stream()
-                    .filter(claim -> (claim.getServicePoint() != null
-                            && scopedServicePointIds.contains(claim.getServicePoint().getId()))
-                            || (claim.isTransmitted() && claim.getTreatBy() != null
-                                    && claim.getTreatBy().getServicePoint() != null
-                                    && claim.getTreatBy().getServicePoint().getId().equals(myServicePointId))
-                            || (claim.isTransmitted() && claim.getTreatmentAffectedTo() != null
-                                    && claim.getTreatmentAffectedTo().getServicePoint() != null
-                                    && claim.getTreatmentAffectedTo().getServicePoint().getId()
-                                            .equals(myServicePointId)))
+                    .filter(claim -> claim.getServicePoint() != null
+                            && claim.getServicePoint().getId().equals(myServicePointId))
                     .collect(Collectors.toList());
-        } else if (connectedUser.canAffectTreatment() || connectedUser.getAdditionalrole().equals(Role.PILOTE)
-                || connectedUser.getAdditionalrole().equals(Role.DE)) {
-            return claims;
         } else {
             Long userId = connectedUser.getId();
             return claims.stream()

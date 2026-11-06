@@ -123,7 +123,7 @@ public final class RapportPowerBi {
 			case "anneau" -> 340;
 			case "empile" -> Math.max(220, 90 + categories * 30 + 50);
 			case "chaleur" -> Math.max(240, 110 + categories * 24);
-			case "courbes" -> 400;
+			case "courbes", "colonnesGroupees" -> 400;
 			case "colonnes" -> 360;
 			default -> 300;
 		};
@@ -185,6 +185,14 @@ public final class RapportPowerBi {
 					v.champ("Series", ser);
 					couleursSeries(v, g);
 				}
+			}
+			case "colonnesGroupees" -> {
+				v = new Visuel("clusteredColumnChart").champ("Category", cat).champ("Y", val).champ("Series", ser).champ("Tooltips", ord).triCroissant(ord)
+						.objet("legend", proprietes("show", litteral("true"), "position", litteral("'Bottom'")))
+						.objet("labels", proprietes("show", litteral("true")))
+						.objet("categoryAxis", proprietes("showAxisTitle", litteral("false")))
+						.objet("valueAxis", proprietes("start", litteral("0D"), "showAxisTitle", litteral("false")));
+				couleursSeries(v, g);
 			}
 			case "colonnes" -> v = new Visuel("columnChart").champ("Category", cat).champ("Y", val).champ("Tooltips", ord).triCroissant(ord)
 					.objet("dataPoint", proprietes("fill", couleur(g.accent)))
