@@ -23,10 +23,9 @@ class EncryptionConfigTest {
     }
 
     @Test
-    void demarreAvecDeuxClesValides() {
+    void demarreAvecUneCleValide() {
         MockEnvironment env = new MockEnvironment()
-                .withProperty("gpr.crypto.key", randomKey(32))
-                .withProperty("gpr.crypto.hmac-key", randomKey(32));
+                .withProperty("gpr.crypto.key", randomKey(32));
         assertThat(EncryptionConfig.create(env)).isNotNull();
     }
 
@@ -35,8 +34,7 @@ class EncryptionConfigTest {
         // Comme en production : la propriété pointe vers une variable d'environnement non définie
         StandardEnvironment env = new StandardEnvironment();
         env.getPropertySources().addFirst(new MapPropertySource("test", Map.of(
-                "gpr.crypto.key", "${GPR_TEST_VARIABLE_INEXISTANTE_1}",
-                "gpr.crypto.hmac-key", "${GPR_TEST_VARIABLE_INEXISTANTE_2}")));
+                "gpr.crypto.key", "${GPR_TEST_VARIABLE_INEXISTANTE_1}")));
         assertThatThrownBy(() -> EncryptionConfig.create(env))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Démarrage impossible")
@@ -46,39 +44,17 @@ class EncryptionConfigTest {
     @Test
     void refuseSiCleTropCourte() {
         MockEnvironment env = new MockEnvironment()
-                .withProperty("gpr.crypto.key", randomKey(16))
-                .withProperty("gpr.crypto.hmac-key", randomKey(32));
+                .withProperty("gpr.crypto.key", randomKey(16));
         assertThatThrownBy(() -> EncryptionConfig.create(env))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("GPR_ENCRYPTION_KEY");
     }
 
     @Test
-    void refuseSiCleHmacAbsente() {
-        MockEnvironment env = new MockEnvironment()
-                .withProperty("gpr.crypto.key", randomKey(32));
-        assertThatThrownBy(() -> EncryptionConfig.create(env))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("GPR_HMAC_KEY");
-    }
-
-    @Test
-    void refuseSiLesDeuxClesSontIdentiques() {
-        String cle = randomKey(32);
-        MockEnvironment env = new MockEnvironment()
-                .withProperty("gpr.crypto.key", cle)
-                .withProperty("gpr.crypto.hmac-key", cle);
-        assertThatThrownBy(() -> EncryptionConfig.create(env))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("différentes");
-    }
-
-    @Test
     void leMessageNAfficheJamaisLaCle() {
         String cle = randomKey(16);
         MockEnvironment env = new MockEnvironment()
-                .withProperty("gpr.crypto.key", cle)
-                .withProperty("gpr.crypto.hmac-key", randomKey(32));
+                .withProperty("gpr.crypto.key", cle);
         assertThatThrownBy(() -> EncryptionConfig.create(env))
                 .satisfies(e -> assertThat(e.getMessage()).doesNotContain(cle));
     }

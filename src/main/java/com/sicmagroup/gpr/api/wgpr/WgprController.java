@@ -16,7 +16,6 @@ import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.service.wgpr.WgprComplaintService;
 import com.sicmagroup.gpr.service.wgpr.WgprWhatsappBridgeService;
 import com.sicmagroup.gpr.utils.Constante;
-import com.sicmagroup.gpr.utils.crypto.FileEncryptor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -300,7 +299,7 @@ public class WgprController {
                 String claimRef  = claim.getCodeClient() != null ? claim.getCodeClient() : String.valueOf(dto.getClaimId());
                 String fileName  = "[WhatsApp] Commentaire vocal - " + claimRef + ".ogg";
                 Path   filePath  = dir.resolve(fileName);
-                FileEncryptor.write(audioBytes, filePath);
+                Files.write(filePath, audioBytes);
 
                 ClaimAudio audio = ClaimAudio.builder()
                         .claim(claim).name(fileName).size((long) audioBytes.length)

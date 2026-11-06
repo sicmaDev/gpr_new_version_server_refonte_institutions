@@ -2,13 +2,11 @@ package com.sicmagroup.gpr.domain.model;
 
 import java.time.LocalDateTime;
 
-import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import com.sicmagroup.gpr.domain.enumeration.MessageChannel;
 import com.sicmagroup.gpr.domain.enumeration.SmsStatus;
 import com.sicmagroup.gpr.domain.enumeration.SmsType;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -55,12 +53,10 @@ public class SmsLog {
     @Column(name = "suggest_id")
     private Long suggestId;
 
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "numero_destinataire", nullable = false, columnDefinition = "TEXT")
     private String numeroDestinataire;
 
     @Lob
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "MEDIUMTEXT", nullable = false)
     private String content;
 

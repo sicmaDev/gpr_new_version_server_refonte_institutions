@@ -80,9 +80,9 @@ class ArchiveSmsEtPlanificationApiTest {
                 .andExpect(jsonPath("$.content[0].status").value("ENVOYE"));
 
         String enBase = jdbc.queryForObject("select numero_destinataire from gps_sms_log where id = ?", String.class, saved.getId());
-        assertThat(enBase).startsWith("ENC:v1:").doesNotContain("0152030745");
+        assertThat(enBase).isEqualTo("002290152030745");
         String texteEnBase = jdbc.queryForObject("select content from gps_sms_log where id = ?", String.class, saved.getId());
-        assertThat(texteEnBase).startsWith("ENC:v1:").doesNotContain("réclamation");
+        assertThat(texteEnBase).contains("réclamation");
     }
 
     @Test

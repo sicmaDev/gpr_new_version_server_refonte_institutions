@@ -18,7 +18,7 @@ class FieldEncryptorTest {
         return key;
     }
 
-    private final FieldEncryptor encryptor = new FieldEncryptor(randomKey(), randomKey());
+    private final FieldEncryptor encryptor = new FieldEncryptor(randomKey());
 
     @Test
     void allerRetourAvecAccentsEtEmoji() {
@@ -72,51 +72,19 @@ class FieldEncryptorTest {
     @Test
     void mauvaiseCleProvoqueUneErreur() {
         String chiffre = encryptor.encrypt("secret");
-        FieldEncryptor autre = new FieldEncryptor(randomKey(), randomKey());
+        FieldEncryptor autre = new FieldEncryptor(randomKey());
         assertThatThrownBy(() -> autre.decrypt(chiffre)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void cleAbsenteOuTropCourteEstRefusee() {
-        String bonne = Base64.getEncoder().encodeToString(randomKey());
         String courte = Base64.getEncoder().encodeToString(new byte[16]);
-        assertThatThrownBy(() -> FieldEncryptor.fromBase64(null, bonne))
+        assertThatThrownBy(() -> FieldEncryptor.fromBase64(null))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("GPR_ENCRYPTION_KEY");
-        assertThatThrownBy(() -> FieldEncryptor.fromBase64(bonne, ""))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("GPR_HMAC_KEY");
-        assertThatThrownBy(() -> FieldEncryptor.fromBase64(courte, bonne))
+        assertThatThrownBy(() -> FieldEncryptor.fromBase64(courte))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("32");
-        assertThatThrownBy(() -> FieldEncryptor.fromBase64("pas-du-base64!!", bonne))
+        assertThatThrownBy(() -> FieldEncryptor.fromBase64("pas-du-base64!!"))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Base64");
-    }
-
-    @Test
-    void deuxClesIdentiquesSontRefusees() {
-        byte[] cle = randomKey();
-        assertThatThrownBy(() -> new FieldEncryptor(cle, cle.clone()))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("différentes");
-    }
-
-    @Test
-    void empreinteStableEtSansEspaces() {
-        String h = encryptor.blindIndex("97000000");
-        assertThat(h).hasSize(64).matches("[0-9a-f]+");
-        assertThat(encryptor.blindIndex("97000000")).isEqualTo(h);
-        assertThat(encryptor.blindIndex(" 97 00 00 00 ")).isEqualTo(h);
-        assertThat(encryptor.blindIndex("97000001")).isNotEqualTo(h);
-    }
-
-    @Test
-    void empreinteNullSiVide() {
-        assertThat(encryptor.blindIndex(null)).isNull();
-        assertThat(encryptor.blindIndex("")).isNull();
-        assertThat(encryptor.blindIndex("   ")).isNull();
-    }
-
-    @Test
-    void empreinteDependDeLaCleHmac() {
-        FieldEncryptor autre = new FieldEncryptor(randomKey(), randomKey());
-        assertThat(autre.blindIndex("97000000")).isNotEqualTo(encryptor.blindIndex("97000000"));
     }
 
     @Test

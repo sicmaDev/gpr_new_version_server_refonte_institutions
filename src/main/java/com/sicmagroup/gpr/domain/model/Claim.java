@@ -5,16 +5,13 @@ import java.util.List;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 import com.sicmagroup.gpr.domain.dto.claimResponse.UserResponse;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.Gender;
 import com.sicmagroup.gpr.domain.model.chat.Chat;
-import com.sicmagroup.gpr.utils.crypto.FieldEncryptor;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -26,8 +23,6 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -48,7 +43,6 @@ public class Claim {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(length = 1024)
 	private String clientFirstAndLastName;
     @Column(unique = true)
@@ -59,17 +53,12 @@ public class Claim {
 	private Gender gender;
     @Enumerated(EnumType.STRING)
     private ClaimType type;
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(length = 1024)
 	private String address;
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(length = 1024)
 	private String tel;
     // Empreinte du téléphone (HMAC) pour rechercher une réclamation sans déchiffrer
     @JsonIgnore
-    @Column(name = "tel_hash", length = 64)
-    private String telHash;
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(length = 1024)
     private String email;
 	private String crew;
@@ -94,7 +83,6 @@ public class Claim {
 	private Language language;
 
     @Lob
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "MEDIUMTEXT")
 	private String content;
 
@@ -142,17 +130,14 @@ public class Claim {
     @ManyToOne
     private User transmittedBy;
     @Lob
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "transmission_comment", columnDefinition = "MEDIUMTEXT")
     private String transmissionComment;
 
 
     @Lob
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "MEDIUMTEXT", name = "draft_solution", nullable = true)
     private String draftSolution;
     @Lob
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "MEDIUMTEXT", name = "draft_commentaire", nullable = true)
     private String draftCommentaire;
     @Column(name = "draft_user_id", nullable = true)
@@ -175,7 +160,6 @@ public class Claim {
     @Column(name = "restored_at", nullable = true)
     private LocalDateTime restoredAt;
     @Lob
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "MEDIUMTEXT")
 	private String delete_reason;
 
@@ -187,11 +171,6 @@ public class Claim {
         return treatmentAffectedBy != null;
     }
 
-    @PrePersist
-    @PreUpdate
-    void computeTelHash() {
-        this.telHash = FieldEncryptor.current().blindIndex(tel);
-    }
     
     private LocalDateTime convertedAt;
     

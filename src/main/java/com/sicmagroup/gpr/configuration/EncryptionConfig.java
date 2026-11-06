@@ -7,15 +7,13 @@ import org.springframework.core.env.Environment;
 import com.sicmagroup.gpr.utils.crypto.FieldEncryptor;
 
 /**
- * Charge les clés de chiffrement depuis gpr.crypto.key / gpr.crypto.hmac-key
- * (variables d'environnement GPR_ENCRYPTION_KEY / GPR_HMAC_KEY).
- * L'application refuse de démarrer si une clé est absente ou invalide.
+ * Charge la clé de chiffrement depuis gpr.crypto.key (variable d'environnement GPR_ENCRYPTION_KEY).
+ * L'application refuse de démarrer si la clé est absente ou invalide.
  */
 @Configuration
 public class EncryptionConfig {
 
-    private static final String HELP = " Générez une clé avec : openssl rand -base64 32"
-            + " (deux clés différentes pour GPR_ENCRYPTION_KEY et GPR_HMAC_KEY).";
+    private static final String HELP = " Générez une clé avec : openssl rand -base64 32.";
 
     @Bean
     public FieldEncryptor fieldEncryptor(Environment environment) {
@@ -26,9 +24,8 @@ public class EncryptionConfig {
 
     static FieldEncryptor create(Environment environment) {
         String key = read(environment, "gpr.crypto.key");
-        String hmacKey = read(environment, "gpr.crypto.hmac-key");
         try {
-            return FieldEncryptor.fromBase64(key, hmacKey);
+            return FieldEncryptor.fromBase64(key);
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("Démarrage impossible : " + e.getMessage() + "." + HELP);
         }

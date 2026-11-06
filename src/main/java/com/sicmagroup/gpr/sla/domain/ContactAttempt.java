@@ -2,10 +2,8 @@ package com.sicmagroup.gpr.sla.domain;
 
 import java.time.LocalDateTime;
 
-import com.sicmagroup.gpr.domain.converter.EncryptedStringConverter;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -41,7 +39,6 @@ public class ContactAttempt {
     private boolean reached;
 
     @Lob
-    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "MEDIUMTEXT")
     private String comment;
 

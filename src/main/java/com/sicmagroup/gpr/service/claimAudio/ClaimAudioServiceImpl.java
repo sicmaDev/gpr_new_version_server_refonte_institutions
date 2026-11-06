@@ -30,7 +30,6 @@ import com.sicmagroup.gpr.repository.MediaRepository;
 import com.sicmagroup.gpr.service.media.FileStorageException;
 import com.sicmagroup.gpr.service.media.FileStorageProperties;
 import com.sicmagroup.gpr.utils.Constante;
-import com.sicmagroup.gpr.utils.crypto.FileEncryptor;
 
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +83,7 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
             System.out.println("store fnction");
             Path filePath = fileStorageLocation.resolve(media.getName()).normalize();
             System.out.println(filePath.toUri().toString());
-            Resource resource = Files.exists(filePath) ? FileEncryptor.readAsResource(filePath) : new UrlResource(filePath.toUri());
+            Resource resource = new UrlResource(filePath.toUri());
             if (resource.exists()) {
                 return resource;
             } else {
@@ -104,7 +103,7 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
             // System.out.println("store fnction");
             Path filePath = fileStorageLocation.resolve(audio.getName()).normalize();
             // System.out.println(filePath.toUri().toString());
-            Resource resource = Files.exists(filePath) ? FileEncryptor.readAsResource(filePath) : new FileSystemResource(filePath.toFile());
+            Resource resource = new FileSystemResource(filePath.toFile());
             if (resource.exists()) {
                 return resource;
             } else {
@@ -256,7 +255,7 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
 
         Path targetLocation = fileStorageLocation.resolve(fileName);
         try {
-            FileEncryptor.write(file.getInputStream(), targetLocation);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new FileStorageException("Sorry! Filename cann't be upload " + fileName);
         }
@@ -296,7 +295,7 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
 
         Path targetLocation = fileStorageLocation.resolve(fileName);
         try {
-            FileEncryptor.write(file.getInputStream(), targetLocation);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new FileStorageException("Sorry! Filename cann't be upload " + fileName);
         }
@@ -334,7 +333,7 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
 
         Path targetLocation = fileStorageLocation.resolve(fileName);
         try {
-            FileEncryptor.write(file.getInputStream(), targetLocation);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new FileStorageException("Sorry! Filename cann't be upload " + fileName);
         }

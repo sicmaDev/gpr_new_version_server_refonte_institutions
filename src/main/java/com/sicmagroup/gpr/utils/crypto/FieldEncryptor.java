@@ -3,25 +3,19 @@ package com.sicmagroup.gpr.utils.crypto;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.HexFormat;
 
 import javax.crypto.Cipher;
-import javax.crypto.Mac;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Chiffrement des données sensibles en base.
+ * Chiffrement des réglages mail et SMS et du mot de passe temporaire des comptes.
  *
  * AES-256-GCM, IV aléatoire de 12 octets, tag de 128 bits.
  * Format stocké : "ENC:v1:" + Base64(IV + texte chiffré + tag).
- * Une valeur sans ce préfixe (ancienne donnée en clair) est relue telle quelle.
- *
- * blindIndex : HMAC-SHA256 (clé distincte) pour rechercher une valeur chiffrée
- * (ex : téléphone) sans la déchiffrer.
+ * Une valeur sans ce préfixe est relue telle quelle.
  */
 public final class FieldEncryptor {
 
@@ -29,35 +23,24 @@ public final class FieldEncryptor {
     public static final int KEY_LENGTH = 32;
 
     private static final String CIPHER = "AES/GCM/NoPadding";
-    private static final String HMAC = "HmacSHA256";
     private static final int IV_LENGTH = 12;
     private static final int TAG_BITS = 128;
 
     private static volatile FieldEncryptor current;
 
     private final SecretKeySpec encryptionKey;
-    private final SecretKeySpec hmacKey;
     private final SecureRandom random = new SecureRandom();
 
-    public FieldEncryptor(byte[] encryptionKey, byte[] hmacKey) {
+    public FieldEncryptor(byte[] encryptionKey) {
         if (encryptionKey == null || encryptionKey.length != KEY_LENGTH) {
             throw new IllegalArgumentException("La clé de chiffrement doit faire exactement " + KEY_LENGTH + " octets");
         }
-        if (hmacKey == null || hmacKey.length != KEY_LENGTH) {
-            throw new IllegalArgumentException("La clé HMAC doit faire exactement " + KEY_LENGTH + " octets");
-        }
-        if (MessageDigest.isEqual(encryptionKey, hmacKey)) {
-            throw new IllegalArgumentException("La clé de chiffrement et la clé HMAC doivent être différentes");
-        }
         this.encryptionKey = new SecretKeySpec(encryptionKey.clone(), "AES");
-        this.hmacKey = new SecretKeySpec(hmacKey.clone(), HMAC);
     }
 
-    /** Crée l'encrypteur à partir de deux clés Base64 (32 octets chacune). */
-    public static FieldEncryptor fromBase64(String encryptionKeyBase64, String hmacKeyBase64) {
-        return new FieldEncryptor(
-                decodeKey(encryptionKeyBase64, "GPR_ENCRYPTION_KEY"),
-                decodeKey(hmacKeyBase64, "GPR_HMAC_KEY"));
+    /** Crée l'encrypteur à partir d'une clé Base64 de 32 octets. */
+    public static FieldEncryptor fromBase64(String encryptionKeyBase64) {
+        return new FieldEncryptor(decodeKey(encryptionKeyBase64, "GPR_ENCRYPTION_KEY"));
     }
 
     private static byte[] decodeKey(String base64, String name) {
@@ -145,23 +128,5 @@ public final class FieldEncryptor {
 
     public byte[] decryptBytes(byte[] data) {
         return decryptBytes(data, 0);
-    }
-
-    /** Empreinte HMAC-SHA256 (hexadécimal), espaces supprimés ; null si la valeur est vide. */
-    public String blindIndex(String value) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.replaceAll("\\s+", "");
-        if (normalized.isEmpty()) {
-            return null;
-        }
-        try {
-            Mac mac = Mac.getInstance(HMAC);
-            mac.init(hmacKey);
-            return HexFormat.of().formatHex(mac.doFinal(normalized.getBytes(StandardCharsets.UTF_8)));
-        } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Échec du calcul de l'empreinte", e);
-        }
     }
 }
