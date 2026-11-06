@@ -98,6 +98,7 @@ import com.sicmagroup.gpr.service.solution.SolutionServiceImpl;
 import com.sicmagroup.gpr.service.servicePoint.ServicePointServiceImpl;
 import com.sicmagroup.gpr.service.suggestion.SuggestionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
+import com.sicmagroup.gpr.utils.PiecesJointes;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -201,7 +202,7 @@ public class DenunciationController {
                         && scopedServicePointIds.contains(claim.getServicePoint().getId()))
                         || (claim.getTreatmentAffectedTo() != null && claim.getTreatmentAffectedTo().getId().equals(raId)))
                 .collect(Collectors.toList());
-        }else if (!connectedUser.getAdditionalrole().equals(Role.PILOTE)
+        }else if (!connectedUser.canAffectTreatment() && !connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 && !connectedUser.getAdditionalrole().equals(Role.DE)) {
             for (Claim claim : allClaims) {
                 if (claim.getCollector() == connectedUser || claim.getTreatmentAffectedTo() == connectedUser) {
@@ -306,7 +307,7 @@ public class DenunciationController {
             allClaims = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION, Arrays.asList(ClaimStatus.SAVED,
                     ClaimStatus.AFFECTED, ClaimStatus.TO_APPROUVED, ClaimStatus.DESAPPROUVED));
 
-            if (connectedUser.getAdditionalrole().equals(Role.DE)
+            if (connectedUser.canAffectTreatment() || connectedUser.getAdditionalrole().equals(Role.DE)
                     || connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
                 List<Claim> moreClaim = service.getAllByTypeAndStatusIn(ClaimType.DENUNCIACION,
                         Arrays.asList(ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
@@ -391,7 +392,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
     }
 
     // Si l'utilisateur est un PILOTE
-    if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+    if (connectedUser.canAffectTreatment() || connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
         List<Claim> allFilteredClaims = service.getAllByStatusIn(Arrays.asList(status));
 
         // Ajouter toutes les dénonciations "bot"
@@ -483,6 +484,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                 DenunRequest denunRequest2 = mapper.readValue(denunRequest, DenunRequest.class);
 
                 try {
+                    PiecesJointes.valider(files, audios);
                     SaveDenunRequest saveRequest = SaveDenunRequest.builder().claimRequest(denunRequest2).files(files)
                             .audios(audios)
                             .remoteAddress(request2.getRemoteAddr()).build();
@@ -536,6 +538,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                 ObjectMapper mapper = new ObjectMapper();
                 ClaimRequest denunRequest2 = mapper.readValue(denunRequest, ClaimRequest.class);
                 try {
+                    PiecesJointes.valider(files, audios);
                     SaveRequest saveRequest = SaveRequest.builder().claimRequest(denunRequest2).files(files)
                             .audios(audios)
                             .remoteAddress(request2.getRemoteAddr()).build();
@@ -1098,7 +1101,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
             }
 
             System.out.println("claimId :" + claimId);
-            if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+            if (connectedUser.canAffectTreatment() || connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
                 if (code.startsWith("sug")) {
                     Suggestion suggestion = suggestionServiceImpl.getByCode(code);
                     service.convertClaimToSuggestion(claimId, suggestion.getId());

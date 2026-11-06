@@ -1840,6 +1840,12 @@ public class ClaimServiceImpl implements ClaimService {
         List<Claim> tmp = resultat;
 
         tmp = resultat.stream().filter(claim -> {
+            // Un dossier affecté à l'utilisateur reste visible, quelles que soient son agence et ses habilitations
+            if (claim.getTreatmentAffectedTo() != null
+                    && claim.getTreatmentAffectedTo().getId().equals(affectedTo.getId())) {
+                return true;
+            }
+
             // 1️⃣ Exclusion : l'utilisateur ne voit pas sa propre réclamation
             //    si celle-ci n'est pas rattachée à son point de service
             if (claim.getCollector().equals(affectedTo)

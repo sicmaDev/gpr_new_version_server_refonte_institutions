@@ -30,6 +30,7 @@ import com.sicmagroup.gpr.service.claimAudio.ClaimAudioServiceImpl;
 import com.sicmagroup.gpr.service.media.MediaServiceImpl;
 import com.sicmagroup.gpr.service.suggestion.SuggestionServiceImpl;
 import com.sicmagroup.gpr.utils.Utils;
+import com.sicmagroup.gpr.utils.PiecesJointes;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -152,7 +153,7 @@ public class SuggestionController {
                 List<Suggestion> filteredSuggestions = new ArrayList<>();
                 //recuperer pour le pilote les suggestions du bot   *
                 // System.out.println("tolotolo : "+connectedUser.getAdditionalrole() );              
-                if (connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
+                if (connectedUser.canAffectTreatment() || connectedUser.getAdditionalrole().equals(Role.PILOTE)) {
                     List<Suggestion> allSuggestions = service.getAllByStatusIn(Arrays.asList(status));
                     //    suggestions = allSuggestions;
                     for (Suggestion suggestion : allSuggestions) {
@@ -212,6 +213,7 @@ public class SuggestionController {
                         .audios(audios)
                         .build();
                 try {
+                    PiecesJointes.valider(files, audios);
                     Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.SAVED);
                     apiResponseDto = ApiResponseDto
                             .builder()
@@ -272,6 +274,7 @@ public class SuggestionController {
                         .audios(audios)
                         .build();
                 try {
+                    PiecesJointes.valider(files, audios);
                     Suggestion suggestion = service.tempSaveSuggestion(suggestionAddRequest, ClaimStatus.TEMP_SAVED);
                     apiResponseDto = ApiResponseDto
                             .builder()
