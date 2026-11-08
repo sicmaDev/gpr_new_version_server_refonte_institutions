@@ -33,6 +33,7 @@ import jakarta.persistence.criteria.CriteriaBuilder.In;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -50,13 +51,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-            predicates
-                    .add(cb.between(suggestion.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -137,13 +132,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
 
         predicates.add(cb.equal(servicePoint.get("id"), joinServiceSuggest.get("id")));
 
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-            predicates
-                    .add(cb.between(suggestion.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -217,13 +206,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-            predicates
-                    .add(cb.between(suggestion.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -299,13 +282,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
 
         predicates.add(cb.equal(collectionChannel.get("id"), joinSuggestCl.get("id")));
 
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-            predicates
-                    .add(cb.between(suggestion.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -387,13 +364,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         Join<Suggestion, ServicePoint> joinServiceSuggest = suggestion.join("serviceIndexe");
         predicates.add(cb.equal(servicePoint.get("id"), joinServiceSuggest.get("id")));
 
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-            predicates
-                    .add(cb.between(suggestion.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -471,13 +442,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
                         .when(suggestion.get("gender").isNull(), Gender.NON_DEFINI.name())
                         .otherwise(suggestion.get("gender")).alias("gender"));
 
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-            predicates
-                    .add(cb.between(suggestion.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -565,13 +530,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
                 //         .otherwise(suggestion.get("gender")).alias("gender")
                     );
 
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-            predicates
-                    .add(cb.between(suggestion.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -647,13 +606,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         List<Predicate> predicates = new ArrayList<>();
         predicates.add(cb.isFalse(suggestion.get("isDeleted")));
 
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-            predicates
-                    .add(cb.between(suggestion.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -730,13 +683,7 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
                         .otherwise(servicePoint.get("libelle")).alias("spLib"));
 
         if (request != null) {
-            if (request.getReceiveStart() != null && request.getReceiveEnd() != null) {
-
-                predicates
-                        .add(cb.between(suggestion.get("receiptDateTime"),
-                                Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                                Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-            }
+            addDatePredicates(cb, predicates, suggestion.get("receiptDateTime"), request);
 
             if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
                 LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
@@ -797,6 +744,33 @@ public class SuggestionRepositoryCustomImpl implements SuggestionRepositoryCusto
         query.where(predicates.toArray(new Predicate[0]));
         List<ObjectPerYear> resultat = entityManager.createQuery(query).getResultList();
         return resultat;
+    }
+
+    private static void addDatePredicates(CriteriaBuilder cb, List<Predicate> predicates,
+            Path<LocalDateTime> datePath, FilterRequest request) {
+        if (request == null) {
+            return;
+        }
+        boolean hasStart = request.getReceiveStart() != null && !request.getReceiveStart().trim().isEmpty();
+        boolean hasEnd = request.getReceiveEnd() != null && !request.getReceiveEnd().trim().isEmpty();
+        if (hasStart && hasEnd) {
+            LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart().trim());
+            LocalDateTime end = finDeJourneeSiMinuit(Utils.convertStrToLocalDateTime(request.getReceiveEnd().trim()));
+            predicates.add(cb.between(datePath, start, end));
+        } else if (hasStart) {
+            LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart().trim());
+            predicates.add(cb.greaterThanOrEqualTo(datePath, start));
+        } else if (hasEnd) {
+            LocalDateTime end = finDeJourneeSiMinuit(Utils.convertStrToLocalDateTime(request.getReceiveEnd().trim()));
+            predicates.add(cb.lessThanOrEqualTo(datePath, end));
+        }
+    }
+
+    private static LocalDateTime finDeJourneeSiMinuit(LocalDateTime dt) {
+        if (dt != null && dt.getHour() == 0 && dt.getMinute() == 0 && dt.getSecond() == 0) {
+            return dt.withHour(23).withMinute(59).withSecond(59);
+        }
+        return dt;
     }
 
 }

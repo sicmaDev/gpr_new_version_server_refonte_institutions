@@ -30,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class StatsDenun {
+    private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
 
     private final ClaimRepository claimRepository;
     private final SuggestionRepository suggestionRepository;
@@ -74,31 +75,7 @@ public class StatsDenun {
 
         } else {
             List<ClaimPerObjLevelProjection> allResult = claimRepository.countClaimPerObjLevel(ClaimType.DENUNCIACION);
-            // for (ClaimPerObjLevelProjection projection : allResult) {
-            //     switch (projection.getObjNiveau()) {
-            //         case "GRAVE":
-            //             key = "Nombre de dénonciations à niveau de gravité élevé enregistrées";
-            //             break;
-            //         case "MOYEN":
-            //             key = "Nombre de dénonciations à niveau de gravité moyen enregistrées";
-            //             break;
-            //         case "MINEUR":
-            //             key = "Nombre de dénonciations à niveau de gravité mineur enregistrées";
-            //             break;
-
-            //     }
-            //     resultat.put(key, projection.getTotal().doubleValue());
-            // }
-
-           
-            System.out.println("Nombre total de réclamations: " + allResult.size());
-
-            // // Itérer sur les résultats
             for (ClaimPerObjLevelProjection projection : allResult) {
-                System.out.println("Niveau: " + projection.getObjNiveau() + ", Total: " + projection.getTotal());
-
-                // Définir la clé pour le niveau de gravité
-              
                 switch (projection.getObjNiveau()) {
                     case "GRAVE":
                         key = "Nombre de dénonciations à niveau de gravité élevé enregistrées";
@@ -109,18 +86,11 @@ public class StatsDenun {
                     case "MINEUR":
                         key = "Nombre de dénonciations à niveau de gravité mineur enregistrées";
                         break;
-
                     default:
-                        key = "Niveau de gravité inconnu";
-                        System.err.println("Niveau de gravité inconnu: " + projection.getObjNiveau());
-                        continue; // Passer à l'élément suivant
+                        continue;
                 }
-
-                // Accumuler les totaux pour chaque clé
                 resultat.put(key, resultat.getOrDefault(key, 0.0) + projection.getTotal().doubleValue());
             }
-
-           
         }
 
         if (!resultat.containsKey("Nombre de dénonciations à niveau de gravité élevé enregistrées")) {
@@ -142,21 +112,21 @@ public class StatsDenun {
         int total = 0;
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT, ClaimStatus.TEMP_SAVED);
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 total = claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.DENUNCIACION).size();
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
-                List<ClaimStatus> finalStatus = new ArrayList<>();
+                List<ClaimStatus> etatsNonTraites = new ArrayList<>();
                 for (ClaimStatus cStatus : request.getEtats()) {
-                    if (status.contains(cStatus)) {
-                        finalStatus.add(cStatus);
+                    if (!status.contains(cStatus)) {
+                        etatsNonTraites.add(cStatus);
                     }
                 }
-                if (finalStatus.isEmpty()) {
+                if (etatsNonTraites.isEmpty()) {
                     resultat.put("Nombre de dénonciations non traitées", 0D);
                 } else {
-                    request.setEtats(finalStatus);
-                    total = claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.DENUNCIACION).size();
+                    request.setEtats(etatsNonTraites);
+                    total = claimRepository.countClaimByCriteriaAndStatusIn(request, ClaimType.DENUNCIACION).size();
                 }
             }
 
@@ -176,20 +146,20 @@ public class StatsDenun {
         resultat.put("Nombre de dénonciations à niveau de gravité Faible non traitées", 0D);
         List<Claim> claimsByStatusNot = new ArrayList<>();
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 claimsByStatusNot = claimRepository.countClaimByCriteriaAndStatusNot(request,
                         ClaimType.DENUNCIACION);
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
-                List<ClaimStatus> finalStatus = new ArrayList<>();
+                List<ClaimStatus> etatsNonTraites = new ArrayList<>();
                 for (ClaimStatus cStatus : request.getEtats()) {
-                    if (status.contains(cStatus)) {
-                        finalStatus.add(cStatus);
+                    if (!status.contains(cStatus)) {
+                        etatsNonTraites.add(cStatus);
                     }
                 }
-                if (!finalStatus.isEmpty()) {
-                    request.setEtats(finalStatus);
-                    claimsByStatusNot = claimRepository.countClaimByCriteriaAndStatusNot(request,
+                if (!etatsNonTraites.isEmpty()) {
+                    request.setEtats(etatsNonTraites);
+                    claimsByStatusNot = claimRepository.countClaimByCriteriaAndStatusIn(request,
                             ClaimType.DENUNCIACION);
                 }
             }
@@ -200,6 +170,9 @@ public class StatsDenun {
         }
         Double oldVal = 0D;
         for (Claim claim : claimsByStatusNot) {
+            if (claim.getObjet() == null) {
+                continue;
+            }
             switch (claim.getObjet().getRisqueLevel()) {
                 case GRAVE:
                     oldVal = resultat.get("Nombre de dénonciations à niveau de gravité Grave non traitées");
@@ -225,7 +198,7 @@ public class StatsDenun {
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT);
         long total = 0;
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 total = claimRepository.countClaimByCriterias(request, ClaimType.DENUNCIACION);
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
@@ -258,7 +231,7 @@ public class StatsDenun {
         resultat.put("Nombre de dénonciations à niveau de gravité Mineur traitées", 0D);
         List<Claim> claimsByStatus = new ArrayList<>();
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 claimsByStatus = claimRepository.countClaimByCriteriaAndStatusIn(request,
                         ClaimType.DENUNCIACION);
@@ -281,6 +254,9 @@ public class StatsDenun {
         }
         Double oldVal = 0D;
         for (Claim claim : claimsByStatus) {
+            if (claim.getObjet() == null) {
+                continue;
+            }
             switch (claim.getObjet().getRisqueLevel()) {
                 case GRAVE:
                     oldVal = resultat.get("Nombre de dénonciations à niveau de gravité Grave traitées");
@@ -310,7 +286,7 @@ public class StatsDenun {
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT);
         List<Claim> claimsTreat = new ArrayList<>();
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 claimsTreat = claimRepository.countClaimByCriteriaAndStatusIn(request, ClaimType.DENUNCIACION);
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
@@ -337,10 +313,17 @@ public class StatsDenun {
         long delaiObj;
         for (Claim claim : claimsTreat) {
             receiptDate = claim.getReceiptDateTime();
+            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()
+                    || claim.getObjet() == null || receiptDate == null) {
+                continue;
+            }
             measureDate = claim.getSolutions().get((claim.getSolutions().size() - 1)).getCreatedAt();
+            if (measureDate == null) {
+                continue;
+            }
 
             delaiObj = claim.getObjet().getProcessingTime();
-            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
+            supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
             if (!measureDate.isAfter(supposedFinalTreatmentDate)) { // il n'y a retard de traitement
                 oldVal2++;
                 switch (claim.getObjet().getRisqueLevel()) {

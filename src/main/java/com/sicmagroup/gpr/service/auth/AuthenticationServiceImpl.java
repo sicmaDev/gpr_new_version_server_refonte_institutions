@@ -126,6 +126,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class AuthenticationServiceImpl implements AuthenticationService {
+    private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
 
     private final UserRepository userRepository;
     private final SlaConfig slaConfig;
@@ -2289,7 +2290,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 }
             }
             if (!isOneSolutionMeasured) {
-                LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+                LocalDateTime calculateDate = echeanceObjet.echeance(claim.getReceiptDateTime(), claim.getObjet().getProcessingTime());
                 if (LocalDateTime.now().isAfter(calculateDate)) {
                     Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
                     Long days = hoursRetard / 24;
@@ -2587,7 +2588,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 }
             }
             if (!isOneSolutionMeasured) {
-                LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+                LocalDateTime calculateDate = echeanceObjet.echeance(claim.getReceiptDateTime(), claim.getObjet().getProcessingTime());
                 if (LocalDateTime.now().isAfter(calculateDate)) {
                     Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
                     Long days = hoursRetard / 24;

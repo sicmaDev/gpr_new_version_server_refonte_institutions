@@ -261,7 +261,7 @@ public final class RapportPowerBi {
 			Map<String, Object> e = GraphiquesPowerBi.carte(element);
 			List<Map.Entry<String, Object>> entrees = new ArrayList<>(e.entrySet());
 			// La page des suggestions n'affiche que la première entrée de chaque élément (boucle « for ... in » avec return).
-			if (suggestions && entrees.size() > 1) entrees = entrees.subList(0, 1);
+			// Toutes les entrées de chaque élément sont reprises dans le tableau des suggestions.
 			for (Map.Entry<String, Object> en : entrees) {
 				String libelle = en.getKey();
 				while (!vus.add(libelle)) libelle += "​"; // libellés uniques (tri par la colonne Ordre)

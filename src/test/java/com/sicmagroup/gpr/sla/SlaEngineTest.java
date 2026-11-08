@@ -33,12 +33,10 @@ import com.sicmagroup.gpr.sla.domain.SlaPhase;
 import com.sicmagroup.gpr.sla.repository.BusinessDayRepository;
 import com.sicmagroup.gpr.sla.repository.ClaimSlaRepository;
 import com.sicmagroup.gpr.sla.repository.SlaBreachReasonRepository;
-import com.sicmagroup.gpr.sla.repository.SlaPolicyRepository;
 import com.sicmagroup.gpr.sla.service.BusinessTime;
 import com.sicmagroup.gpr.sla.service.SlaConfig;
 import com.sicmagroup.gpr.sla.service.SlaEngine;
 import com.sicmagroup.gpr.sla.service.SlaHierarchy;
-import com.sicmagroup.gpr.sla.service.SlaPolicyService;
 
 /**
  * Moteur SLA : création des échéances et transitions du cycle de vie. Test unitaire : les dépôts sont simulés,
@@ -59,10 +57,14 @@ class SlaEngineTest {
 
     @BeforeEach
     void setUp() {
-        SlaPolicyRepository policyRepo = mock(SlaPolicyRepository.class); // aucune politique en base : valeurs par défaut
-        SlaPolicyService policies = new SlaPolicyService(policyRepo, mock(BusinessDayRepository.class),
-                mock(SlaBreachReasonRepository.class));
-        engine = new SlaEngine(repo, claimRepo, mock(SuggestionRepository.class), policies, new BusinessTime(), config,
+        org.mockito.Mockito.lenient().when(config.takeoverHours()).thenReturn(9);
+        org.mockito.Mockito.lenient().when(config.closureDays()).thenReturn(3);
+        org.mockito.Mockito.lenient().when(config.reopenDays()).thenReturn(3);
+        org.mockito.Mockito.lenient().when(config.reminder1Pct()).thenReturn(50);
+        org.mockito.Mockito.lenient().when(config.reminder2Pct()).thenReturn(75);
+        org.mockito.Mockito.lenient().when(config.graceHours()).thenReturn(9);
+        org.mockito.Mockito.lenient().when(config.suggestionDays()).thenReturn(10);
+        engine = new SlaEngine(repo, claimRepo, mock(SuggestionRepository.class), new BusinessTime(), config,
                 hierarchy);
 
         when(config.enabled()).thenReturn(true);
@@ -107,13 +109,34 @@ class SlaEngineTest {
     // ---------------------------------------------------------------------------------------------
 
     @Test
-    void reclamationGraveRecueLundi9hAEcheanceJeudi9h() {
+    void unObjetSansDelaiNaPasDEcheanceDeResolution() {
         claim(ClaimType.CLAIM, GravityLevel.GRAVE, 0, MONDAY_9H);
 
         engine.onEvent(1L, ClaimType.CLAIM, ClaimEventType.SAVED);
 
+        assertThat(stored.getResolutionDueAt()).isNull();
+        assertThat(stored.getDueAt()).isNull();
+        assertThat(stored.getTakeoverDueAt()).isNotNull();
+    }
+
+    @Test
+    void laGraviteNeChangeRienADureeEgaleSurLObjet() {
+        claim(ClaimType.CLAIM, GravityLevel.MINEUR, 3, MONDAY_9H);
+
+        engine.onEvent(1L, ClaimType.CLAIM, ClaimEventType.SAVED);
+
         assertThat(stored.getResolutionDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 8, 9, 0));
-        assertThat(stored.getTakeoverDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 5, 13, 0)); // 4 h ouvrées
+        assertThat(stored.getClosureMinutes()).isEqualTo(3 * 540); // paramètre : 3 jours ouvrés
+    }
+
+    @Test
+    void reclamationGraveRecueLundi9hAEcheanceJeudi9h() {
+        claim(ClaimType.CLAIM, GravityLevel.GRAVE, 3, MONDAY_9H); // 3 jours sur l'objet
+
+        engine.onEvent(1L, ClaimType.CLAIM, ClaimEventType.SAVED);
+
+        assertThat(stored.getResolutionDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 8, 9, 0));
+        assertThat(stored.getTakeoverDueAt()).isEqualTo(LocalDateTime.of(2026, 10, 6, 9, 0)); // 9 h ouvrées (paramètre)
         assertThat(stored.getRegulatoryDueAt()).isEqualTo(MONDAY_9H.plusDays(30)); // 30 jours calendaires
         assertThat(stored.getPhase()).isEqualTo(SlaPhase.OPEN);
         assertThat(stored.isBusinessTime()).isTrue();
@@ -215,7 +238,7 @@ class SlaEngineTest {
 
     @Test
     void plainteSynchroniseeEnRetard_PasDeRafaleDeRappels() {
-        claim(ClaimType.CLAIM, GravityLevel.MOYEN, 0, LocalDateTime.now().minusDays(40));
+        claim(ClaimType.CLAIM, GravityLevel.MOYEN, 6, LocalDateTime.now().minusDays(40));
 
         engine.onEvent(1L, ClaimType.CLAIM, ClaimEventType.SAVED);
 
@@ -228,7 +251,7 @@ class SlaEngineTest {
 
     @Test
     void repriseDesPlaintesOuvertes_AucuneAlerteRetroactive() {
-        Claim c = claim(ClaimType.CLAIM, GravityLevel.MOYEN, 0, LocalDateTime.now().minusDays(40));
+        Claim c = claim(ClaimType.CLAIM, GravityLevel.MOYEN, 6, LocalDateTime.now().minusDays(40));
 
         ClaimSla s = engine.open(c, true);
 
@@ -244,7 +267,7 @@ class SlaEngineTest {
 
     @Test
     void uneActionHumaineSurUnDossierEnRetardRepousseLaRemontee() {
-        Claim c = claim(ClaimType.CLAIM, GravityLevel.MOYEN, 0, LocalDateTime.now().minusDays(40));
+        Claim c = claim(ClaimType.CLAIM, GravityLevel.MOYEN, 6, LocalDateTime.now().minusDays(40));
         ClaimSla s = engine.open(c, true);
         LocalDateTime now = LocalDateTime.now();
 

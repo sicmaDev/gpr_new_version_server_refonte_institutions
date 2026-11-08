@@ -30,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.service.jwt.JwtServiceImpl;
 import com.sicmagroup.gpr.sla.repository.ClaimSlaRepository;
-import com.sicmagroup.gpr.sla.repository.SlaPolicyRepository;
 import com.sicmagroup.gpr.sla.service.SlaConfig;
 
 /**
@@ -48,7 +47,6 @@ class SlaApiTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private JwtServiceImpl jwtService;
     @Autowired private SlaConfig config;
-    @Autowired private SlaPolicyRepository policyRepository;
     @Autowired private ClaimSlaRepository claimSlaRepository;
     @MockBean private UserDetailsService userDetailsService;
 
@@ -96,16 +94,7 @@ class SlaApiTest {
     // --- Configuration : réservée à l'administrateur --------------------------------------------------------------
 
     @Test
-    void lesPolitiquesParDefautSontCreeesEtLisiblesParLAdministrateur() throws Exception {
-        mockMvc.perform(get("/api/v1/sla/policies").header("Authorization", bearer(admin)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(7)); // 2 types x 3 risques + suggestions
-        assertThat(policyRepository.count()).isGreaterThanOrEqualTo(7);
-    }
-
-    @Test
     void unAgentNePeutPasLireLaConfigurationDuSla() throws Exception {
-        mockMvc.perform(get("/api/v1/sla/policies").header("Authorization", bearer(agent))).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/sla/calendar").header("Authorization", bearer(agent))).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/sla/settings").header("Authorization", bearer(agent))).andExpect(status().isForbidden());
     }
@@ -139,11 +128,9 @@ class SlaApiTest {
 
     @Test
     void lesPolitiquesInvalidesSontRefusees() throws Exception {
-        // les rappels doivent être entre 1 et 99 %, le premier avant le second
-        String body = "[{\"claimType\":\"CLAIM\",\"riskLevel\":\"GRAVE\",\"takeoverMinutes\":60,\"resolutionMinutes\":600,"
-                + "\"closureMinutes\":300,\"reopenMinutes\":300,\"reminder1Pct\":80,\"reminder2Pct\":50,"
-                + "\"graceMinutes\":540,\"complianceTarget\":90,\"active\":true}]";
-        mockMvc.perform(put("/api/v1/sla/policies").header("Authorization", bearer(admin))
+        // le premier rappel doit être avant le second
+        String body = "{\"sla.reminder1_pct\":\"80\",\"sla.reminder2_pct\":\"50\"}";
+        mockMvc.perform(put("/api/v1/sla/settings").header("Authorization", bearer(admin))
                 .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest());
     }
@@ -195,11 +182,20 @@ class SlaApiTest {
     }
 
     @Test
-    void lesIndicateursSontReservesAuxRapportsAuPiloteEtAuDe() throws Exception {
+    void lesIndicateursSontReservesAuxRapportsAuRaAH6AuPiloteEtAuDe() throws Exception {
         config.set(SlaConfig.ENABLED, "true");
 
-        // un agent (H1) n'a ni H11, ni Pilote, ni DE
+        // un agent (H1) n'a ni H11, ni H6, ni RA, ni Pilote, ni DE
         mockMvc.perform(get("/api/v1/sla/stats").header("Authorization", bearer(agent))).andExpect(status().isForbidden());
+
+        // un RA ou un compte H6 peut consulter les indicateurs de son périmètre
+        UserDetails raUser = User.withUsername("ra.test@gpr.local").password("x").authorities("H1", "RA", "MOLDUE").build();
+        UserDetails h6User = User.withUsername("h6.test@gpr.local").password("x").authorities("H6", "MOLDUE").build();
+        when(userDetailsService.loadUserByUsername("ra.test@gpr.local")).thenReturn(raUser);
+        when(userDetailsService.loadUserByUsername("h6.test@gpr.local")).thenReturn(h6User);
+
+        mockMvc.perform(get("/api/v1/sla/stats").header("Authorization", bearer(raUser))).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/sla/stats").header("Authorization", bearer(h6User))).andExpect(status().isOk());
     }
 
     @Test

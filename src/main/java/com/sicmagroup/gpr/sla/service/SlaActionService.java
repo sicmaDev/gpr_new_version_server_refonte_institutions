@@ -139,7 +139,8 @@ public class SlaActionService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime due = SlaEngine.currentDue(s);
         boolean late = due != null && (s.getResolvedAt() != null && s.getPhase() == SlaPhase.DONE
-                ? s.getResolvedAt().isAfter(s.getResolutionDueAt()) : now.isAfter(due));
+                ? s.getResolutionDueAt() != null && s.getResolvedAt().isAfter(s.getResolutionDueAt())
+                : now.isAfter(due));
         if (!late && !s.isRegulatoryBreached()) {
             throw new SlaActionException("Cette plainte n'est pas en retard");
         }

@@ -76,7 +76,7 @@ public class ClaimSla {
     private LocalDateTime regulatoryDueAt;
     private boolean regulatoryBreached;
 
-    // --- Durées utilisées pour cet enregistrement (copiées de la politique, pour les rappels) ---
+    // --- Durées utilisées pour cet enregistrement (copiées de l'objet et des paramètres, pour les rappels) ---
     private int resolutionMinutes;
     private int closureMinutes;
     private int reminder1Pct;

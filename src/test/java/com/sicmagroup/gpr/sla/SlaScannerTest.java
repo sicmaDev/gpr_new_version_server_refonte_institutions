@@ -45,7 +45,6 @@ import com.sicmagroup.gpr.sla.repository.BusinessDayRepository;
 import com.sicmagroup.gpr.sla.repository.ClaimSlaRepository;
 import com.sicmagroup.gpr.sla.repository.SlaBreachReasonRepository;
 import com.sicmagroup.gpr.sla.repository.SlaEventRepository;
-import com.sicmagroup.gpr.sla.repository.SlaPolicyRepository;
 import com.sicmagroup.gpr.sla.service.BusinessTime;
 import com.sicmagroup.gpr.sla.service.SlaConfig;
 import com.sicmagroup.gpr.sla.service.SlaEngine;
@@ -53,7 +52,6 @@ import com.sicmagroup.gpr.sla.service.SlaHierarchy;
 import com.sicmagroup.gpr.sla.service.SlaMessages;
 import com.sicmagroup.gpr.sla.service.SlaNotifier;
 import com.sicmagroup.gpr.sla.service.SlaNotifier.Recipients;
-import com.sicmagroup.gpr.sla.service.SlaPolicyService;
 import com.sicmagroup.gpr.sla.service.SlaScanner;
 
 /**
@@ -87,9 +85,14 @@ class SlaScannerTest {
     @BeforeEach
     void setUp() {
         BusinessTime bt = new BusinessTime();
-        SlaPolicyService policies = new SlaPolicyService(mock(SlaPolicyRepository.class),
-                mock(BusinessDayRepository.class), mock(SlaBreachReasonRepository.class));
-        engine = new SlaEngine(repo, claimRepo, mock(SuggestionRepository.class), policies, bt, config, hierarchy);
+        org.mockito.Mockito.lenient().when(config.takeoverHours()).thenReturn(9);
+        org.mockito.Mockito.lenient().when(config.closureDays()).thenReturn(3);
+        org.mockito.Mockito.lenient().when(config.reopenDays()).thenReturn(3);
+        org.mockito.Mockito.lenient().when(config.reminder1Pct()).thenReturn(50);
+        org.mockito.Mockito.lenient().when(config.reminder2Pct()).thenReturn(75);
+        org.mockito.Mockito.lenient().when(config.graceHours()).thenReturn(9);
+        org.mockito.Mockito.lenient().when(config.suggestionDays()).thenReturn(10);
+        engine = new SlaEngine(repo, claimRepo, mock(SuggestionRepository.class), bt, config, hierarchy);
         scanner = new SlaScanner(repo, eventRepo, claimRepo, mock(SuggestionRepository.class), userRepo,
                 transmissionRepo, claimEvents, engine, config, bt, hierarchy, notifier);
 

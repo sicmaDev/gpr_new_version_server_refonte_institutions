@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class BceaoReportService {
+    private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
     private final ClaimRepository claimRepository;
     private final SuggestionRepository suggestionRepository;
     private final UserRepository userRepository;
@@ -107,7 +108,7 @@ public class BceaoReportService {
                             .getMeasureDateTime();
 
                     delaiObj = claim.getObjet().getProcessingTime();
-                    supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
+                    supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
                     if (!measureDate.isAfter(supposedFinalTreatmentDate)) { // il n'y a pas retard de traitement
                         bceaoReport
                                 .setTauxClaimTreatRespectingTiming(bceaoReport.getTauxClaimTreatRespectingTiming() + 1);

@@ -23,117 +23,35 @@ import com.sicmagroup.gpr.domain.enumeration.GravityLevel;
 import com.sicmagroup.gpr.sla.api.SlaResponseAdvice;
 import com.sicmagroup.gpr.sla.domain.BusinessDay;
 import com.sicmagroup.gpr.sla.domain.SlaBreachReason;
-import com.sicmagroup.gpr.sla.domain.SlaPolicy;
 import com.sicmagroup.gpr.sla.repository.BusinessDayRepository;
 import com.sicmagroup.gpr.sla.repository.SlaBreachReasonRepository;
-import com.sicmagroup.gpr.sla.repository.SlaPolicyRepository;
+import com.sicmagroup.gpr.sla.service.SlaDefaultsService;
 import com.sicmagroup.gpr.sla.service.SlaInfoService;
-import com.sicmagroup.gpr.sla.service.SlaPolicyService;
 
 /**
  * Politiques par défaut (valeurs de la spécification), initialisation de la configuration, et ajout du bloc « sla »
  * aux listes de plaintes existantes. Test unitaire : aucune base de données.
  */
-class SlaPolicyAndAdviceTest {
+class SlaDefaultsAndAdviceTest {
 
-    private final SlaPolicyRepository policyRepo = mock(SlaPolicyRepository.class);
     private final BusinessDayRepository dayRepo = mock(BusinessDayRepository.class);
     private final SlaBreachReasonRepository reasonRepo = mock(SlaBreachReasonRepository.class);
-    private SlaPolicyService service;
+    private SlaDefaultsService service;
 
     @BeforeEach
     void setUp() {
-        service = new SlaPolicyService(policyRepo, dayRepo, reasonRepo);
-    }
-
-    // --- Valeurs par défaut de la spécification (un jour ouvré = 9 h = 540 minutes) --------------------------------
-
-    @Test
-    void reclamationGrave_4hPriseEnCharge_3jResolution_2jCloture() {
-        SlaPolicy p = SlaPolicyService.defaultPolicy(ClaimType.CLAIM, GravityLevel.GRAVE);
-
-        assertThat(p.getTakeoverMinutes()).isEqualTo(4 * 60);
-        assertThat(p.getResolutionMinutes()).isEqualTo(3 * 540);
-        assertThat(p.getClosureMinutes()).isEqualTo(2 * 540);
-        assertThat(p.getReminder1Pct()).isEqualTo(50);
-        assertThat(p.getReminder2Pct()).isEqualTo(75);
-        assertThat(p.getGraceMinutes()).isEqualTo(540);
-        assertThat(p.isBusinessTime()).isTrue();
-        assertThat(p.isActive()).isTrue();
-    }
-
-    @Test
-    void reclamationMoyenne_1j_6j_3j() {
-        SlaPolicy p = SlaPolicyService.defaultPolicy(ClaimType.CLAIM, GravityLevel.MOYEN);
-
-        assertThat(p.getTakeoverMinutes()).isEqualTo(540);
-        assertThat(p.getResolutionMinutes()).isEqualTo(6 * 540);
-        assertThat(p.getClosureMinutes()).isEqualTo(3 * 540);
-    }
-
-    @Test
-    void reclamationMineure_2j_10j_5j() {
-        SlaPolicy p = SlaPolicyService.defaultPolicy(ClaimType.CLAIM, GravityLevel.MINEUR);
-
-        assertThat(p.getTakeoverMinutes()).isEqualTo(2 * 540);
-        assertThat(p.getResolutionMinutes()).isEqualTo(10 * 540);
-        assertThat(p.getClosureMinutes()).isEqualTo(5 * 540);
-    }
-
-    @Test
-    void uneDenonciationNAPasDeDelaiDeCloture() {
-        for (GravityLevel risk : GravityLevel.values()) {
-            SlaPolicy p = SlaPolicyService.defaultPolicy(ClaimType.DENUNCIACION, risk);
-            assertThat(p.getClosureMinutes()).as("clôture " + risk).isZero();
-            assertThat(p.getResolutionMinutes()).isPositive();
-        }
-    }
-
-    @Test
-    void uneSuggestionADesDelaisUniques() {
-        SlaPolicy p = SlaPolicyService.defaultPolicy(ClaimType.SUGGESTION, GravityLevel.MOYEN);
-
-        assertThat(p.getTakeoverMinutes()).isZero();
-        assertThat(p.getClosureMinutes()).isZero();
-        assertThat(p.getResolutionMinutes()).isEqualTo(10 * 540);
-    }
-
-    // --- Lecture d'une politique -------------------------------------------------------------------------------------
-
-    @Test
-    void laPolitiqueEnregistreeActivePrimeSurLesValeursParDefaut() {
-        SlaPolicy custom = SlaPolicy.builder().claimType(ClaimType.CLAIM).riskLevel(GravityLevel.GRAVE)
-                .resolutionMinutes(999).active(true).build();
-        when(policyRepo.findByClaimTypeAndRiskLevel(ClaimType.CLAIM, GravityLevel.GRAVE)).thenReturn(Optional.of(custom));
-
-        assertThat(service.policyFor(ClaimType.CLAIM, GravityLevel.GRAVE).getResolutionMinutes()).isEqualTo(999);
-    }
-
-    @Test
-    void uneLaPolitiqueDesactiveeRetombeSurLesValeursParDefaut() {
-        SlaPolicy off = SlaPolicy.builder().claimType(ClaimType.CLAIM).riskLevel(GravityLevel.GRAVE)
-                .resolutionMinutes(999).active(false).build();
-        when(policyRepo.findByClaimTypeAndRiskLevel(ClaimType.CLAIM, GravityLevel.GRAVE)).thenReturn(Optional.of(off));
-
-        assertThat(service.policyFor(ClaimType.CLAIM, GravityLevel.GRAVE).getResolutionMinutes()).isEqualTo(3 * 540);
-    }
-
-    @Test
-    void sansNiveauDeRisqueLaPolitiqueMoyenneS_Applique() {
-        assertThat(service.policyFor(ClaimType.CLAIM, null).getResolutionMinutes()).isEqualTo(6 * 540);
+        service = new SlaDefaultsService(dayRepo, reasonRepo);
     }
 
     // --- Initialisation de la configuration ------------------------------------------------------------------------------
 
     @Test
-    void lInitialisationCreeSeptPolitiquesLeCalendrierEtLesMotifs() {
-        when(policyRepo.findByClaimTypeAndRiskLevel(any(), any())).thenReturn(Optional.empty());
+    void lInitialisationCreeLeCalendrierEtLesMotifs() {
         when(dayRepo.count()).thenReturn(0L);
         when(reasonRepo.count()).thenReturn(0L);
 
         service.seedDefaults();
 
-        verify(policyRepo, times(7)).save(any(SlaPolicy.class)); // 2 types x 3 risques + suggestions
         ArgumentCaptor<BusinessDay> days = ArgumentCaptor.forClass(BusinessDay.class);
         verify(dayRepo, times(7)).save(days.capture());
         assertThat(days.getAllValues()).filteredOn(BusinessDay::isWorking).hasSize(5); // lundi à vendredi
@@ -145,13 +63,11 @@ class SlaPolicyAndAdviceTest {
 
     @Test
     void lInitialisationNeRemplaceRienDeCeQuiExiste() {
-        when(policyRepo.findByClaimTypeAndRiskLevel(any(), any())).thenReturn(Optional.of(new SlaPolicy()));
         when(dayRepo.count()).thenReturn(7L);
         when(reasonRepo.count()).thenReturn(8L);
 
         service.seedDefaults();
 
-        verify(policyRepo, never()).save(any());
         verify(dayRepo, never()).save(any());
         verify(reasonRepo, never()).save(any());
     }

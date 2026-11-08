@@ -49,6 +49,7 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class AlertRetardCron {
+    private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
 
     @Autowired
     private ClaimRepository claimRepository;
@@ -234,8 +235,7 @@ public class AlertRetardCron {
         if (delai <= 0)
             return false;
 
-        LocalDateTime dateBase = claim.getAffectedAt() != null ? claim.getAffectedAt() : claim.getCreatedAt();
-        LocalDateTime deadline = dateBase.plusDays(delai);
+        LocalDateTime deadline = echeanceObjet.echeance(claim);
         return deadline.isBefore(reference);
     }
 
@@ -246,8 +246,7 @@ public class AlertRetardCron {
         if (delai <= 0)
             return false;
 
-        LocalDateTime dateBase = claim.getAffectedAt() != null ? claim.getAffectedAt() : claim.getCreatedAt();
-        LocalDateTime deadline = dateBase.plusDays(delai);
+        LocalDateTime deadline = echeanceObjet.echeance(claim);
         return deadline.isAfter(now) && deadline.isBefore(limit);
     }
 
@@ -316,15 +315,7 @@ public class AlertRetardCron {
 
         for (Claim c : claims) {
 
-            LocalDateTime dateBase = (c.getAffectedAt() != null) ? c.getAffectedAt() : c.getCreatedAt();
-
-            Integer processingTime = (c.getObjet() != null)
-                    ? c.getObjet().getProcessingTime()
-                    : null;
-
-            long delaiJours = (processingTime != null) ? processingTime : 0;
-
-            LocalDateTime deadline = dateBase.plusDays(delaiJours);
+            LocalDateTime deadline = echeanceObjet.echeance(c);
             long diff = java.time.temporal.ChronoUnit.DAYS.between(deadline, LocalDateTime.now());
 
             body.append("<tr>")
@@ -457,8 +448,7 @@ public class AlertRetardCron {
                 // Lignes
                 for (Claim c : plaintesAgent) {
 
-                    LocalDateTime dateBase = (c.getAffectedAt() != null ? c.getAffectedAt() : c.getCreatedAt());
-                    LocalDateTime deadline = dateBase.plusDays(c.getObjet().getProcessingTime());
+                    LocalDateTime deadline = echeanceObjet.echeance(c);
                     long joursRetard = ChronoUnit.DAYS.between(deadline, LocalDateTime.now());
 
                     body.append("<tr>");
@@ -471,7 +461,7 @@ public class AlertRetardCron {
                             .append("</td>");
 
                     body.append("<td style='border:1px solid #ddd; padding:8px;'>")
-                            .append(dateBase.toLocalDate())
+                            .append((c.getAffectedAt() != null ? c.getAffectedAt() : c.getCreatedAt()).toLocalDate())
                             .append("</td>");
 
                     body.append("<td style='border:1px solid #ddd; padding:8px;'>")
@@ -527,7 +517,7 @@ public class AlertRetardCron {
 
             for (Claim c : nonAffectees) {
 
-                LocalDateTime deadline = c.getCreatedAt().plusDays(c.getObjet().getProcessingTime());
+                LocalDateTime deadline = echeanceObjet.echeance(c);
                 long joursRetard = ChronoUnit.DAYS.between(deadline, LocalDateTime.now());
 
                 body.append("<tr>");

@@ -39,6 +39,12 @@ class SlaPerimeterTest {
     private final User pilote = User.builder().id(5L).additionalrole(Role.PILOTE).build();
     private final User de = User.builder().id(6L).additionalrole(Role.DE).build();
 
+    private static com.sicmagroup.gpr.domain.model.Poste poste(String habilitations) {
+        com.sicmagroup.gpr.domain.model.Poste p = new com.sicmagroup.gpr.domain.model.Poste();
+        p.setHabilitations(habilitations);
+        return p;
+    }
+
     @BeforeEach
     void setUp() {
         perimeter = new SlaPerimeter(mock(UserRepository.class), spService);
@@ -56,10 +62,23 @@ class SlaPerimeterTest {
     }
 
     @Test
-    void piloteEtDeVoientToutesLesPlaintes() {
+    void piloteDeEtH6NonRaVoientToutesLesPlaintes() {
+        User h6 = User.builder().id(7L).additionalrole(Role.MOLDUE).poste(poste("H1,H6")).servicePoint(agencyA).build();
         assertThat(perimeter.scopeOf(pilote).all()).isTrue();
         assertThat(perimeter.scopeOf(de).all()).isTrue();
+        assertThat(perimeter.scopeOf(h6).all()).isTrue();
         assertThat(perimeter.canSee(perimeter.scopeOf(pilote), claim(other, null, null, null))).isTrue();
+        assertThat(perimeter.canSee(perimeter.scopeOf(h6), claim(other, null, null, null))).isTrue();
+    }
+
+    @Test
+    void unRaQuiAH6GardeSonPerimetreDeRa() {
+        User raAvecH6 = User.builder().id(8L).isRa(true).additionalrole(Role.MOLDUE).poste(poste("H1,H6"))
+                .servicePoint(agencyA).build();
+        Scope scope = perimeter.scopeOf(raAvecH6);
+        assertThat(scope.all()).isFalse();
+        assertThat(scope.spIds()).containsExactly(10L);
+        assertThat(perimeter.canSee(scope, claim(other, null, null, null))).isFalse();
     }
 
     @Test
@@ -99,13 +118,29 @@ class SlaPerimeterTest {
     }
 
     @Test
-    void unAgentVoitSesDossiersSaisisAffectesOuTransmis() {
+    void unAgentVoitSesDossiersSaisisDansSonAgenceAffectesOuTransmis() {
         Scope scope = perimeter.scopeOf(agentA);
 
         assertThat(scope.all()).isFalse();
         assertThat(perimeter.canSee(scope, claim(agencyA, agentA, null, null))).isTrue();
         assertThat(perimeter.canSee(scope, claim(agencyA, null, agentA, null))).isTrue();
         assertThat(perimeter.canSee(scope, claim(agencyA, null, null, agentA))).isTrue();
+        // affecté ou transmis depuis une autre agence : visible
+        assertThat(perimeter.canSee(scope, claim(agencyB, null, agentA, null))).isTrue();
+        assertThat(perimeter.canSee(scope, claim(agencyB, null, null, agentA))).isTrue();
+        // saisi par l'agent pour une autre agence sans lui être affecté : non visible
+        assertThat(perimeter.canSee(scope, claim(agencyB, agentA, null, null))).isFalse();
+    }
+
+    @Test
+    void unAgentInviteAUneSessionVoitLaPlainte() {
+        Claim dossierSession = claim(agencyB, agentB, agentB, null);
+        dossierSession.setId(777L);
+        com.sicmagroup.gpr.domain.model.chat.Chat chat = new com.sicmagroup.gpr.domain.model.chat.Chat();
+        chat.setClaim(dossierSession);
+        User invite = User.builder().id(9L).servicePoint(agencyA).chatsGuest(List.of(chat)).build();
+
+        assertThat(perimeter.canSee(perimeter.scopeOf(invite), dossierSession)).isTrue();
     }
 
     @Test

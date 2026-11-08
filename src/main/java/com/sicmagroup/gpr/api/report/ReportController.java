@@ -373,8 +373,8 @@ public class ReportController {
 								serviceStatsClaim.pourcentageReelReclamationsTraitees(filtreTableaux),
 								serviceStatsClaim.pourcentageReclamationsTraiteesDansDelai(filtreTableaux) 
 								))
-						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalByGravity(filtreTableaux),
-								serviceStatsDenun.totalSavedClaim(filtreTableaux), serviceStatsDenun.totalTreat(filtreTableaux),
+						.DenunStatsAndValue(Arrays.asList(serviceStatsDenun.totalSavedClaim(filtreTableaux),
+								serviceStatsDenun.totalByGravity(filtreTableaux), serviceStatsDenun.totalTreat(filtreTableaux),
 								serviceStatsDenun.totalTreatByGravity(filtreTableaux),
 								serviceStatsDenun.totalTreatByRespectTiming(filtreTableaux),
 								serviceStatsDenun.totalUnTreat(filtreTableaux),

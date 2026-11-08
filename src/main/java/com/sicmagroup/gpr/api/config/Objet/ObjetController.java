@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import com.sicmagroup.gpr.sla.service.SlaConfig;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
@@ -46,7 +45,6 @@ public class ObjetController {
     private final ModelMapper modelMapper;
     private final ObjetServcieImpl service;
     private final CategorieObjetServiceImpl categorieObjetServiceImpl;
-    private final SlaConfig slaConfig;
 
     @GetMapping("/list/{deleted}")
     public ResponseEntity<ApiResponseDto> getAll(@PathVariable(name = "deleted", required = false) boolean deleted) {
@@ -319,10 +317,8 @@ public class ObjetController {
     }
 
     // Un délai de 0 jour déclenchait de fausses alertes de retard : minimum 1 jour. Quand le suivi des délais
-    // (SLA) est actif, le délai peut rester vide (envoyé comme 0) : c'est alors celui de la politique du niveau
-    // de risque. Un délai négatif est toujours refusé ; le délai de prise en charge, s'il est donné, est positif.
+    // (SLA) en dépend : le délai est obligatoire. Le délai de prise en charge, s'il est donné, est positif.
     private ResponseEntity<ApiResponseDto> verifierDelai(ObjetDto objetDto) {
-        boolean vide = objetDto.getProcessingTime() == 0 && slaConfig.enabled();
         boolean prisEnChargeInvalide = objetDto.getTakeoverHours() != null && objetDto.getTakeoverHours() < 1;
         if (prisEnChargeInvalide) {
             ApiResponseDto bad = ApiResponseDto.builder().status(false)
@@ -331,7 +327,7 @@ public class ObjetController {
                     .build();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(bad);
         }
-        if (objetDto.getProcessingTime() < 1 && !vide) {
+        if (objetDto.getProcessingTime() < 1) {
             ApiResponseDto apiResponseDto = ApiResponseDto
                     .builder()
                     .status(false)

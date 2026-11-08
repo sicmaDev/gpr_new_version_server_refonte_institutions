@@ -98,13 +98,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            // System.out.println(request.getReceiveStart());
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -177,13 +171,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            // System.out.println(request.getReceiveStart());
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -257,12 +245,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -350,12 +333,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -449,12 +427,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -542,12 +515,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -631,12 +599,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -726,12 +689,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -822,12 +780,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -909,12 +862,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1001,12 +949,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1093,12 +1036,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1193,12 +1131,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1280,12 +1213,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1320,13 +1248,16 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
             predicates.add(claim.get("servicePoint").in(subquery));
         }
 
-        // if (request.getEtats() != null && !request.getEtats().isEmpty()) {
-        predicates.add(claim.get("status")
-                .in(Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
-                        ClaimStatus.LITIGATION, ClaimStatus.CLASSED)));
-        // } else {
-        // predicates.add(cb.notEqual(claim.get("status"), ClaimStatus.TEMP_SAVED));
-        // }
+        List<ClaimStatus> statusSatisfaction = new ArrayList<>(Arrays.asList(
+                ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
+                ClaimStatus.LITIGATION, ClaimStatus.CLASSED));
+        if (request.getEtats() != null && !request.getEtats().isEmpty()) {
+            statusSatisfaction.retainAll(request.getEtats());
+            if (statusSatisfaction.isEmpty()) {
+                return new ArrayList<>();
+            }
+        }
+        predicates.add(claim.get("status").in(statusSatisfaction));
 
         if (request.getCanals() != null && !request.getCanals().isEmpty()) {
             Subquery<CollectionChannel> subquery = query.subquery(CollectionChannel.class);
@@ -1376,12 +1307,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1416,11 +1342,14 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
             predicates.add(claim.get("servicePoint").in(subquery));
         }
 
-        // if (request.getEtats() != null && !request.getEtats().isEmpty()) {
-        predicates.add(claim.get("status").in(status));
-        // } else {
-        // predicates.add(cb.notEqual(claim.get("status"), ClaimStatus.TEMP_SAVED));
-        // }
+        List<ClaimStatus> effectiveStatus = new ArrayList<>(status);
+        if (request.getEtats() != null && !request.getEtats().isEmpty()) {
+            effectiveStatus.retainAll(request.getEtats());
+            if (effectiveStatus.isEmpty()) {
+                return new ArrayList<>();
+            }
+        }
+        predicates.add(claim.get("status").in(effectiveStatus));
 
         if (request.getCanals() != null && !request.getCanals().isEmpty()) {
             Subquery<CollectionChannel> subquery = query.subquery(CollectionChannel.class);
@@ -1453,12 +1382,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1530,12 +1454,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1570,7 +1489,14 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
             predicates.add(claim.get("servicePoint").in(subquery));
         }
 
-        predicates.add(claim.get("status").in(status));
+        List<ClaimStatus> effectiveStatus = new ArrayList<>(status);
+        if (request.getEtats() != null && !request.getEtats().isEmpty()) {
+            effectiveStatus.retainAll(request.getEtats());
+            if (effectiveStatus.isEmpty()) {
+                return new ArrayList<>();
+            }
+        }
+        predicates.add(claim.get("status").in(effectiveStatus));
 
         if (request.getCanals() != null && !request.getCanals().isEmpty()) {
             Subquery<CollectionChannel> subquery = query.subquery(CollectionChannel.class);
@@ -1612,13 +1538,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
                 predicates.add(claim.get("objet").in(subquery));
             }
-            if (request.getReceiveStart() != null && request.getReceiveEnd() != null
-                    && request.getReceiveStart() != "") {
-                predicates
-                        .add(cb.between(claim.get("receiptDateTime"),
-                                Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                                Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-            }
+            addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
             if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
                 LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
                 LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1697,13 +1617,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            // System.out.println(request.getReceiveStart());
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1782,13 +1696,7 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
 
             predicates.add(claim.get("objet").in(subquery));
         }
-        if (request.getReceiveStart() != null && request.getReceiveEnd() != null && request.getReceiveStart() != "") {
-            // System.out.println(request.getReceiveStart());
-            predicates
-                    .add(cb.between(claim.get("receiptDateTime"),
-                            Utils.convertStrToLocalDateTime(request.getReceiveStart()),
-                            Utils.convertStrToLocalDateTime(request.getReceiveEnd())));
-        }
+        addDatePredicates(cb, predicates, claim.get("receiptDateTime"), request);
         if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
             LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
             LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
@@ -1846,6 +1754,33 @@ public class ClaimRepositoryCustomImpl implements ClaimRepositoryCustom {
         // System.out.println(resultat.size());
 
         return resultat;
+    }
+
+    private static void addDatePredicates(CriteriaBuilder cb, List<Predicate> predicates,
+            Path<LocalDateTime> datePath, FilterRequest request) {
+        if (request == null) {
+            return;
+        }
+        boolean hasStart = request.getReceiveStart() != null && !request.getReceiveStart().trim().isEmpty();
+        boolean hasEnd = request.getReceiveEnd() != null && !request.getReceiveEnd().trim().isEmpty();
+        if (hasStart && hasEnd) {
+            LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart().trim());
+            LocalDateTime end = finDeJourneeSiMinuit(Utils.convertStrToLocalDateTime(request.getReceiveEnd().trim()));
+            predicates.add(cb.between(datePath, start, end));
+        } else if (hasStart) {
+            LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart().trim());
+            predicates.add(cb.greaterThanOrEqualTo(datePath, start));
+        } else if (hasEnd) {
+            LocalDateTime end = finDeJourneeSiMinuit(Utils.convertStrToLocalDateTime(request.getReceiveEnd().trim()));
+            predicates.add(cb.lessThanOrEqualTo(datePath, end));
+        }
+    }
+
+    private static LocalDateTime finDeJourneeSiMinuit(LocalDateTime dt) {
+        if (dt != null && dt.getHour() == 0 && dt.getMinute() == 0 && dt.getSecond() == 0) {
+            return dt.withHour(23).withMinute(59).withSecond(59);
+        }
+        return dt;
     }
 
 }

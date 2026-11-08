@@ -107,6 +107,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/denunciation")
 @RequiredArgsConstructor
 public class DenunciationController {
+    private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
     private final ClaimServiceImpl service;
     private final SuggestionServiceImpl suggestionServiceImpl;
     private final ModelMapper modelMapper;
@@ -1226,7 +1227,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
 
         //Date déclenchement de retard de traitement
         if (claim.getObjet() != null && claim.getReceiptDateTime() != null) {
-            LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+            LocalDateTime calculateDate = echeanceObjet.echeance(claim.getReceiptDateTime(), claim.getObjet().getProcessingTime());
             // calculateDate = calculateDate.minusDays(7);
             if (LocalDateTime.now().isAfter(calculateDate)) {
 
@@ -1242,9 +1243,9 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                 
             } else {
                 if(claim.getObjet().getProcessingTime() <= 7){
-                        Long day = LocalDateTime.now().until((claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime())), ChronoUnit.DAYS);
+                        Long day = LocalDateTime.now().until((echeanceObjet.echeance(claim.getReceiptDateTime(), claim.getObjet().getProcessingTime())), ChronoUnit.DAYS);
                         if (day == 0) {
-                            day = LocalDateTime.now().until((claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime())), ChronoUnit.HOURS);
+                            day = LocalDateTime.now().until((echeanceObjet.echeance(claim.getReceiptDateTime(), claim.getObjet().getProcessingTime())), ChronoUnit.HOURS);
                             claimDto.setDeclenchedDate(day + " heure(s) ");
                             claimDto.setRetardDay(Long.parseLong(""+day));
                         } else {

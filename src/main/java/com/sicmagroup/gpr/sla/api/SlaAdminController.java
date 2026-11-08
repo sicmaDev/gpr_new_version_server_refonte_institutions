@@ -21,20 +21,18 @@ import com.sicmagroup.gpr.domain.dto.ApiResponseDto;
 import com.sicmagroup.gpr.sla.domain.BusinessDay;
 import com.sicmagroup.gpr.sla.domain.Holiday;
 import com.sicmagroup.gpr.sla.domain.SlaBreachReason;
-import com.sicmagroup.gpr.sla.domain.SlaPolicy;
 import com.sicmagroup.gpr.sla.repository.BusinessDayRepository;
 import com.sicmagroup.gpr.sla.repository.HolidayRepository;
 import com.sicmagroup.gpr.sla.repository.SlaBreachReasonRepository;
-import com.sicmagroup.gpr.sla.repository.SlaPolicyRepository;
 import com.sicmagroup.gpr.sla.service.BusinessTime;
 import com.sicmagroup.gpr.sla.service.SlaConfig;
-import com.sicmagroup.gpr.sla.service.SlaPolicyService;
+import com.sicmagroup.gpr.sla.service.SlaDefaultsService;
 
 import jakarta.annotation.security.RolesAllowed;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Configuration du SLA : politiques de délais, calendrier ouvré, jours fériés, motifs, paramètres.
+ * Configuration du SLA : calendrier ouvré, jours fériés, motifs, paramètres.
  * Écriture réservée à l'administrateur (H12). Seule la liste des motifs est lisible par tout agent connecté
  * (pour justifier un retard).
  */
@@ -43,8 +41,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/sla")
 public class SlaAdminController {
 
-    private final SlaPolicyRepository policyRepository;
-    private final SlaPolicyService policyService;
+    private final SlaDefaultsService defaultsService;
     private final BusinessDayRepository dayRepository;
     private final HolidayRepository holidayRepository;
     private final SlaBreachReasonRepository reasonRepository;
@@ -55,52 +52,12 @@ public class SlaAdminController {
         return SlaController.error(HttpStatus.BAD_REQUEST, "Configuration SLA invalide", message);
     }
 
-    // --- Politiques ---------------------------------------------------------------------------------
-
-    @GetMapping("/policies")
-    @RolesAllowed("H12")
-    public ResponseEntity<ApiResponseDto> policies() {
-        policyService.seedDefaults();
-        return SlaController.ok(policyRepository.findAll());
-    }
-
-    @PutMapping("/policies")
-    @RolesAllowed("H12")
-    public ResponseEntity<ApiResponseDto> updatePolicies(@RequestBody List<SlaPolicy> policies) {
-        for (SlaPolicy p : policies) {
-            if (p.getClaimType() == null || p.getRiskLevel() == null) {
-                return bad("Type de plainte et niveau de risque obligatoires");
-            }
-            if (p.getTakeoverMinutes() < 0 || p.getResolutionMinutes() <= 0 || p.getClosureMinutes() < 0
-                    || p.getReopenMinutes() < 0 || p.getGraceMinutes() < 0) {
-                return bad("Les durées doivent être positives (la résolution doit être d'au moins 1 minute)");
-            }
-            if (p.getReminder1Pct() < 1 || p.getReminder2Pct() > 99 || p.getReminder1Pct() >= p.getReminder2Pct()) {
-                return bad("Les rappels doivent être entre 1 et 99 %, le premier avant le second");
-            }
-            if (p.getComplianceTarget() < 0 || p.getComplianceTarget() > 100) {
-                return bad("L'objectif de conformité doit être entre 0 et 100 %");
-            }
-        }
-        for (SlaPolicy p : policies) {
-            SlaPolicy existing = policyRepository.findByClaimTypeAndRiskLevel(p.getClaimType(), p.getRiskLevel())
-                    .orElse(null);
-            if (existing != null) {
-                p.setId(existing.getId());
-            } else {
-                p.setId(null);
-            }
-            policyRepository.save(p);
-        }
-        return SlaController.ok(policyRepository.findAll());
-    }
-
     // --- Calendrier ouvré -----------------------------------------------------------------------------
 
     @GetMapping("/calendar")
     @RolesAllowed("H12")
     public ResponseEntity<ApiResponseDto> calendar() {
-        policyService.seedDefaults();
+        defaultsService.seedDefaults();
         return SlaController.ok(dayRepository.findAll().stream()
                 .sorted((a, b) -> Integer.compare(a.getDayOfWeek(), b.getDayOfWeek())).toList());
     }
@@ -186,7 +143,7 @@ public class SlaAdminController {
     /** Lisible par tout agent connecté : sert à justifier un retard. */
     @GetMapping("/breach-reasons")
     public ResponseEntity<ApiResponseDto> reasons(@RequestParam(required = false) String kind) {
-        policyService.seedDefaults();
+        defaultsService.seedDefaults();
         return SlaController.ok(reasonRepository.findByActiveTrue().stream()
                 .filter(r -> kind == null || kind.equalsIgnoreCase(r.getKind())).toList());
     }
@@ -261,6 +218,11 @@ public class SlaAdminController {
                 return bad(error);
             }
         }
+        int rappel1 = Integer.parseInt(values.getOrDefault(SlaConfig.REMINDER1_PCT, known.get(SlaConfig.REMINDER1_PCT)).trim());
+        int rappel2 = Integer.parseInt(values.getOrDefault(SlaConfig.REMINDER2_PCT, known.get(SlaConfig.REMINDER2_PCT)).trim());
+        if (rappel1 >= rappel2) {
+            return bad("Le premier rappel doit être avant le second");
+        }
         boolean wasEnabled = config.enabled();
         for (Map.Entry<String, String> e : values.entrySet()) {
             config.set(e.getKey(), e.getValue().trim());
@@ -286,6 +248,12 @@ public class SlaAdminController {
                 return inRange(v, 1, 20) ? null : "Le nombre de tentatives doit être entre 1 et 20";
             case SlaConfig.UNREACHABLE_DAYS:
                 return inRange(v, 1, 90) ? null : "La période doit être entre 1 et 90 jours";
+            case SlaConfig.TAKEOVER_HOURS, SlaConfig.GRACE_HOURS:
+                return inRange(v, 1, 720) ? null : "Les durées en heures doivent être entre 1 et 720";
+            case SlaConfig.CLOSURE_DAYS, SlaConfig.REOPEN_DAYS, SlaConfig.SUGGESTION_DAYS:
+                return inRange(v, 1, 365) ? null : "Les durées en jours doivent être entre 1 et 365";
+            case SlaConfig.REMINDER1_PCT, SlaConfig.REMINDER2_PCT:
+                return inRange(v, 1, 99) ? null : "Les rappels doivent être entre 1 et 99 %";
             case SlaConfig.DIGEST_TIME:
                 try {
                     LocalTime.parse(v);

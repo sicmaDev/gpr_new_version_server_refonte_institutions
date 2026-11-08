@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 
 import com.sicmagroup.gpr.api.report.FilterRequest;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
-import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.repository.ClaimRepository;
 import com.sicmagroup.gpr.repository.ObjetRepository;
 import com.sicmagroup.gpr.repository.ServicePointRepository;
@@ -61,12 +60,10 @@ public class StatsSuggest {
             return resultat;
         }
         if (request != null) {
-            if (request.getObjets() != null && request.getObjets().isEmpty()) {
+            if (request.getObjets() == null || request.getObjets().isEmpty()) {
                 List<SuggestTotalPerStatusPro> listClaimProjection = suggestionRepository
                         .countSuggestByCriteriaAndStatus(request);
-                        System.out.println(listClaimProjection);
                 for (SuggestTotalPerStatusPro projection : listClaimProjection) {
-                    
                     if (projection.getStatus() == ClaimStatus.TREAT) {
                         if (projection.isAccepted()) {
                             resultat.put("Nombre de suggestion Prises en compte",
@@ -77,48 +74,31 @@ public class StatsSuggest {
                         }
                     }
                 }
-                if (request.getEtats() != null && !request.getEtats().isEmpty()) {
-
-                    if (!resultat.containsKey("Nombre de suggestion Prises en compte")) {
-                        resultat.put("Nombre de suggestion Prises en compte", 0D);
-                    }
-                    if (!resultat.containsKey("Nombre de suggestion Non Prises en compte")) {
-                        resultat.put("Nombre de suggestion Non Prises en compte", 0D);
-                    }
-                } else {
-                    if (!resultat.containsKey("Nombre de suggestion Prises en compte")) {
-                        resultat.put("Nombre de suggestion Prises en compte", 0D);
-                    }
-                    if (!resultat.containsKey("Nombre de suggestion Non Prises en compte")) {
-                        resultat.put("Nombre de suggestion Non Prises en compte", 0D);
-                    }
-                }
-            } else {
-                if (!resultat.containsKey("Nombre de suggestion Prises en compte")) {
-                    resultat.put("Nombre de suggestion Prises en compte", 0D);
-                }
-                if (!resultat.containsKey("Nombre de suggestion Non Prises en compte")) {
-                    resultat.put("Nombre de suggestion Non Prises en compte", 0D);
-                }
+            }
+            if (!resultat.containsKey("Nombre de suggestion Prises en compte")) {
+                resultat.put("Nombre de suggestion Prises en compte", 0D);
+            }
+            if (!resultat.containsKey("Nombre de suggestion Non Prises en compte")) {
+                resultat.put("Nombre de suggestion Non Prises en compte", 0D);
             }
         } else {
             List<ObjectTotalPerStatusProjection> listClaimProjection = suggestionRepository.countSuggestPerStatus();
-                for (ObjectTotalPerStatusProjection projection : listClaimProjection) {
-                    if (projection.getStatus() == "TREAT") {
-                        if (projection.getAccepted()) {
-                            resultat.put("Nombre de suggestion Prises en compte",  Double.valueOf(projection.getTotal()));
-                        } else {
-                             resultat.put("Nombre de suggestion Non Prises en compte",  Double.valueOf(projection.getTotal()));
-                        }
-                    } 
+            for (ObjectTotalPerStatusProjection projection : listClaimProjection) {
+                if ("TREAT".equals(projection.getStatus())) {
+                    if (Boolean.TRUE.equals(projection.getAccepted())) {
+                        resultat.put("Nombre de suggestion Prises en compte", Double.valueOf(projection.getTotal()));
+                    } else {
+                        resultat.put("Nombre de suggestion Non Prises en compte", Double.valueOf(projection.getTotal()));
+                    }
                 }
+            }
 
-                  if (!resultat.containsKey("Nombre de suggestion Prises en compte")) {
-                    resultat.put("Nombre de suggestion Prises en compte", 0D);
-                }
-                if (!resultat.containsKey("Nombre de suggestion Non Prises en compte")) {
-                    resultat.put("Nombre de suggestion Non Prises en compte", 0D);
-                }
+            if (!resultat.containsKey("Nombre de suggestion Prises en compte")) {
+                resultat.put("Nombre de suggestion Prises en compte", 0D);
+            }
+            if (!resultat.containsKey("Nombre de suggestion Non Prises en compte")) {
+                resultat.put("Nombre de suggestion Non Prises en compte", 0D);
+            }
         }
 
         return resultat;

@@ -31,7 +31,7 @@ class AlertRetardCronTest {
     private final SlaConfig slaConfig = mock(SlaConfig.class);
     private final ClaimRepository claims = mock(ClaimRepository.class);
     private final UserRepository users = mock(UserRepository.class);
-    private final AlertRetardCron cron = new AlertRetardCron(mail, schedule);
+    private final AlertRetardCron cron = new AlertRetardCron(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), mail, schedule);
 
     AlertRetardCronTest() {
         ReflectionTestUtils.setField(cron, "slaConfig", slaConfig);
@@ -84,6 +84,8 @@ class AlertRetardCronTest {
 
     @Test
     void lesMailsDeRelanceportentLeNomDeLInstitutionOuGprParDefaut() throws Exception {
+        // lire un réglage passe par le chiffrement : la clé doit être installée
+        com.sicmagroup.gpr.utils.crypto.FieldEncryptor.install(new com.sicmagroup.gpr.utils.crypto.FieldEncryptor(new byte[32]));
         SettingServiceImpl settings = mock(SettingServiceImpl.class);
         ReflectionTestUtils.setField(cron, "settingService", settings);
 

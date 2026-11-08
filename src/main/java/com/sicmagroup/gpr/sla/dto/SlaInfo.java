@@ -29,7 +29,7 @@ public class SlaInfo {
     private SlaCycleKind cycleKind;
     private LocalDateTime dueAt;
     private LocalDateTime regulatoryDueAt;
-    /** Minutes (ouvrées ou calendaires selon la politique) avant l'échéance ; négatif si dépassée. */
+    /** Minutes (ouvrées) avant l'échéance ; négatif si dépassée. */
     private Long remainingMinutes;
     /** Minutes d'un jour dans le calcul de cette plainte (jour ouvré ou 1440) : pour afficher « 2 j 3 h ». */
     private Integer minutesPerDay;

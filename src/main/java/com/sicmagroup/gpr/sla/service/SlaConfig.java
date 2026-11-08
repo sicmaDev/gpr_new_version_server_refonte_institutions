@@ -33,6 +33,13 @@ public class SlaConfig {
     public static final String UNREACHABLE_ATTEMPTS = "sla.unreachable_attempts";
     public static final String UNREACHABLE_DAYS = "sla.unreachable_days";
     public static final String CUSTOMER_WAITING_MESSAGE = "sla.customer_waiting_message";
+    public static final String TAKEOVER_HOURS = "sla.takeover_hours";
+    public static final String CLOSURE_DAYS = "sla.closure_days";
+    public static final String REOPEN_DAYS = "sla.reopen_days";
+    public static final String REMINDER1_PCT = "sla.reminder1_pct";
+    public static final String REMINDER2_PCT = "sla.reminder2_pct";
+    public static final String GRACE_HOURS = "sla.grace_hours";
+    public static final String SUGGESTION_DAYS = "sla.suggestion_days";
 
     private static final long CACHE_MS = 15_000;
 
@@ -109,6 +116,39 @@ public class SlaConfig {
         return get(CUSTOMER_WAITING_MESSAGE, "NONE");
     }
 
+    /** Prise en charge par défaut, en heures ouvrées (l'objet peut avoir la sienne). */
+    public int takeoverHours() {
+        return getInt(TAKEOVER_HOURS, 9);
+    }
+
+    /** Clôture des réclamations (solution approuvée -> mesure de satisfaction), en jours ouvrés. */
+    public int closureDays() {
+        return getInt(CLOSURE_DAYS, 3);
+    }
+
+    /** Nouveau cycle après une mesure « non satisfait » ou « partiellement satisfait », en jours ouvrés. */
+    public int reopenDays() {
+        return getInt(REOPEN_DAYS, 3);
+    }
+
+    public int reminder1Pct() {
+        return getInt(REMINDER1_PCT, 50);
+    }
+
+    public int reminder2Pct() {
+        return getInt(REMINDER2_PCT, 75);
+    }
+
+    /** Délai avant la remontée automatique, après le dépassement, en heures ouvrées. */
+    public int graceHours() {
+        return getInt(GRACE_HOURS, 9);
+    }
+
+    /** Traitement d'une suggestion (elle n'a pas d'objet), en jours ouvrés. */
+    public int suggestionDays() {
+        return getInt(SUGGESTION_DAYS, 10);
+    }
+
     public LocalTime digestTime() {
         try {
             return LocalTime.parse(get(DIGEST_TIME, "08:00"));
@@ -131,6 +171,13 @@ public class SlaConfig {
         out.put(UNREACHABLE_ATTEMPTS, String.valueOf(unreachableAttempts()));
         out.put(UNREACHABLE_DAYS, String.valueOf(unreachableDays()));
         out.put(CUSTOMER_WAITING_MESSAGE, customerWaitingMessage());
+        out.put(TAKEOVER_HOURS, String.valueOf(takeoverHours()));
+        out.put(CLOSURE_DAYS, String.valueOf(closureDays()));
+        out.put(REOPEN_DAYS, String.valueOf(reopenDays()));
+        out.put(REMINDER1_PCT, String.valueOf(reminder1Pct()));
+        out.put(REMINDER2_PCT, String.valueOf(reminder2Pct()));
+        out.put(GRACE_HOURS, String.valueOf(graceHours()));
+        out.put(SUGGESTION_DAYS, String.valueOf(suggestionDays()));
         return out;
     }
 

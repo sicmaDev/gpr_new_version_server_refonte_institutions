@@ -111,6 +111,7 @@ import java.util.Comparator;
 @Service
 @RequiredArgsConstructor
 public class ClaimServiceImpl implements ClaimService {
+    private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
     private final ClaimRepository repository;
     private final CollectionChannelServiceImpl collectionChannelService;
     private final ServicePointServiceImpl servicePointServiceImpl;
@@ -2173,7 +2174,7 @@ public class ClaimServiceImpl implements ClaimService {
                 if (claim.getObjet().getProcessingTime() <= 0) {
                     continue;
                 }
-                LocalDateTime calculateDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+                LocalDateTime calculateDate = echeanceObjet.echeance(claim.getReceiptDateTime(), claim.getObjet().getProcessingTime());
                 if (LocalDateTime.now().isAfter(calculateDate)) {
                     Long hoursRetard = calculateDate.until(LocalDateTime.now(), ChronoUnit.HOURS);
                     Long days = hoursRetard / 24;
@@ -3065,15 +3066,29 @@ public class ClaimServiceImpl implements ClaimService {
 
     @Override
     public List<Claim> restrictClaimsToMeasureScope(List<Claim> claims, User connectedUser) {
-        // Pilote, DE et H5 : tout le système. RA : les dossiers enregistrés dans son agence. Les autres : leurs propres dossiers.
+        // Pilote, DE et H5 : tout le système. RA : les dossiers enregistrés dans son agence et les agences qui lui sont rattachées. Les autres : leurs propres dossiers.
         if (connectedUser.canMeasureClaim() || connectedUser.getAdditionalrole().equals(Role.PILOTE)
                 || connectedUser.getAdditionalrole().equals(Role.DE)) {
             return claims;
         } else if (connectedUser.isRa()) {
-            Long myServicePointId = connectedUser.getServicePoint().getId();
+            ServicePoint servicePoint = connectedUser.getServicePoint();
+            if (servicePoint == null) {
+                return Collections.emptyList();
+            }
+            List<ServicePoint> relatedServicePoints = new ArrayList<>();
+            if (servicePointServiceImpl != null) {
+                List<ServicePoint> descendants = servicePointServiceImpl.getAllDescendants(servicePoint.getId());
+                if (descendants != null) {
+                    relatedServicePoints.addAll(descendants);
+                }
+            }
+            relatedServicePoints.add(servicePoint);
+            final Set<Long> scopedServicePointIds = relatedServicePoints.stream()
+                    .map(ServicePoint::getId)
+                    .collect(Collectors.toSet());
             return claims.stream()
                     .filter(claim -> claim.getServicePoint() != null
-                            && claim.getServicePoint().getId().equals(myServicePointId))
+                            && scopedServicePointIds.contains(claim.getServicePoint().getId()))
                     .collect(Collectors.toList());
         } else {
             Long userId = connectedUser.getId();

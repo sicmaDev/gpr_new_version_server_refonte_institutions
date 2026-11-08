@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.sicmagroup.gpr.domain.enumeration.ClaimEventType;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
-import com.sicmagroup.gpr.domain.enumeration.GravityLevel;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.domain.model.Suggestion;
@@ -23,7 +22,6 @@ import com.sicmagroup.gpr.sla.domain.ClaimSla;
 import com.sicmagroup.gpr.sla.domain.SlaCycleKind;
 import com.sicmagroup.gpr.sla.domain.SlaOwnerLevel;
 import com.sicmagroup.gpr.sla.domain.SlaPhase;
-import com.sicmagroup.gpr.sla.domain.SlaPolicy;
 import com.sicmagroup.gpr.sla.repository.ClaimSlaRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -42,7 +40,6 @@ public class SlaEngine {
     private final ClaimSlaRepository repository;
     private final ClaimRepository claimRepository;
     private final SuggestionRepository suggestionRepository;
-    private final SlaPolicyService policyService;
     private final BusinessTime businessTime;
     private final SlaConfig config;
     private final SlaHierarchy hierarchy;
@@ -121,8 +118,7 @@ public class SlaEngine {
             case SAVED -> {
                 if (s.getRegisteredAt() == null) {
                     s.setRegisteredAt(now);
-                    SlaPolicy policy = policyFor(claim);
-                    s.setTakeoverDueAt(businessTime.add(s.isBusinessTime(), now, takeoverMinutes(claim, policy)));
+                    s.setTakeoverDueAt(businessTime.add(s.isBusinessTime(), now, takeoverMinutes(claim)));
                 }
                 humanAction(s, now);
             }
@@ -251,16 +247,13 @@ public class SlaEngine {
         s.setNextEscalationAt(null);
         repository.save(s);
 
-        SlaPolicy policy = policyFor(claim);
-        boolean business = policy.isBusinessTime();
-        ClaimSla next = baseBuilder(claim, SlaCycleKind.SATISFACTION, s.getCycle() + 1, policy, now).build();
+        ClaimSla next = baseBuilder(claim, SlaCycleKind.SATISFACTION, s.getCycle() + 1, now).build();
         next.setReceivedAt(now); // le chronomètre du nouveau cycle démarre à la mesure
         next.setRegisteredAt(s.getRegisteredAt());
         next.setTakeoverAt(now);
         syncClaimData(next, claim);
-        next.setResolutionMinutes(policy.getReopenMinutes() > 0 ? policy.getReopenMinutes()
-                : policy.getResolutionMinutes());
-        next.setResolutionDueAt(businessTime.add(business, now, next.getResolutionMinutes()));
+        next.setResolutionMinutes(joursEnMinutes(config.reopenDays()));
+        next.setResolutionDueAt(businessTime.add(true, now, next.getResolutionMinutes()));
         next.setRegulatoryDueAt(s.getRegulatoryDueAt());
         next.setRegulatoryBreached(s.isRegulatoryBreached());
         next.setRegulatoryWarningSent(true);
@@ -277,34 +270,32 @@ public class SlaEngine {
     // Création d'un compteur
     // ---------------------------------------------------------------------------------------------
 
-    /** Délai de prise en charge : celui de l'objet (en heures), s'il est renseigné, sinon celui de la politique. */
-    private static long takeoverMinutes(Claim claim, SlaPolicy policy) {
+    /** Délai de prise en charge : celui de l'objet (en heures), s'il est renseigné, sinon celui des paramètres. */
+    private long takeoverMinutes(Claim claim) {
         Objet objet = claim.getObjet();
         if (objet != null && objet.getTakeoverHours() != null && objet.getTakeoverHours() > 0) {
             return objet.getTakeoverHours() * 60L;
         }
-        return policy.getTakeoverMinutes();
+        return config.takeoverHours() * 60L;
     }
 
-    private SlaPolicy policyFor(Claim claim) {
-        Objet objet = claim.getObjet();
-        GravityLevel risk = objet == null ? null : objet.getRisqueLevel();
-        return policyService.policyFor(claim.getType(), risk);
+    private int joursEnMinutes(int jours) {
+        return (int) (jours * businessTime.workdayMinutes());
     }
 
-    private ClaimSla.ClaimSlaBuilder baseBuilder(Claim claim, SlaCycleKind kind, int cycle, SlaPolicy policy,
-            LocalDateTime now) {
+    private ClaimSla.ClaimSlaBuilder baseBuilder(Claim claim, SlaCycleKind kind, int cycle, LocalDateTime now) {
         return ClaimSla.builder()
                 .targetType(claim.getType())
                 .claimId(claim.getId())
                 .cycle(cycle)
                 .cycleKind(kind)
                 .phase(SlaPhase.OPEN)
-                .closureMinutes(policy.getClosureMinutes())
-                .reminder1Pct(policy.getReminder1Pct())
-                .reminder2Pct(policy.getReminder2Pct())
-                .graceMinutes(policy.getGraceMinutes())
-                .businessTime(policy.isBusinessTime())
+                // une dénonciation n'a pas de mesure de satisfaction : « traitée » vaut clôture
+                .closureMinutes(claim.getType() == ClaimType.CLAIM ? joursEnMinutes(config.closureDays()) : 0)
+                .reminder1Pct(config.reminder1Pct())
+                .reminder2Pct(config.reminder2Pct())
+                .graceMinutes(config.graceHours() * 60)
+                .businessTime(true)
                 .createdAt(now)
                 .updatedAt(now);
     }
@@ -317,27 +308,25 @@ public class SlaEngine {
     public ClaimSla open(Claim claim, boolean retroactive) {
         LocalDateTime now = LocalDateTime.now();
         ClaimType type = claim.getType();
-        SlaPolicy policy = policyFor(claim);
-        boolean business = policy.isBusinessTime();
+        boolean business = true;
         Objet objet = claim.getObjet();
 
         LocalDateTime received = claim.getReceiptDateTime() != null ? claim.getReceiptDateTime()
                 : claim.getCreatedAt() != null ? claim.getCreatedAt() : now;
         int cycle = repository.findByTargetTypeAndClaimId(type, claim.getId()).size() + 1;
 
-        ClaimSla s = baseBuilder(claim, SlaCycleKind.MAIN, cycle, policy, now).build();
+        ClaimSla s = baseBuilder(claim, SlaCycleKind.MAIN, cycle, now).build();
         s.setReceivedAt(received);
         int days = objet == null ? 0 : objet.getProcessingTime();
-        // le délai de l'objet, s'il est renseigné, prime sur la politique
-        s.setResolutionMinutes(days > 0 ? (int) (days * (business ? businessTime.workdayMinutes() : 1440))
-                : policy.getResolutionMinutes());
-        s.setResolutionDueAt(businessTime.add(business, received, s.getResolutionMinutes()));
+        // le délai vient de l'objet : sans délai sur l'objet, pas d'échéance de résolution
+        s.setResolutionMinutes(joursEnMinutes(Math.max(days, 0)));
+        s.setResolutionDueAt(days > 0 ? businessTime.add(business, received, s.getResolutionMinutes()) : null);
         s.setRegulatoryDueAt(received.plusDays(config.regulatoryDays()));
 
         if (claim.getStatus() != ClaimStatus.TEMP_SAVED) {
             LocalDateTime registered = claim.getCreatedAt() != null ? claim.getCreatedAt() : now;
             s.setRegisteredAt(registered);
-            s.setTakeoverDueAt(businessTime.add(business, registered, takeoverMinutes(claim, policy)));
+            s.setTakeoverDueAt(businessTime.add(business, registered, takeoverMinutes(claim)));
         }
 
         User owner = claim.getTreatmentAffectedTo() != null ? claim.getTreatmentAffectedTo()
@@ -403,8 +392,7 @@ public class SlaEngine {
             case UNSATISFIED, PARTIAL_SATISFIED -> {
                 // nouveau cycle « assurance satisfaction » : repart de la dernière mise à jour
                 s.setCycleKind(SlaCycleKind.SATISFACTION);
-                int reopen = policyFor(claim).getReopenMinutes();
-                s.setResolutionMinutes(reopen > 0 ? reopen : s.getResolutionMinutes());
+                s.setResolutionMinutes(joursEnMinutes(config.reopenDays()));
                 s.setResolutionDueAt(businessTime.add(business, ref, s.getResolutionMinutes()));
             }
             case CLASSED, LITIGATION -> s.setPhase(SlaPhase.SUSPENDED);
@@ -547,7 +535,6 @@ public class SlaEngine {
     @Transactional
     public ClaimSla openSuggestion(Suggestion suggestion, boolean retroactive) {
         LocalDateTime now = LocalDateTime.now();
-        SlaPolicy policy = policyService.policyFor(ClaimType.SUGGESTION, GravityLevel.MOYEN);
         LocalDateTime received = suggestion.getReceiptDateTime() != null ? suggestion.getReceiptDateTime()
                 : suggestion.getCreatedAt() != null ? suggestion.getCreatedAt() : now;
         ClaimSla s = ClaimSla.builder()
@@ -558,11 +545,11 @@ public class SlaEngine {
                 .phase(SlaPhase.OPEN)
                 .receivedAt(received)
                 .registeredAt(received)
-                .resolutionMinutes(policy.getResolutionMinutes())
-                .reminder1Pct(policy.getReminder1Pct())
-                .reminder2Pct(policy.getReminder2Pct())
-                .graceMinutes(policy.getGraceMinutes())
-                .businessTime(policy.isBusinessTime())
+                .resolutionMinutes(joursEnMinutes(config.suggestionDays()))
+                .reminder1Pct(config.reminder1Pct())
+                .reminder2Pct(config.reminder2Pct())
+                .graceMinutes(config.graceHours() * 60)
+                .businessTime(true)
                 .ownerLevel(SlaOwnerLevel.RA)
                 .servicePointId(suggestion.getServiceIndexe() == null ? null : suggestion.getServiceIndexe().getId())
                 .collectorId(suggestion.getCollecteur() == null ? null : suggestion.getCollecteur().getId())

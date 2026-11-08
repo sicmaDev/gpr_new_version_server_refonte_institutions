@@ -43,7 +43,7 @@ class RapportPowerBiTest {
              "denunReport":{"basicStats":{"total":5,"statusAndValue":{"SAVED":5}}},
              "suggestionReport":{"basicStats":{"total":3,"statusAndValue":{"SAVED":3}}},
              "statistic":{"claimStatsAndValue":[{"Nombre total de réclamations":10.0}],"denunStatsAndValue":[{"Nombre total de dénonciations":5}],
-              "suggestStatsAndValue":[{"Nombre total de suggestions enregistrées":null},{"Nombre total de suggestions":null}]},
+              "suggestStatsAndValue":[{"Nombre de suggestions Enregistrées":null},{"Nombre de suggestion Prises en compte":2.0,"Nombre de suggestion Non Prises en compte":1.0}]},
              "newVersionStat":{"AgencePerModalite":{"claims":{"Agence A":{"totals":4,"data":[{"name":"Email","nbre":3,"color":"#AA0000"},{"name":"site web","nbre":1,"color":"#00AA00"}]},
                "Agence B":{"totals":0,"data":[{"name":"Email","nbre":0,"color":"#AA0000"},{"name":"site web","nbre":0,"color":"#00AA00"}]}}}}}
             """;
@@ -94,6 +94,10 @@ class RapportPowerBiTest {
             assertThat(modele).contains("\"name\":\"" + table + "\"");
         // Couleur affichée par la page reprise ; suggestions sans valeur sous un filtre d'objet : mention de la page.
         assertThat(modele).contains("#010203").contains(RapportPowerBi.NON_APPLICABLE);
+        // Les deux lignes d'un même élément de suggestStatsAndValue sont bien conservées.
+        assertThat(modele)
+                .contains("Nombre de suggestion Prises en compte")
+                .contains("Nombre de suggestion Non Prises en compte");
         // Pourcentages par agence comme la page : 3 / 4 = 75 %, agence sans plainte retirée.
         assertThat(modele).contains("{\\\"claimByCanalBarChartRef\\\", \\\"Agence A\\\", \\\"Email\\\", 75,").doesNotContain("\\\"claimByCanalBarChartRef\\\", \\\"Agence B\\\"");
     }

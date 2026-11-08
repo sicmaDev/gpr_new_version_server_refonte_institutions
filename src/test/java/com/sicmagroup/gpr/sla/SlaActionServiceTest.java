@@ -35,7 +35,6 @@ import com.sicmagroup.gpr.sla.repository.ContactAttemptRepository;
 import com.sicmagroup.gpr.sla.repository.SlaBreachReasonRepository;
 import com.sicmagroup.gpr.sla.repository.SlaEventRepository;
 import com.sicmagroup.gpr.sla.service.SlaNotifier;
-import com.sicmagroup.gpr.sla.repository.SlaPolicyRepository;
 import com.sicmagroup.gpr.sla.service.BusinessTime;
 import com.sicmagroup.gpr.sla.service.SlaActionService;
 import com.sicmagroup.gpr.sla.service.SlaActionService.SlaActionException;
@@ -43,7 +42,6 @@ import com.sicmagroup.gpr.sla.service.SlaConfig;
 import com.sicmagroup.gpr.sla.service.SlaEngine;
 import com.sicmagroup.gpr.sla.service.SlaHierarchy;
 import com.sicmagroup.gpr.sla.service.SlaPerimeter;
-import com.sicmagroup.gpr.sla.service.SlaPolicyService;
 
 /**
  * Actions humaines : attente du client, reprise, justification, tentatives de contact, client injoignable.
@@ -71,9 +69,14 @@ class SlaActionServiceTest {
     @BeforeEach
     void setUp() {
         BusinessTime bt = new BusinessTime();
-        SlaPolicyService policies = new SlaPolicyService(mock(SlaPolicyRepository.class),
-                mock(BusinessDayRepository.class), mock(SlaBreachReasonRepository.class));
-        SlaEngine engine = new SlaEngine(repo, claimRepo, mock(SuggestionRepository.class), policies, bt, config,
+        org.mockito.Mockito.lenient().when(config.takeoverHours()).thenReturn(9);
+        org.mockito.Mockito.lenient().when(config.closureDays()).thenReturn(3);
+        org.mockito.Mockito.lenient().when(config.reopenDays()).thenReturn(3);
+        org.mockito.Mockito.lenient().when(config.reminder1Pct()).thenReturn(50);
+        org.mockito.Mockito.lenient().when(config.reminder2Pct()).thenReturn(75);
+        org.mockito.Mockito.lenient().when(config.graceHours()).thenReturn(9);
+        org.mockito.Mockito.lenient().when(config.suggestionDays()).thenReturn(10);
+        SlaEngine engine = new SlaEngine(repo, claimRepo, mock(SuggestionRepository.class), bt, config,
                 mock(SlaHierarchy.class));
         service = new SlaActionService(repo, claimRepo, attemptRepo, reasonRepo, perimeter, engine, config, bt,
                 claimEvents, notifier, eventRepo);

@@ -9,27 +9,33 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.sicmagroup.gpr.api.report.FilterRequest;
+import com.sicmagroup.gpr.domain.dto.reports.lineChart.LineChart;
 import com.sicmagroup.gpr.domain.enumeration.ClaimStatus;
 import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 import com.sicmagroup.gpr.domain.enumeration.GravityLevel;
 import com.sicmagroup.gpr.domain.model.Claim;
 import com.sicmagroup.gpr.domain.model.Objet;
+import com.sicmagroup.gpr.domain.model.SatisfactionMeasure;
+import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.repository.ClaimRepository;
+import com.sicmagroup.gpr.repository.SuggestionRepository;
 import com.sicmagroup.gpr.repository.projection.custom.ClaimPerObjLevelPro;
 
 /**
- * Tableaux récapitulatifs du rapport Global (constats 7 et 8) : les calculs ne modifient plus le filtre
- * partagé, et le taux de satisfaction divise par les réclamations du filtre. Aussi : gravité additionnée
- * par niveau, ligne « Faible » des dénonciations, suggestions sous filtre d'objet, filtre par état.
- * Sans base de données.
+ * Tableaux récapitulatifs et graphiques du rapport Global : les calculs ne modifient plus le filtre
+ * partagé, le taux de satisfaction et le pourcentage de réclamations traitées divisent par les
+ * réclamations du filtre, les niveaux de gravité et la courbe de satisfaction sont correctement ventilés,
+ * et les filtres de dates unilatéraux / de fin de journée sont pris en compte.
  */
 class TableauxRecapitulatifsTest {
 
@@ -49,6 +55,10 @@ class TableauxRecapitulatifsTest {
         return l;
     }
 
+    private static ReportServiceImpl creerReportService(ClaimRepository claimRepo, SuggestionRepository suggestRepo) {
+        return new ReportServiceImpl(null, claimRepo, suggestRepo, null, null, null, null, null, null, null, null, null);
+    }
+
     @Test
     void copieIndependante() {
         FilterRequest f = filtreAgence();
@@ -63,11 +73,20 @@ class TableauxRecapitulatifsTest {
     @Test
     void lesCalculsNeModifientPlusLeFiltre() {
         ClaimRepository repo = mock(ClaimRepository.class);
+        SuggestionRepository suggestRepo = mock(SuggestionRepository.class);
         when(repo.countClaimByCriteriaAndStatusIn(any(), any())).thenReturn(Collections.emptyList());
         when(repo.countClaimByCriteriaAndStatusNot(any(), any())).thenReturn(Collections.emptyList());
-        StatsClaim statsClaim = new StatsClaim(repo);
-        StatsDenun statsDenun = new StatsDenun(repo, null, null, null, null);
+        when(repo.countClaimByCriteriaAndTypeAndStatusIn(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(repo.countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(any(), any()))
+                .thenReturn(Collections.emptyList());
+        when(suggestRepo.countSuggestByCriteriaAndPeriode(any())).thenReturn(Collections.emptyList());
+
+        StatsClaim statsClaim = new StatsClaim(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo);
+        StatsDenun statsDenun = new StatsDenun(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo, null, null, null, null);
+        ReportServiceImpl reportService = creerReportService(repo, suggestRepo);
+
         FilterRequest f = filtreAgence();
+        f.setEtats(new ArrayList<>(List.of(ClaimStatus.SATISFIED)));
 
         statsClaim.tauxSatisfaction(f);
         statsClaim.totalReclamantSatisfait(f);
@@ -81,22 +100,102 @@ class TableauxRecapitulatifsTest {
         statsDenun.totalTreatByRespectTiming(f);
         statsDenun.totalUnTreat(f);
         statsDenun.totalUnTreatByGravity(f);
+        reportService.tauxResolutionClaim(f);
+        reportService.tauxResolutionDenun(f);
+        reportService.tauxResolutionObj(f);
 
-        assertThat(f.getEtats()).isEmpty();
+        assertThat(f.getEtats()).containsExactly(ClaimStatus.SATISFIED);
     }
 
     @Test
     void tauxDeSatisfactionDiviseParLesReclamationsDuFiltre() {
         ClaimRepository repo = mock(ClaimRepository.class);
-        // 2 satisfaites sur 4 clôturées dans l'agence ; l'institution entière n'est jamais interrogée.
         when(repo.countClaimByCriteriaAndStatusIn(argThat(r -> r != null && r.getEtats().size() == 1), eq(ClaimType.CLAIM)))
                 .thenReturn(claims(2));
         when(repo.countClaimByCriteriaAndStatusIn(argThat(r -> r != null && r.getEtats().size() == 5), eq(ClaimType.CLAIM)))
                 .thenReturn(claims(4));
-        StatsClaim statsClaim = new StatsClaim(repo);
+        StatsClaim statsClaim = new StatsClaim(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo);
 
         assertThat(statsClaim.tauxSatisfaction(filtreAgence()).get("Taux de satisfaction(%)")).isEqualTo(50.0);
         verify(repo, never()).findByTypeAndIsDeletedFalseAndStatusIn(any(), any());
+    }
+
+    @Test
+    void pourcentageReclamationsTraiteesDiviseParLesReclamationsDuFiltre() {
+        ClaimRepository repo = mock(ClaimRepository.class);
+        List<Claim> sixClaims = claims(6);
+        for (int i = 0; i < 3; i++) {
+            sixClaims.get(i).setStatus(ClaimStatus.TREAT);
+        }
+        for (int i = 3; i < 6; i++) {
+            sixClaims.get(i).setStatus(ClaimStatus.SAVED);
+        }
+        when(repo.countClaimByCriteriaAndStatusNot(any(), eq(ClaimType.CLAIM))).thenReturn(sixClaims);
+        StatsClaim statsClaim = new StatsClaim(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo);
+
+        assertThat(statsClaim.pourcentageReclamationsTraitees(filtreAgence())
+                .get("Pourcentage réclamations traitées (%)")).isEqualTo(50.0);
+        verify(repo, never()).countByTypeAndIsDeletedFalseAndStatusNot(any(), any());
+    }
+
+    @Test
+    void nonTraiteesRespecteLeFiltreEtatSelectionne() {
+        ClaimRepository repo = mock(ClaimRepository.class);
+        StatsClaim statsClaim = new StatsClaim(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo);
+
+        FilterRequest filtreSeulementTraite = filtreAgence();
+        filtreSeulementTraite.setEtats(new ArrayList<>(List.of(ClaimStatus.SATISFIED)));
+        assertThat(statsClaim.totalUnTreat(filtreSeulementTraite).get("Nombre de réclamations non traitées"))
+                .isEqualTo(0.0);
+        verify(repo, never()).countClaimByCriteriaAndStatusIn(any(), any());
+
+        FilterRequest filtreMixte = filtreAgence();
+        filtreMixte.setEtats(new ArrayList<>(List.of(ClaimStatus.SAVED, ClaimStatus.SATISFIED)));
+        when(repo.countClaimByCriteriaAndStatusIn(argThat(r -> r != null && r.getEtats().equals(List.of(ClaimStatus.SAVED))),
+                eq(ClaimType.CLAIM))).thenReturn(claims(4));
+        assertThat(statsClaim.totalUnTreat(filtreMixte).get("Nombre de réclamations non traitées"))
+                .isEqualTo(4.0);
+    }
+
+    @Test
+    void evolutionSatisfactionSepareSatisfaitNonSatisfaitEtPartiel() {
+        ClaimRepository repo = mock(ClaimRepository.class);
+        LocalDateTime now = LocalDateTime.now().withDayOfMonth(10).withHour(12).withMinute(0);
+        Claim cSat = claimAvecSatisfaction(ClaimStatus.SATISFIED, now);
+        Claim cUnsat1 = claimAvecSatisfaction(ClaimStatus.UNSATISFIED, now);
+        Claim cUnsat2 = claimAvecSatisfaction(ClaimStatus.UNSATISFIED, now);
+        Claim cPartial = claimAvecSatisfaction(ClaimStatus.PARTIAL_SATISFIED, now);
+
+        when(repo.findByTypeAndIsDeletedFalseAndStatusIn(eq(ClaimType.CLAIM), any()))
+                .thenReturn(List.of(cSat, cUnsat1, cUnsat2, cPartial));
+
+        ReportServiceImpl reportService = creerReportService(repo, null);
+
+        LineChart chart = reportService.evolutionSatisfactionByYear(null);
+        List<Double> satData = chart.getData().get(0).getData();
+        List<Double> unsatData = chart.getData().get(1).getData();
+        List<Double> partialData = chart.getData().get(2).getData();
+
+        assertThat(satData.get(11)).isEqualTo(1.0);
+        assertThat(unsatData.get(11)).isEqualTo(2.0);
+        assertThat(partialData.get(11)).isEqualTo(1.0);
+    }
+
+    @Test
+    void filterReportAccepteUneBorneDeDateUniqueEtTouteLaJourneeDeFin() {
+        ReportServiceImpl reportService = creerReportService(null, null);
+        Claim c = new Claim();
+        c.setReceiptDateTime(LocalDateTime.of(2026, 5, 15, 16, 45));
+
+        FilterRequest filtreFinMinuit = new FilterRequest();
+        filtreFinMinuit.setReceiveEnd("15-05-2026 00:00");
+        Boolean accepteFinMinuit = ReflectionTestUtils.invokeMethod(reportService, "filterReport", c, filtreFinMinuit);
+        assertThat(accepteFinMinuit).isTrue();
+
+        FilterRequest filtreDebutSeulApres = new FilterRequest();
+        filtreDebutSeulApres.setReceiveStart("16-05-2026 00:00");
+        Boolean accepteDebutApres = ReflectionTestUtils.invokeMethod(reportService, "filterReport", c, filtreDebutSeulApres);
+        assertThat(accepteDebutApres).isFalse();
     }
 
     @Test
@@ -106,7 +205,7 @@ class TableauxRecapitulatifsTest {
                 new ClaimPerObjLevelPro(1L, "A", GravityLevel.MINEUR, 50L),
                 new ClaimPerObjLevelPro(2L, "B", GravityLevel.MINEUR, 32L),
                 new ClaimPerObjLevelPro(3L, "C", GravityLevel.GRAVE, 15L)));
-        HashMap<String, Double> r = new StatsClaim(repo).totalByGravity(filtreAgence());
+        HashMap<String, Double> r = new StatsClaim(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo).totalByGravity(filtreAgence());
 
         assertThat(r.get("Nombre de réclamations à niveau de gravité Mineur enregistrées")).isEqualTo(82.0);
         assertThat(r.get("Nombre de réclamations à niveau de gravité Grave enregistrées")).isEqualTo(15.0);
@@ -119,7 +218,7 @@ class TableauxRecapitulatifsTest {
         when(repo.findByTypeAndStatusNotIn(eq(ClaimType.DENUNCIACION), any()))
                 .thenReturn(List.of(denonciation(GravityLevel.MINEUR), denonciation(GravityLevel.MINEUR),
                         denonciation(GravityLevel.MOYEN)));
-        HashMap<String, Double> r = new StatsDenun(repo, null, null, null, null).totalUnTreatByGravity(null);
+        HashMap<String, Double> r = new StatsDenun(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo, null, null, null, null).totalUnTreatByGravity(null);
 
         assertThat(r.get("Nombre de dénonciations à niveau de gravité Faible non traitées")).isEqualTo(2.0);
         assertThat(r.get("Nombre de dénonciations à niveau de gravité Moyen non traitées")).isEqualTo(1.0);
@@ -143,9 +242,8 @@ class TableauxRecapitulatifsTest {
         FilterRequest f = filtreAgence();
         f.setEtats(new ArrayList<>(List.of(ClaimStatus.SATISFIED)));
 
-        new StatsClaim(repo).pourcentageReelReclamationsTraitees(f);
+        new StatsClaim(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo).pourcentageReelReclamationsTraitees(f);
 
-        // Les réclamations de l'état choisi, et non « tout sauf cet état » (qui ramenait les brouillons sans objet).
         verify(repo).countClaimByCriteriaAndStatusIn(argThat(r -> r.getEtats().equals(List.of(ClaimStatus.SATISFIED))),
                 eq(ClaimType.CLAIM));
         verify(repo, never()).countClaimByCriteriaAndStatusNot(any(), any());
@@ -160,6 +258,17 @@ class TableauxRecapitulatifsTest {
         return c;
     }
 
+    private static Claim claimAvecSatisfaction(ClaimStatus status, LocalDateTime measureDateTime) {
+        SatisfactionMeasure sm = new SatisfactionMeasure();
+        sm.setMeasureDateTime(measureDateTime);
+        Solution sol = new Solution();
+        sol.setSatisfactionMeasure(sm);
+        Claim c = new Claim();
+        c.setStatus(status);
+        c.setSolutions(List.of(sol));
+        return c;
+    }
+
     @Test
     void tauxDeSatisfactionSansFiltreInchange() {
         ClaimRepository repo = mock(ClaimRepository.class);
@@ -167,7 +276,7 @@ class TableauxRecapitulatifsTest {
                 .thenReturn(claims(6));
         when(repo.findByTypeAndIsDeletedFalseAndStatusIn(eq(ClaimType.CLAIM), argThat(l -> l != null && l.size() == 5)))
                 .thenReturn(claims(26));
-        StatsClaim statsClaim = new StatsClaim(repo);
+        StatsClaim statsClaim = new StatsClaim(new com.sicmagroup.gpr.sla.service.EcheanceObjet(new com.sicmagroup.gpr.sla.service.BusinessTime()), repo);
 
         assertThat(statsClaim.tauxSatisfaction(null).get("Taux de satisfaction(%)")).isEqualTo(23.08);
     }

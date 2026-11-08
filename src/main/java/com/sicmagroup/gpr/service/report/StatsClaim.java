@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class StatsClaim {
+    private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
 
     private final ClaimRepository claimRepository;
 
@@ -70,28 +71,6 @@ public class StatsClaim {
             }
 
         } else {
-            // List<ClaimPerObjLevelProjection> allResult = claimRepository.countClaimPerObjLevel(ClaimType.CLAIM);
-            // // System.out.println("Niveau: " allResult.length());
-            // for (ClaimPerObjLevelProjection projection : allResult) {
-            //     System.out.println("Niveau: " + projection.getObjNiveau() + ", Total: " + projection.getTotal());
-            //     switch (projection.getObjNiveau()) {
-            //         case "GRAVE":
-            //             key = "Nombre de réclamations à niveau de gravité Grave enregistrées";
-            //             break;
-            //         case "MOYEN":
-            //             key = "Nombre de réclamations à niveau de gravité Moyen enregistrées";
-            //             break;
-            //         case "MINEUR":
-            //             key = "Nombre de réclamations à niveau de gravité Mineur enregistrées";
-            //             break;
-
-            //     }
-            //     resultat.put(key, projection.getTotal().doubleValue());
-            // }
-
-            // Initialiser le Map pour accumuler les totaux
-
-
             // Récupérer les données depuis claimRepository
             List<ClaimPerObjLevelProjection> allResult = claimRepository.countClaimPerObjLevel(ClaimType.CLAIM);
 
@@ -125,11 +104,6 @@ public class StatsClaim {
                 resultat.put(key, resultat.getOrDefault(key, 0.0) + projection.getTotal().doubleValue());
             }
 
-            // Afficher le contenu du résultat pour vérification
-            // for (Map.Entry<String, Double> entry : resultat.entrySet()) {
-            //     System.out.println(entry.getKey() + ": " + entry.getValue());
-            // }
-
         }
 
         if (!resultat.containsKey("Nombre de réclamations à niveau de gravité Mineur enregistrées")) {
@@ -157,20 +131,17 @@ public class StatsClaim {
                 total = claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.CLAIM).size();
                 System.out.println("total1 " + total);
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
-                List<ClaimStatus> finalStatus = new ArrayList<>();
+                List<ClaimStatus> etatsNonTraites = new ArrayList<>();
                 for (ClaimStatus cStatus : request.getEtats()) {
-                    if (status.contains(cStatus)) {
-                        finalStatus.add(cStatus);
+                    if (!status.contains(cStatus)) {
+                        etatsNonTraites.add(cStatus);
                     }
                 }
-                if (finalStatus.isEmpty()) {
+                if (etatsNonTraites.isEmpty()) {
                     resultat.put("Nombre de réclamations non traitées", 0D);
                 } else {
-                    request.setEtats(finalStatus);
-                    if (!finalStatus.contains(ClaimStatus.TEMP_SAVED)) {
-                        finalStatus.add(ClaimStatus.TEMP_SAVED);
-                    }
-                    total = claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.CLAIM).size();
+                    request.setEtats(etatsNonTraites);
+                    total = claimRepository.countClaimByCriteriaAndStatusIn(request, ClaimType.CLAIM).size();
                     System.out.println("total2 " + total);
                 }
 
@@ -201,19 +172,15 @@ public class StatsClaim {
                 claimsByStatusNot = claimRepository.countClaimByCriteriaAndStatusNot(request,
                         ClaimType.CLAIM);
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
-                List<ClaimStatus> finalStatus = new ArrayList<>();
+                List<ClaimStatus> etatsNonTraites = new ArrayList<>();
                 for (ClaimStatus cStatus : request.getEtats()) {
-                    if (status.contains(cStatus)) {
-                        finalStatus.add(cStatus);
+                    if (!status.contains(cStatus)) {
+                        etatsNonTraites.add(cStatus);
                     }
                 }
-                if (!finalStatus.isEmpty()) {
-                    if (!finalStatus.contains(ClaimStatus.TEMP_SAVED)) {
-                        finalStatus.add(ClaimStatus.TEMP_SAVED);
-                    }
-                    request.setEtats(finalStatus);
-
-                    claimsByStatusNot = claimRepository.countClaimByCriteriaAndStatusNot(request,
+                if (!etatsNonTraites.isEmpty()) {
+                    request.setEtats(etatsNonTraites);
+                    claimsByStatusNot = claimRepository.countClaimByCriteriaAndStatusIn(request,
                             ClaimType.CLAIM);
                 }
             }
@@ -254,7 +221,7 @@ public class StatsClaim {
                 ClaimStatus.CLASSED, ClaimStatus.LITIGATION, ClaimStatus.PARTIAL_SATISFIED);
         long total = 0;
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 total = claimRepository.countClaimByCriterias(request, ClaimType.CLAIM);
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
@@ -291,7 +258,7 @@ public class StatsClaim {
        
         List<Claim> claimsByStatus = new ArrayList<>();
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 claimsByStatus = claimRepository.countClaimByCriteriaAndStatusIn(request,
                         ClaimType.CLAIM);
@@ -314,6 +281,9 @@ public class StatsClaim {
         }
         Double oldVal = 0D;
         for (Claim claim : claimsByStatus) {
+            if (claim.getObjet() == null) {
+                continue;
+            }
             switch (claim.getObjet().getRisqueLevel()) {
                 case GRAVE:
                     oldVal = resultat.get("Nombre de réclamations à niveau de gravité Grave traitées");
@@ -344,7 +314,7 @@ public class StatsClaim {
                 ClaimStatus.CLASSED, ClaimStatus.LITIGATION, ClaimStatus.PARTIAL_SATISFIED);
         List<Claim> claimsTreat = new ArrayList<>();
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 claimsTreat = claimRepository.countClaimByCriteriaAndStatusIn(request, ClaimType.CLAIM);
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
@@ -369,47 +339,39 @@ public class StatsClaim {
         Double oldVal = 0D;
         Double oldVal2 = 0D;
         long delaiObj;
-        Solution solution;
         for (Claim claim : claimsTreat) {
             receiptDate = claim.getReceiptDateTime();
-            if (claim.getSolutions().size() > 0) {
-                solution = claim.getSolutions().get((claim.getSolutions().size() - 1));
-                if (solution.getSatisfactionMeasure() != null) {
-                    measureDate = solution.getSatisfactionMeasure()
-                            .getMeasureDateTime();
-
-                    delaiObj = claim.getObjet().getProcessingTime();
-                    supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
-                    if (!measureDate.isAfter(supposedFinalTreatmentDate)) { // il n'y a pas retard de traitement
-                        oldVal2++;
-                        switch (claim.getObjet().getRisqueLevel()) {
-                            case GRAVE:
-                                oldVal = resultat
-                                        .get("Nombre de réclamations à niveau de gravité Grave traitées dans le délai");
-                                resultat.replace(
-                                        "Nombre de réclamations à niveau de gravité Grave traitées dans le délai",
-                                        oldVal + 1);
-                                break;
-                            case MOYEN:
-                                oldVal = resultat
-                                        .get("Nombre de réclamations à niveau de gravité Moyen traitées dans le délai");
-                                resultat.replace(
-                                        "Nombre de réclamations à niveau de gravité Moyen traitées dans le délai",
-                                        oldVal + 1);
-                                break;
-                            case MINEUR:
-                                oldVal = resultat
-                                        .get("Nombre de réclamations à niveau de gravité Mineur traitées dans le délai");
-                                resultat.replace(
-                                        "Nombre de réclamations à niveau de gravité Mineur traitées dans le délai",
-                                        oldVal + 1);
-                                break;
-                        }
-                        oldVal = 0D;
+            measureDate = dateTraitement(claim);
+            if (measureDate != null && claim.getObjet() != null && receiptDate != null) {
+                delaiObj = claim.getObjet().getProcessingTime();
+                supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
+                if (!measureDate.isAfter(supposedFinalTreatmentDate)) { // il n'y a pas retard de traitement
+                    oldVal2++;
+                    switch (claim.getObjet().getRisqueLevel()) {
+                        case GRAVE:
+                            oldVal = resultat
+                                    .get("Nombre de réclamations à niveau de gravité Grave traitées dans le délai");
+                            resultat.replace(
+                                    "Nombre de réclamations à niveau de gravité Grave traitées dans le délai",
+                                    oldVal + 1);
+                            break;
+                        case MOYEN:
+                            oldVal = resultat
+                                    .get("Nombre de réclamations à niveau de gravité Moyen traitées dans le délai");
+                            resultat.replace(
+                                    "Nombre de réclamations à niveau de gravité Moyen traitées dans le délai",
+                                    oldVal + 1);
+                            break;
+                        case MINEUR:
+                            oldVal = resultat
+                                    .get("Nombre de réclamations à niveau de gravité Mineur traitées dans le délai");
+                            resultat.replace(
+                                    "Nombre de réclamations à niveau de gravité Mineur traitées dans le délai",
+                                    oldVal + 1);
+                            break;
                     }
-
+                    oldVal = 0D;
                 }
-
             }
         }
         resultat.replace("Nombre de réclamations traitées dans le délai",
@@ -417,84 +379,19 @@ public class StatsClaim {
         return resultat;
     }
 
-    // HashMap<String, Double> totalSolutionAndByGravity(@Nullable FilterRequest
-    // request) {
-    // HashMap<String, Double> resultat = new HashMap<>();
-    // resultat.put("Nombre de réponses aux réclamations", 0D);
-    // resultat.put("Nombre de réponses aux réclamations à niveau de gravité
-    // Mineur", 0D);
-    // resultat.put("Nombre de réponses aux réclamations à niveau de gravité Moyen",
-    // 0D);
-    // resultat.put("Nombre de réponses aux réclamations à niveau de gravité Grave",
-    // 0D);
-    // List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT,
-    // ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-    // ClaimStatus.CLASSED, ClaimStatus.LITIGATION);
-    // List<Claim> claimsTreat = new ArrayList<>();
-    // if (request != null) {
-    // if (request.getEtats() != null && request.getEtats().isEmpty()) {
-    // request.setEtats(status);
-    // claimsTreat = claimRepository.countClaimByCriteriaAndStatusIn(request,
-    // ClaimType.CLAIM);
-    // } else {
-    // List<ClaimStatus> finalStatus = new ArrayList<>();
-    // for (ClaimStatus cStatus : request.getEtats()) {
-    // if (status.contains(cStatus)) {
-    // finalStatus.add(cStatus);
-    // }
-    // }
-    // if (!finalStatus.isEmpty()) {
-    // request.setEtats(finalStatus);
-    // claimsTreat = claimRepository.countClaimByCriteriaAndStatusIn(request,
-    // ClaimType.CLAIM);
-    // }
-    // }
-    // } else {
-    // claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
-
-    // }
-
-    // Double oldVal = 0D;
-    // Double oldVal2 = 0D;
-    // for (Claim claim : claimsTreat) {
-    // if (!claim.getSolutions().isEmpty()) {
-    // for (Solution solution : claim.getSolutions()) {
-    // if (solution.getSatisfactionMeasure() != null
-    // || solution.getStatus().equals(SolutionStatus.APPROVED)) {
-    // oldVal2++;
-    // switch (claim.getObjet().getRisqueLevel()) {
-    // case GRAVE:
-    // oldVal = resultat
-    // .get("Nombre de réponses aux réclamations à niveau de gravité Grave");
-    // resultat.replace("Nombre de réponses aux réclamations à niveau de gravité
-    // Grave",
-    // oldVal + 1);
-    // break;
-    // case MOYEN:
-    // oldVal = resultat
-    // .get("Nombre de réponses aux réclamations à niveau de gravité Moyen");
-    // resultat.replace("Nombre de réponses aux réclamations à niveau de gravité
-    // Moyen",
-    // oldVal + 1);
-    // break;
-    // case MINEUR:
-    // oldVal = resultat
-    // .get("Nombre de réponses aux réclamations à niveau de gravité Mineur");
-    // resultat.replace("Nombre de réponses aux réclamations à niveau de gravité
-    // Mineur",
-    // oldVal + 1);
-    // break;
-    // }
-    // oldVal = 0D;
-    // }
-
-    // }
-    // }
-    // }
-    // resultat.replace("Nombre de réponses aux réclamations",
-    // oldVal2);
-    // return resultat;
-    // }
+    private static LocalDateTime dateTraitement(Claim claim) {
+        if (claim == null || claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
+            return null;
+        }
+        Solution solution = claim.getSolutions().get(claim.getSolutions().size() - 1);
+        if (solution == null) {
+            return null;
+        }
+        if (solution.getSatisfactionMeasure() != null && solution.getSatisfactionMeasure().getMeasureDateTime() != null) {
+            return solution.getSatisfactionMeasure().getMeasureDateTime();
+        }
+        return solution.getCreatedAt();
+    }
 
     public HashMap<String, Double> totalReclamantSatisfait(@Nullable FilterRequest request) {
         request = FilterRequest.copieDe(request);
@@ -504,7 +401,7 @@ public class StatsClaim {
         List<ClaimStatus> status = Arrays.asList(ClaimStatus.SATISFIED);
         List<Claim> claimsTreat = new ArrayList<>();
         if (request != null) {
-            if (request.getEtats() != null && request.getEtats().isEmpty()) {
+            if ((request.getEtats() != null && request.getEtats().isEmpty()) || request.getEtats() == null) {
                 request.setEtats(status);
                 claimsTreat = claimRepository.countClaimByCriteriaAndStatusIn(request, ClaimType.CLAIM);
             } else if (request.getEtats() != null && !request.getEtats().isEmpty()) {
@@ -573,7 +470,6 @@ public class StatsClaim {
         } else {
             allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
         }
-        // System.out.println("Taux");
         resultat.replace("Taux de satisfaction(%)",
                 Utils.parseDouble(
                         Utils.percentCalculator(Long.valueOf(claimsTreat.size()), Long.valueOf(allClaims.size()))));
@@ -594,18 +490,18 @@ public class StatsClaim {
                 ClaimStatus.LITIGATION
         );
     
-        // Récupération du nombre total de réclamations
-        List<Claim> allClaims = new ArrayList<>();
-        if (request != null) {
-            // Si un filtre est fourni, on récupère les réclamations en fonction de ce filtre
-            // allClaims = claimRepository.countClaimByCriteria(request);
-        } else {
-            // Si aucun filtre n'est fourni, on récupère toutes les réclamations
-            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+        List<Claim> filteredClaims = (request != null)
+                ? reclamationsDuFiltre(request)
+                : claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
+        FilterRequest sansEtats = FilterRequest.copieDe(request);
+        if (sansEtats != null) {
+            sansEtats.setEtats(null);
         }
-    
-        // Récupération du nombre total de réclamations traitées
-        long nombreReclamationsTraitees = allClaims.stream()
+        List<Claim> allClaims = (sansEtats != null && request.getEtats() != null && !request.getEtats().isEmpty())
+                ? reclamationsDuFiltre(sansEtats)
+                : filteredClaims;
+
+        long nombreReclamationsTraitees = filteredClaims.stream()
                 .filter(claim -> statusTraites.contains(claim.getStatus()))
                 .count();
     
@@ -660,7 +556,10 @@ public class StatsClaim {
 
         // Filtrage des réclamations échues
         for (Claim claim : allClaims) {
-            LocalDateTime supposedFinalTreatmentDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
+            if (claim.getObjet() == null || claim.getReceiptDateTime() == null) {
+                continue;
+            }
+            LocalDateTime supposedFinalTreatmentDate = echeanceObjet.echeance(claim.getReceiptDateTime(), claim.getObjet().getProcessingTime());
             if (now.isAfter(supposedFinalTreatmentDate)) {
                 allExpiredClaims.add(claim);
             }
@@ -698,143 +597,43 @@ public class StatsClaim {
         );
     
         List<Claim> allClaims;
-        List<Claim> allExpiredClaims = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
     
         try {
             // Récupération des réclamations selon le filtre
             allClaims = (request != null)
                     ? reclamationsDuFiltre(request)
                     : claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
-    
-            // Filtrage des réclamations échues
+
+            List<Claim> claimsTraitees = new ArrayList<>();
             for (Claim claim : allClaims) {
-                LocalDateTime supposedFinalTreatmentDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
-                if (now.isAfter(supposedFinalTreatmentDate)) {
-                    allExpiredClaims.add(claim);
+                if (statusTraites.contains(claim.getStatus())) {
+                    claimsTraitees.add(claim);
                 }
             }
-    
+
             // Compter le nombre de réclamations traitées dans le délai
-            long nombreReclamationsDansDelai = allClaims.stream()
+            long nombreReclamationsDansDelai = claimsTraitees.stream()
                     .filter(claim -> {
-                        LocalDateTime supposedFinalTreatmentDate = claim.getReceiptDateTime().plusDays(claim.getObjet().getProcessingTime());
-                        List<Solution> solutions = claim.getSolutions();
-                        // Dernière solution sans mesure de satisfaction : pas encore comptée comme traitée dans le délai
-                        // (sinon tout le rapport Global, et son export Power BI, échouait)
-                        LocalDateTime measureDate = (solutions != null && !solutions.isEmpty()
-                                && solutions.get(solutions.size() - 1).getSatisfactionMeasure() != null)
-                                ? solutions.get(solutions.size() - 1).getSatisfactionMeasure().getMeasureDateTime()
-                                : null;
-    
-                        return measureDate != null 
-                                && statusTraites.contains(claim.getStatus())
-                                && !measureDate.isAfter(supposedFinalTreatmentDate);
+                        if (claim.getObjet() == null || claim.getReceiptDateTime() == null) {
+                            return false;
+                        }
+                        LocalDateTime supposedFinalTreatmentDate = echeanceObjet.echeance(claim.getReceiptDateTime(), claim.getObjet().getProcessingTime());
+                        LocalDateTime measureDate = dateTraitement(claim);
+                        return measureDate != null && !measureDate.isAfter(supposedFinalTreatmentDate);
                     })
                     .count();
     
-            // Calculer le pourcentage des réclamations traitées dans le délai
-            if (!allExpiredClaims.isEmpty()) {
-                double pourcentage = (double) nombreReclamationsDansDelai / allExpiredClaims.size() * 100;
+            // Calculer le pourcentage des réclamations traitées dans le délai parmi les réclamations traitées
+            if (!claimsTraitees.isEmpty()) {
+                double pourcentage = (double) nombreReclamationsDansDelai / claimsTraitees.size() * 100;
                 pourcentage = Math.round(pourcentage * 100.0) / 100.0;
     
                 resultat.replace("Pourcentage des réclamations traitées dans le délai (%)", pourcentage);
             }
         } catch (Exception e) {
-            e.printStackTrace(); // Affiche l'erreur dans la console
-            // Vous pouvez également enregistrer l'erreur dans un fichier ou une base de données pour l'analyse
+            e.printStackTrace();
         }
     
         return resultat;
     }
-    
-    
-
-    // HashMap<String, Double> tauxReponse(@Nullable FilterRequest request) {
-    // HashMap<String, Double> resultat = new HashMap<>();
-    // List<ClaimStatus> status = Arrays.asList(ClaimStatus.TREAT,
-    // ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
-    // ClaimStatus.CLASSED, ClaimStatus.LITIGATION);
-    // List<Claim> claimsTreat = new ArrayList<>();
-    // resultat.put("Taux de réponses aux réclamations", 0D);
-    // resultat.put("Taux de réponses aux réclamations à niveau de gravité Mineur",
-    // 0D);
-    // resultat.put("Taux de réponses aux réclamations à niveau de gravité Moyen",
-    // 0D);
-    // resultat.put("Taux de réponses aux réclamations à niveau de gravité Grave",
-    // 0D);
-    // if (request != null) {
-    // if (request.getEtats() != null && request.getEtats().isEmpty()) {
-    // request.setEtats(status);
-    // claimsTreat = claimRepository.countClaimByCriteriaAndStatusIn(request,
-    // ClaimType.CLAIM);
-    // } else {
-    // List<ClaimStatus> finalStatus = new ArrayList<>();
-    // for (ClaimStatus cStatus : request.getEtats()) {
-    // if (status.contains(cStatus)) {
-    // finalStatus.add(cStatus);
-    // }
-    // }
-    // if (!finalStatus.isEmpty()) {
-    // request.setEtats(finalStatus);
-    // claimsTreat = claimRepository.countClaimByCriteriaAndStatusIn(request,
-    // ClaimType.CLAIM);
-    // }
-    // }
-    // } else {
-    // claimsTreat = claimRepository.findByTypeAndStatusIn(ClaimType.CLAIM, status);
-
-    // }
-    // Double oldVal = 0D;
-    // Double oldVal2 = 0D;
-    // for (Claim claim : claimsTreat) {
-    // if (!claim.getSolutions().isEmpty()) {
-    // for (Solution solution : claim.getSolutions()) {
-    // if (solution.getSatisfactionMeasure() != null
-    // || solution.getStatus().equals(SolutionStatus.APPROVED)) {
-    // oldVal2++;
-    // switch (claim.getObjet().getRisqueLevel()) {
-    // case GRAVE:
-    // oldVal = resultat
-    // .get("Taux de réponses aux réclamations à niveau de gravité Grave");
-    // resultat.replace("Taux de réponses aux réclamations à niveau de gravité
-    // Grave",
-    // oldVal + 1);
-    // break;
-    // case MOYEN:
-    // oldVal = resultat
-    // .get("Taux de réponses aux réclamations à niveau de gravité Moyen");
-    // resultat.replace("Taux de réponses aux réclamations à niveau de gravité
-    // Moyen",
-    // oldVal + 1);
-    // break;
-    // case MINEUR:
-    // oldVal = resultat
-    // .get("Taux de réponses aux réclamations à niveau de gravité Mineur");
-    // resultat.replace("Taux de réponses aux réclamations à niveau de gravité
-    // Mineur",
-    // oldVal + 1);
-    // break;
-    // }
-    // oldVal = 0D;
-    // }
-
-    // }
-    // }
-    // }
-    // resultat.replace("Taux de réponses aux réclamations",
-    // oldVal2);
-    // List<Claim> allClaims =
-    // claimRepository.findByTypeAndStatusNot(ClaimType.CLAIM,
-    // ClaimStatus.TEMP_SAVED);
-    // resultat.put("Taux de réponses aux réclamations", 0D);
-    // resultat.replace("Taux de réponses aux réclamations à niveau de gravité
-    // Mineur", 0D);
-    // resultat.replace("Taux de réponses aux réclamations à niveau de gravité
-    // Moyen", 0D);
-    // resultat.replace("Taux de réponses aux réclamations à niveau de gravité
-    // Grave", 0D);
-    // return resultat;
-    // }
-
 }

@@ -5,13 +5,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.Period;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.jpa.domain.Specification;
@@ -39,6 +42,7 @@ import com.sicmagroup.gpr.domain.model.Objet;
 import com.sicmagroup.gpr.domain.model.Poste;
 import com.sicmagroup.gpr.domain.model.Product;
 import com.sicmagroup.gpr.domain.model.ServicePoint;
+import com.sicmagroup.gpr.domain.model.Solution;
 import com.sicmagroup.gpr.domain.model.Suggestion;
 import com.sicmagroup.gpr.domain.model.User;
 import com.sicmagroup.gpr.repository.ClaimRepository;
@@ -85,6 +89,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
+    private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
 
     private final ClaimRepository claimRepository;
     private final SuggestionRepository suggestionRepository;
@@ -124,35 +129,65 @@ public class ReportServiceImpl implements ReportService {
 
     private static String UNRESPECTED_BG_COLOR = "#FF9933";
 
+    private List<ServicePoint> agencesDuFiltre(@Nullable FilterRequest request) {
+        if (request != null && request.getServicePoints() != null && !request.getServicePoints().isEmpty()) {
+            return spRepository.findAllById(request.getServicePoints());
+        }
+        return spRepository.findAll();
+    }
+
+    private static LocalDateTime finDeJourneeSiMinuit(LocalDateTime dt) {
+        if (dt != null && dt.getHour() == 0 && dt.getMinute() == 0 && dt.getSecond() == 0) {
+            return dt.withHour(23).withMinute(59).withSecond(59);
+        }
+        return dt;
+    }
+
+    private static boolean dateDansFiltre(LocalDateTime date, @Nullable FilterRequest request) {
+        if (date == null || request == null) {
+            return true;
+        }
+        if (request.getYear() != null && !request.getYear().toString().isEmpty()) {
+            LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
+            LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
+            if (date.isBefore(start) || date.isAfter(end)) {
+                return false;
+            }
+        }
+        boolean hasStart = request.getReceiveStart() != null && !request.getReceiveStart().trim().isEmpty();
+        boolean hasEnd = request.getReceiveEnd() != null && !request.getReceiveEnd().trim().isEmpty();
+        if (hasStart) {
+            LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart().trim());
+            if (date.isBefore(start)) {
+                return false;
+            }
+        }
+        if (hasEnd) {
+            LocalDateTime end = finDeJourneeSiMinuit(Utils.convertStrToLocalDateTime(request.getReceiveEnd().trim()));
+            if (date.isAfter(end)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private boolean filterReport(Suggestion sugge, @Nullable FilterRequest request) {
         boolean isOK = true;
         if (request != null) {
-            if (request.getYear() instanceof Long && !request.getYear().toString().isEmpty()) {
-                LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
-                LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
-                isOK = sugge.getReceiptDateTime().isBefore(end)
-                        && sugge.getReceiptDateTime().isAfter(start);
-
+            if (request.getObjets() != null && !request.getObjets().isEmpty()) {
+                return false;
             }
-            if (isOK && request.getReceiveEnd() instanceof String
-                    && request.getReceiveStart() instanceof String && request.getReceiveStart() != ""
-                    && !request.getReceiveStart().toString().isEmpty()) {
-                LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart());
-                LocalDateTime end = request.getReceiveEnd() == "" ? LocalDateTime.now()
-                        : Utils.convertStrToLocalDateTime(request.getReceiveEnd());
-                isOK = sugge.getReceiptDateTime().isBefore(end)
-                        && sugge.getReceiptDateTime().isAfter(start);
-            }
+            isOK = dateDansFiltre(sugge.getReceiptDateTime(), request);
 
             if (isOK && request.getEtats() instanceof List<ClaimStatus> && !request.getEtats().isEmpty()) {
-                isOK = request.getEtats().contains(sugge.getStatus());
+                isOK = sugge.getStatus() != null && request.getEtats().contains(sugge.getStatus());
             }
 
             if (isOK && request.getProducts() instanceof List<Long> && !request.getProducts().isEmpty()) {
-                isOK = request.getProducts().contains(sugge.getProduit().getId());
+                isOK = sugge.getProduit() != null && request.getProducts().contains(sugge.getProduit().getId());
             }
             if (isOK && request.getSavedBy() instanceof List<Long> && !request.getSavedBy().isEmpty()) {
-                isOK = request.getSavedBy().contains(sugge.getCollecteur().getId());
+                isOK = sugge.getCollecteur() != null && request.getSavedBy().contains(sugge.getCollecteur().getId());
             }
         }
 
@@ -163,36 +198,20 @@ public class ReportServiceImpl implements ReportService {
     private boolean filterReport(Claim claim, @Nullable FilterRequest request) {
         boolean isOK = true;
         if (request != null) {
-
-            if (request.getYear() instanceof Long && !request.getYear().toString().isEmpty()) {
-                LocalDateTime start = LocalDateTime.parse(request.getYear() + "-01-01T00:00:00");
-                LocalDateTime end = LocalDateTime.parse(request.getYear() + "-12-31T23:59:59");
-                isOK = claim.getReceiptDateTime().isBefore(end)
-                        && claim.getReceiptDateTime().isAfter(start);
-
-            }
-            if (isOK && request.getReceiveEnd() instanceof String
-                    && request.getReceiveStart() instanceof String && request.getReceiveStart() != ""
-                    && !request.getReceiveStart().toString().isEmpty()) {
-                LocalDateTime start = Utils.convertStrToLocalDateTime(request.getReceiveStart());
-                LocalDateTime end = request.getReceiveEnd() == "" ? LocalDateTime.now()
-                        : Utils.convertStrToLocalDateTime(request.getReceiveEnd());
-                isOK = claim.getReceiptDateTime().isBefore(end)
-                        && claim.getReceiptDateTime().isAfter(start);
-            }
+            isOK = dateDansFiltre(claim.getReceiptDateTime(), request);
 
             if (isOK && request.getEtats() instanceof List<ClaimStatus> && !request.getEtats().isEmpty()) {
-                isOK = request.getEtats().contains(claim.getStatus());
+                isOK = claim.getStatus() != null && request.getEtats().contains(claim.getStatus());
             }
 
             if (isOK && request.getProducts() instanceof List<Long> && !request.getProducts().isEmpty()) {
-                isOK = request.getProducts().contains(claim.getProduct().getId());
+                isOK = claim.getProduct() != null && request.getProducts().contains(claim.getProduct().getId());
             }
             if (isOK && request.getSavedBy() instanceof List<Long> && !request.getSavedBy().isEmpty()) {
-                isOK = request.getSavedBy().contains(claim.getCollector().getId());
+                isOK = claim.getCollector() != null && request.getSavedBy().contains(claim.getCollector().getId());
             }
             if (isOK && request.getObjets() instanceof List<Long> && !request.getObjets().isEmpty()) {
-                isOK = request.getObjets().contains(claim.getObjet().getId());
+                isOK = claim.getObjet() != null && request.getObjets().contains(claim.getObjet().getId());
             }
         }
 
@@ -302,14 +321,14 @@ public class ReportServiceImpl implements ReportService {
                         nbreClaimPerAgenceFilter = sugges.stream().filter(sugge -> {
                             boolean isOK = filterReport(sugge, request);
 
-                            return sugge.getServiceIndexe() == agence
+                            return sugge.getServiceIndexe() != null && sugge.getServiceIndexe().equals(agence)
                                     && sugge.getCanal() != null && sugge.getCanal().equals(channel) && isOK;
                         }).collect(Collectors.toList()).size();
                     } else {
 
                         nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
                             boolean isOK = filterReport(claim, request);
-                            return claim.getServicePoint() == agence
+                            return claim.getServicePoint() != null && claim.getServicePoint().equals(agence)
                                     && claim.getCollectionChannel() != null
                                     && claim.getCollectionChannel().equals(channel) && isOK;
                         }).collect(Collectors.toList()).size();
@@ -392,8 +411,8 @@ public class ReportServiceImpl implements ReportService {
 
                     nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
                         boolean isOK = filterReport(claim, request);
-                        return claim.getServicePoint() == (agence)
-                                && claim.getObjet() == (objet) && isOK;
+                        return claim.getServicePoint() != null && claim.getServicePoint().equals(agence)
+                                && claim.getObjet() != null && claim.getObjet().equals(objet) && isOK;
                     }).collect(Collectors.toList()).size();
 
                     objetList.put("nbre", nbreClaimPerAgenceFilter);
@@ -462,7 +481,7 @@ public class ReportServiceImpl implements ReportService {
 
                     nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
                         boolean isOK = filterReport(claim, request);
-                        return claim.getServicePoint() == agence && claim.getObjet() != null
+                        return claim.getServicePoint() != null && claim.getServicePoint().equals(agence) && claim.getObjet() != null
                                 && claim.getObjet().getRisqueLevel() == gravity && isOK;
                     }).collect(Collectors.toList()).size();
 
@@ -542,14 +561,14 @@ public class ReportServiceImpl implements ReportService {
 
                         nbreClaimPerAgenceFilter = suggestions.stream().filter(sug -> {
                             boolean isOK = filterReport(sug, request);
-                            return sug.getServiceIndexe().equals(agence)
+                            return sug.getServiceIndexe() != null && sug.getServiceIndexe().equals(agence)
                                     && sug.getStatus() != null && sug.getStatus().equals(mesure) && isOK;
                         }).collect(Collectors.toList()).size();
                     } else {
 
                         nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
                             boolean isOK = filterReport(claim, request);
-                            return claim.getServicePoint().equals(agence)
+                            return claim.getServicePoint() != null && claim.getServicePoint().equals(agence)
                                     && claim.getStatus() != null && claim.getStatus().equals(mesure) && isOK;
                         }).collect(Collectors.toList()).size();
 
@@ -630,14 +649,14 @@ public class ReportServiceImpl implements ReportService {
 
                         nbreClaimPerAgenceFilter = suggestions.stream().filter(sug -> {
                             boolean isOK = filterReport(sug, request);
-                            return sug.getServiceIndexe().equals(agence)
+                            return sug.getServiceIndexe() != null && sug.getServiceIndexe().equals(agence)
                                     && sug.getGender() != null && sug.getGender().equals(gender) && isOK;
                         }).collect(Collectors.toList()).size();
                     } else {
 
                         nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
                             boolean isOK = filterReport(claim, request);
-                            return claim.getServicePoint().equals(agence)
+                            return claim.getServicePoint() != null && claim.getServicePoint().equals(agence)
                                     && claim.getGender() != null && claim.getGender() == gender && isOK;
                         }).collect(Collectors.toList()).size();
                     }
@@ -715,14 +734,14 @@ public class ReportServiceImpl implements ReportService {
                 int suggestionCount = suggestions.stream().filter(suggest -> {
                     boolean isOK = filterReport(suggest, request);
 
-                    return suggest.getServiceIndexe().equals(agence)
+                    return suggest.getServiceIndexe() != null && suggest.getServiceIndexe().equals(agence)
                             && suggest.getCanal() != null && suggest.getCanal().equals(channel) && isOK;
                 }).collect(Collectors.toList()).size();
 
                 int claimsCount = claims.stream().filter(claim -> {
                     boolean isOK = filterReport(claim, request);
-                    return claim.getServicePoint().equals(agence)
-                            && claim.getCollectionChannel().equals(channel) && isOK;
+                    return claim.getServicePoint() != null && claim.getServicePoint().equals(agence)
+                            && claim.getCollectionChannel() != null && claim.getCollectionChannel().equals(channel) && isOK;
                 }).collect(Collectors.toList()).size();
 
                 channelList.put("nbre", claimsCount + suggestionCount);
@@ -792,8 +811,8 @@ public class ReportServiceImpl implements ReportService {
 
                 int claimsCount = claims.stream().filter(claim -> {
                     boolean isOK = filterReport(claim, request);
-                    return claim.getServicePoint().equals(agence)
-                            && claim.getObjet().equals(objet) && isOK;
+                    return claim.getServicePoint() != null && claim.getServicePoint().equals(agence)
+                            && claim.getObjet() != null && claim.getObjet().equals(objet) && isOK;
                 }).collect(Collectors.toList()).size();
 
                 channelList.put("nbre", claimsCount);
@@ -1344,22 +1363,22 @@ public class ReportServiceImpl implements ReportService {
                 }
 
             } else {
-                if (request.getObjets() != null && request.getObjets().isEmpty()) {
+                if (request.getObjets() == null || request.getObjets().isEmpty()) {
                     List<SuggestTotalPerStatusPro> listClaimProjection = suggestionRepository
                             .countSuggestByCriteriaAndStatus(request);
                     for (SuggestTotalPerStatusPro projection : listClaimProjection) {
                         total += projection.getTotal();
                         if (projection.getStatus() == ClaimStatus.TREAT) {
                             if (projection.isAccepted()) {
-                                objectTotals.getStatusAndValue().put("ACCEPTED", projection.getTotal());
+                                objectTotals.getStatusAndValue().merge("ACCEPTED", projection.getTotal(), Long::sum);
                             } else {
-                                objectTotals.getStatusAndValue().put("UNACCEPTED", projection.getTotal());
+                                objectTotals.getStatusAndValue().merge("UNACCEPTED", projection.getTotal(), Long::sum);
                             }
                         } else {
-                            objectTotals.getStatusAndValue().put("SAVED", projection.getTotal());
+                            objectTotals.getStatusAndValue().merge("SAVED", projection.getTotal(), Long::sum);
                         }
                     }
-                    if (request.getEtats() != null) {
+                    if (request.getEtats() != null && !request.getEtats().isEmpty()) {
                         if (request.getEtats().contains(ClaimStatus.SAVED)
                                 && !objectTotals.getStatusAndValue().containsKey("SAVED")) {
                             objectTotals.getStatusAndValue().put("SAVED", (long) 0);
@@ -1453,14 +1472,14 @@ public class ReportServiceImpl implements ReportService {
                 List<ObjectTotalPerStatusProjection> listClaimProjection = suggestionRepository.countSuggestPerStatus();
                 for (ObjectTotalPerStatusProjection projection : listClaimProjection) {
                     total += projection.getTotal();
-                    if (projection.getStatus() == "TREAT") {
-                        if (projection.getAccepted()) {
-                            objectTotals.getStatusAndValue().put("ACCEPTED", projection.getTotal());
+                    if ("TREAT".equals(projection.getStatus())) {
+                        if (Boolean.TRUE.equals(projection.getAccepted())) {
+                            objectTotals.getStatusAndValue().merge("ACCEPTED", projection.getTotal(), Long::sum);
                         } else {
-                            objectTotals.getStatusAndValue().put("UNACCEPTED", projection.getTotal());
+                            objectTotals.getStatusAndValue().merge("UNACCEPTED", projection.getTotal(), Long::sum);
                         }
                     } else {
-                        objectTotals.getStatusAndValue().put("SAVED", projection.getTotal());
+                        objectTotals.getStatusAndValue().merge("SAVED", projection.getTotal(), Long::sum);
                     }
                 }
 
@@ -1691,11 +1710,14 @@ public class ReportServiceImpl implements ReportService {
                     ClaimType.CLAIM);
             List<ObjectPerCanalPro> allResultD = claimRepository.countClaimByCriteriaAndCanal(request,
                     ClaimType.DENUNCIACION);
-            if (request.getObjets() != null && request.getObjets().isEmpty()) {
+            if (request.getObjets() == null || request.getObjets().isEmpty()) {
                 List<ObjectPerCanalPro> allResultS = suggestionRepository.countSuggestByCriteriaAndCanal(request);
 
                 for (ObjectPerCanalPro projection : allResultS) {
                     total += projection.getTotal();
+                    if (libTotal.containsKey(projection.getId())) {
+                        libTotal.replace(projection.getId(), libTotal.get(projection.getId()) + projection.getTotal());
+                    }
                     if (!pieChartDto.getIds().contains(projection.getId())) {
                         pieChartDto.getLabels().add(projection.getLibelle());
                         pieChartDto.getIds().add(projection.getId());
@@ -1794,7 +1816,7 @@ public class ReportServiceImpl implements ReportService {
                 .labels(new ArrayList<>())
                 .datasets(new ArrayList<>())
                 .build();
-        List<ServicePoint> allSPoints = spRepository.findAll();
+        List<ServicePoint> allSPoints = agencesDuFiltre(request);
 
         if (request != null) {
             List<ClaimPerCanalAndSpPro> allResult = claimRepository.countClaimByCriteriaAndCanalAndSp(request,
@@ -1807,22 +1829,15 @@ public class ReportServiceImpl implements ReportService {
                 data.add((double) 0);
             }
 
-            //
-            // for (ClaimPerCanalAndSpPro projection : allResult) {
-            // if (!stackedBar.getIds().contains(projection.getSpId())) {
-            // stackedBar.getIds().add(projection.getSpId());
-            // stackedBar.getLabels().add(projection.getSpLibelle());
-            // data.add((double) 0);
-            // }
-
-            // }
             boolean canalExist = false;
             for (CollectionChannel collectionChannel : allCl) {
                 for (ClaimPerCanalAndSpPro projection : allResult) {
                     if (projection.getCanalId().equals(collectionChannel.getId())) {
-                        canalExist = true;
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            canalExist = true;
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
 
                 }
@@ -1861,8 +1876,10 @@ public class ReportServiceImpl implements ReportService {
 
                 for (ClaimPerCanalPerSpPjt projection : allresult) {
                     if (projection.getCanalId().equals(collectionChannel.getId())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -1893,7 +1910,7 @@ public class ReportServiceImpl implements ReportService {
                 .labels(new ArrayList<>())
                 .datasets(new ArrayList<>())
                 .build();
-        List<ServicePoint> allSPoints = spRepository.findAll();
+        List<ServicePoint> allSPoints = agencesDuFiltre(request);
         if (request != null) {
             List<ClaimPerCanalAndSpPro> allResult = claimRepository.countClaimByCriteriaAndCanalAndSp(request,
                     ClaimType.DENUNCIACION);
@@ -1904,23 +1921,16 @@ public class ReportServiceImpl implements ReportService {
                 stackedBar.getLabels().add(sPoint.getLibelle());
                 data.add((double) 0);
             }
-            //
-            // for (ClaimPerCanalAndSpPro projection : allResult) {
-            // if (!stackedBar.getIds().contains(projection.getSpId())) {
-            // stackedBar.getIds().add(projection.getSpId());
-            // stackedBar.getLabels().add(projection.getSpLibelle());
-            // data.add((double) 0);
-            // }
-
-            // }
             boolean canalExist = false;
 
             for (CollectionChannel collectionChannel : allCl) {
                 for (ClaimPerCanalAndSpPro projection : allResult) {
                     if (projection.getCanalId().equals(collectionChannel.getId())) {
-                        canalExist = true;
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            canalExist = true;
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
 
                 }
@@ -1960,8 +1970,10 @@ public class ReportServiceImpl implements ReportService {
 
                 for (ClaimPerCanalPerSpPjt projection : allresult) {
                     if (projection.getCanalId().equals(collectionChannel.getId())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -1992,7 +2004,7 @@ public class ReportServiceImpl implements ReportService {
                 .labels(new ArrayList<>())
                 .datasets(new ArrayList<>())
                 .build();
-        List<ServicePoint> allSPoints = spRepository.findAll();
+        List<ServicePoint> allSPoints = agencesDuFiltre(request);
         if (request != null) {
             List<CollectionChannel> allCl = clRepository.findAll();
             List<ClaimPerCanalAndSpPro> allResult = suggestionRepository.countSuggestByCriteriaAndCanalAndSp(request);
@@ -2007,22 +2019,17 @@ public class ReportServiceImpl implements ReportService {
             stackedBar.getIds().add((long) 0);
             stackedBar.getLabels().add("Non défini");
             data.add((double) 0);
-            // for (ClaimPerCanalAndSpPro projection : allResult) {
-            // if (!stackedBar.getIds().contains(projection.getSpId())) {
-            // stackedBar.getIds().add(projection.getSpId());
-            // stackedBar.getLabels().add(projection.getSpLibelle());
-            // data.add((double) 0);
-            // }
 
-            // }
             boolean canalExist = false;
 
             for (CollectionChannel collectionChannel : allCl) {
                 for (ClaimPerCanalAndSpPro projection : allResult) {
                     if (projection.getCanalId().equals(collectionChannel.getId())) {
-                        canalExist = true;
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            canalExist = true;
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
 
                 }
@@ -2066,8 +2073,10 @@ public class ReportServiceImpl implements ReportService {
 
                 for (ClaimPerCanalPerSpPjt projection : allresult) {
                     if (projection.getCanalId().equals(collectionChannel.getId())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -2096,7 +2105,7 @@ public class ReportServiceImpl implements ReportService {
         StackedBar claimStacked = this.numberClaimByCanalByAgence(request);
         StackedBar denunStacked = this.numberDenunByCanalByAgence(request);
         StackedBar suggestStacked = null;
-        if (request != null && request.getObjets() != null && request.getObjets().isEmpty()) {
+        if (request != null && (request.getObjets() == null || request.getObjets().isEmpty())) {
             suggestStacked = this.numberSuggestByCanalByAgence(request);
         } else if (request == null) {
             suggestStacked = this.numberSuggestByCanalByAgence(null);
@@ -2335,10 +2344,12 @@ public class ReportServiceImpl implements ReportService {
             for (Objet objet : allObjets) {
 
                 for (ObjectPerObjPro projection : claimList) {
-                    if (projection.getIdObj() == objet.getId()) {
-                        objetExist = true;
-                        data.set(stackedBar.getIds().indexOf(projection.getIdSp()),
-                                projection.getTotal().doubleValue());
+                    if (objet.getId().equals(projection.getIdObj())) {
+                        int idx = stackedBar.getIds().indexOf(projection.getIdSp());
+                        if (idx >= 0) {
+                            objetExist = true;
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 if (objetExist) {
@@ -2373,9 +2384,11 @@ public class ReportServiceImpl implements ReportService {
             for (Objet objet : allObjets) {
 
                 for (ObjectPerObjProjction projection : claimList) {
-                    if (projection.getIdObj() == objet.getId()) {
-                        data.set(stackedBar.getIds().indexOf(projection.getIdSp()),
-                                projection.getTotal().doubleValue());
+                    if (objet.getId().equals(projection.getIdObj())) {
+                        int idx = stackedBar.getIds().indexOf(projection.getIdSp());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -2426,8 +2439,10 @@ public class ReportServiceImpl implements ReportService {
 
             for (ObjectPerCanalPro projection : allResult) {
                 int position = pieChartDto.getLabels().indexOf(projection.getLibelle());
-                pieChartDto.getDatas().set(position,
-                        Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
+                if (position >= 0) {
+                    pieChartDto.getDatas().set(position,
+                            Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
+                }
             }
             List<RgbColor> bgColors = Utils.generateRandomColor(pieChartDto.getIds().size());
             pieChartDto.setBackgroundColors(bgColors.stream().map(t -> t.toBgString()).collect(Collectors.toList()));
@@ -2448,8 +2463,10 @@ public class ReportServiceImpl implements ReportService {
 
             for (ObjectPerCanalProjection projection : allResult) {
                 int position = pieChartDto.getLabels().indexOf(projection.getLibelle());
-                pieChartDto.getDatas().set(position,
-                        Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
+                if (position >= 0) {
+                    pieChartDto.getDatas().set(position,
+                            Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
+                }
             }
             List<RgbColor> bgColors = Utils.generateRandomColor(pieChartDto.getIds().size());
             pieChartDto.setBackgroundColors(bgColors.stream().map(t -> t.toBgString()).collect(Collectors.toList()));
@@ -2483,9 +2500,11 @@ public class ReportServiceImpl implements ReportService {
             for (Objet objet : allObjets) {
                 for (ObjectPerObjPro projection : claimList) {
                     if (objet.getId().equals(projection.getIdObj())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getIdSp()),
-                                projection.getTotal().doubleValue());
-                        objetExist = true;
+                        int idx = stackedBar.getIds().indexOf(projection.getIdSp());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                            objetExist = true;
+                        }
                     }
                 }
                 if (objetExist) {
@@ -2519,9 +2538,11 @@ public class ReportServiceImpl implements ReportService {
             for (Objet objet : allObjets) {
 
                 for (ObjectPerObjProjction projection : claimList) {
-                    if (projection.getIdObj() == objet.getId()) {
-                        data.set(stackedBar.getIds().indexOf(projection.getIdSp()),
-                                projection.getTotal().doubleValue());
+                    if (objet.getId().equals(projection.getIdObj())) {
+                        int idx = stackedBar.getIds().indexOf(projection.getIdSp());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -2567,9 +2588,11 @@ public class ReportServiceImpl implements ReportService {
             for (Objet objet : allObjets) {
                 for (ObjectPerObjPro projection : claimList) {
                     if (objet.getId().equals(projection.getIdObj())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getIdSp()),
-                                projection.getTotal().doubleValue());
-                        objetExist = true;
+                        int idx = stackedBar.getIds().indexOf(projection.getIdSp());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                            objetExist = true;
+                        }
                     }
                 }
                 if (objetExist) {
@@ -2603,9 +2626,11 @@ public class ReportServiceImpl implements ReportService {
             for (Objet objet : allObjets) {
 
                 for (ObjectPerObjProjction projection : claimList) {
-                    if (projection.getIdObj() == objet.getId()) {
-                        data.set(stackedBar.getIds().indexOf(projection.getIdSp()),
-                                projection.getTotal().doubleValue());
+                    if (objet.getId().equals(projection.getIdObj())) {
+                        int idx = stackedBar.getIds().indexOf(projection.getIdSp());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -2646,8 +2671,8 @@ public class ReportServiceImpl implements ReportService {
 
             for (ClaimPerGenderPro projection : allResult) {
                 pieChartDto.getDatas().add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                if (projection.getGender().equals(Gender.NON_DEFINI)) {
-                    pieChartDto.getLabels().add(projection.getGender().name().replace("_", " "));
+                if (projection.getGender() == null || projection.getGender().equals(Gender.NON_DEFINI)) {
+                    pieChartDto.getLabels().add("NON DEFINI");
                     pieChartDto.getBackgroundColors().add(GENDER_NON_DEFINI_BG_COLOR);
                     pieChartDto.getHoverColors().add(GENDER_NON_DEFINI_BG_COLOR);
                 } else if (projection.getGender().equals(Gender.FEMME)) {
@@ -2669,11 +2694,11 @@ public class ReportServiceImpl implements ReportService {
 
             for (ClaimPerGenderPjt projection : allResult) {
                 pieChartDto.getDatas().add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                if (projection.getGender() == "NON_DEFINI") {
-                    pieChartDto.getLabels().add(projection.getGender().replace("_", " "));
+                if (projection.getGender() == null || "NON_DEFINI".equals(projection.getGender())) {
+                    pieChartDto.getLabels().add("NON DEFINI");
                     pieChartDto.getBackgroundColors().add(GENDER_NON_DEFINI_BG_COLOR);
                     pieChartDto.getHoverColors().add(GENDER_NON_DEFINI_BG_COLOR);
-                } else if (projection.getGender() == "FEMME") {
+                } else if ("FEMME".equals(projection.getGender())) {
                     pieChartDto.getLabels().add(projection.getGender());
                     pieChartDto.getBackgroundColors().add(GENDER_FEMALE_BG_COLOR);
                     pieChartDto.getHoverColors().add(GENDER_FEMALE_BG_COLOR);
@@ -2700,27 +2725,54 @@ public class ReportServiceImpl implements ReportService {
                 .datas(new ArrayList<>())
                 .ids(new ArrayList<>())
                 .build();
-        List<ClaimPerGenderPjt> allResult = claimRepository.countClaimPerGender(ClaimType.DENUNCIACION);
-        long total = 0;
-        for (ClaimPerGenderPjt projection : allResult) {
-            total += projection.getTotal();
-        }
-
-        for (ClaimPerGenderPjt projection : allResult) {
-            if (projection.getGender() == "NON_DEFINI") {
-                pieChartDto.getLabels().add(projection.getGender().replace("_", " "));
-                pieChartDto.getBackgroundColors().add(GENDER_NON_DEFINI_BG_COLOR);
-                pieChartDto.getHoverColors().add(GENDER_NON_DEFINI_BG_COLOR);
-            } else if (projection.getGender() == "FEMME") {
-                pieChartDto.getLabels().add(projection.getGender());
-                pieChartDto.getBackgroundColors().add(GENDER_FEMALE_BG_COLOR);
-                pieChartDto.getHoverColors().add(GENDER_FEMALE_BG_COLOR);
-            } else {
-                pieChartDto.getLabels().add(projection.getGender());
-                pieChartDto.getBackgroundColors().add(GENDER_MALE_BG_COLOR);
-                pieChartDto.getHoverColors().add(GENDER_MALE_BG_COLOR);
+        if (request != null) {
+            List<Claim> denuns = claimRepository.countClaimByCriteriaAndStatusNot(request, ClaimType.DENUNCIACION);
+            long total = denuns.size();
+            Map<Gender, Long> parGenre = new LinkedHashMap<>();
+            for (Claim c : denuns) {
+                Gender g = c.getGender() != null ? c.getGender() : Gender.NON_DEFINI;
+                parGenre.merge(g, 1L, Long::sum);
             }
-            pieChartDto.getDatas().add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
+            for (Map.Entry<Gender, Long> entry : parGenre.entrySet()) {
+                Gender g = entry.getKey();
+                if (g == Gender.NON_DEFINI) {
+                    pieChartDto.getLabels().add("NON DEFINI");
+                    pieChartDto.getBackgroundColors().add(GENDER_NON_DEFINI_BG_COLOR);
+                    pieChartDto.getHoverColors().add(GENDER_NON_DEFINI_BG_COLOR);
+                } else if (g == Gender.FEMME) {
+                    pieChartDto.getLabels().add(g.name());
+                    pieChartDto.getBackgroundColors().add(GENDER_FEMALE_BG_COLOR);
+                    pieChartDto.getHoverColors().add(GENDER_FEMALE_BG_COLOR);
+                } else {
+                    pieChartDto.getLabels().add(g.name());
+                    pieChartDto.getBackgroundColors().add(GENDER_MALE_BG_COLOR);
+                    pieChartDto.getHoverColors().add(GENDER_MALE_BG_COLOR);
+                }
+                pieChartDto.getDatas().add(Utils.parseDouble(Utils.percentCalculator(entry.getValue(), total)));
+            }
+        } else {
+            List<ClaimPerGenderPjt> allResult = claimRepository.countClaimPerGender(ClaimType.DENUNCIACION);
+            long total = 0;
+            for (ClaimPerGenderPjt projection : allResult) {
+                total += projection.getTotal();
+            }
+
+            for (ClaimPerGenderPjt projection : allResult) {
+                if (projection.getGender() == null || "NON_DEFINI".equals(projection.getGender())) {
+                    pieChartDto.getLabels().add("NON DEFINI");
+                    pieChartDto.getBackgroundColors().add(GENDER_NON_DEFINI_BG_COLOR);
+                    pieChartDto.getHoverColors().add(GENDER_NON_DEFINI_BG_COLOR);
+                } else if ("FEMME".equals(projection.getGender())) {
+                    pieChartDto.getLabels().add(projection.getGender());
+                    pieChartDto.getBackgroundColors().add(GENDER_FEMALE_BG_COLOR);
+                    pieChartDto.getHoverColors().add(GENDER_FEMALE_BG_COLOR);
+                } else {
+                    pieChartDto.getLabels().add(projection.getGender());
+                    pieChartDto.getBackgroundColors().add(GENDER_MALE_BG_COLOR);
+                    pieChartDto.getHoverColors().add(GENDER_MALE_BG_COLOR);
+                }
+                pieChartDto.getDatas().add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
+            }
         }
 
         return pieChartDto;
@@ -2742,7 +2794,6 @@ public class ReportServiceImpl implements ReportService {
             for (ClaimPerGenderPro claimPerGenderPro : allResult) {
                 total += claimPerGenderPro.getTotal();
             }
-            // System.out.println(allResult);
             for (ClaimPerGenderPro projection : allResult) {
                 pieChartDto.getDatas().add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
                 if (projection.getGender() != null && projection.getGender().equals(Gender.NON_DEFINI)) {
@@ -2773,11 +2824,11 @@ public class ReportServiceImpl implements ReportService {
             for (ClaimPerGenderPjt projection : allResult) {
 
                 pieChartDto.getDatas().add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(), total)));
-                if (projection.getGender() == "NON_DEFINI") {
-                    pieChartDto.getLabels().add(projection.getGender().replace("_", " "));
+                if (projection.getGender() == null || "NON_DEFINI".equals(projection.getGender())) {
+                    pieChartDto.getLabels().add("NON DEFINI");
                     pieChartDto.getBackgroundColors().add(GENDER_NON_DEFINI_BG_COLOR);
                     pieChartDto.getHoverColors().add(GENDER_NON_DEFINI_BG_COLOR);
-                } else if (projection.getGender() == "FEMME") {
+                } else if ("FEMME".equals(projection.getGender())) {
                     pieChartDto.getLabels().add(projection.getGender());
                     pieChartDto.getBackgroundColors().add(GENDER_FEMALE_BG_COLOR);
                     pieChartDto.getHoverColors().add(GENDER_FEMALE_BG_COLOR);
@@ -2800,9 +2851,9 @@ public class ReportServiceImpl implements ReportService {
                 .datasets(new ArrayList<>())
                 .labels(new ArrayList<>())
                 .build();
-        List<ServicePoint> allSp = spRepository.findAll();
+        List<ServicePoint> allSp = agencesDuFiltre(request);
         List<Double> data = new ArrayList<>();
-        List<Gender> alGenders = Arrays.asList(Gender.FEMME, Gender.HOMME);
+        List<Gender> alGenders = Arrays.asList(Gender.FEMME, Gender.HOMME, Gender.NON_DEFINI);
         if (request != null) {
             List<ClaimPerGenderAndAgencePro> allResult = claimRepository
                     .countClaimByCriteriaAndByGenderAndAgence(request);
@@ -2818,16 +2869,19 @@ public class ReportServiceImpl implements ReportService {
             for (Gender gender : alGenders) {
 
                 for (ClaimPerGenderAndAgencePro pro : allResult) {
-                    if (pro.getGender().equals(gender)) {
-                        data.set(stackedBar.getIds().indexOf(pro.getId()), pro.getTotal().doubleValue());
-                        spIsFind = true;
+                    if (gender.equals(pro.getGender())) {
+                        int idx = stackedBar.getIds().indexOf(pro.getId());
+                        if (idx >= 0) {
+                            data.set(idx, pro.getTotal().doubleValue());
+                            spIsFind = true;
+                        }
                     }
                 }
                 if (spIsFind) {
                     spIsFind = false;
                     StackedBarDataset stackedBarDataset = StackedBarDataset
                             .builder()
-                            .label(gender.name())
+                            .label(gender == Gender.NON_DEFINI ? "NON DEFINI" : gender.name())
                             .data(data)
                             .build();
                     if (gender.name().equals("HOMME")) {
@@ -2854,18 +2908,18 @@ public class ReportServiceImpl implements ReportService {
                 data.add((double) 0);
             }
 
-            // List<Gender> alGenders = Arrays.asList(Gender.FEMME, Gender.HOMME,
-            // Gender.NON_DEFINI);
-
             for (Gender gender : alGenders) {
                 for (ClaimPerGenderAndAgencePrjt projection : allresult) {
                     if (gender.name().equals(projection.getGender())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getId()), projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getId());
+                        if (idx >= 0) {
+                            data.set(idx, projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
                         .builder()
-                        .label(gender.name())
+                        .label(gender == Gender.NON_DEFINI ? "NON DEFINI" : gender.name())
                         .data(data)
                         .build();
                 if (gender.name().equals("HOMME")) {
@@ -2895,7 +2949,7 @@ public class ReportServiceImpl implements ReportService {
                 .datasets(new ArrayList<>())
                 .labels(new ArrayList<>())
                 .build();
-        List<ServicePoint> allSp = spRepository.findAll();
+        List<ServicePoint> allSp = agencesDuFiltre(request);
         List<Double> data = new ArrayList<>();
         List<Gender> alGenders = Arrays.asList(Gender.FEMME, Gender.HOMME, Gender.NON_DEFINI);
 
@@ -2903,8 +2957,6 @@ public class ReportServiceImpl implements ReportService {
 
             List<ClaimPerGenderAndAgencePro> allResult = suggestionRepository
                     .countSuggestByCriteriaAndGenderAndAgence(request);
-            System.out.println("Suggestion result");
-            System.out.println(allResult);
             for (ServicePoint servicePoint : allSp) {
                 stackedBar.getIds().add(servicePoint.getId());
                 stackedBar.getLabels().add(servicePoint.getLibelle());
@@ -2914,30 +2966,18 @@ public class ReportServiceImpl implements ReportService {
             data.add((double) 0);
             stackedBar.getIds().add((long) 0);
             stackedBar.getLabels().add("Non défini");
-            // for (ClaimPerGenderAndAgencePro projection : allResult) {
-            // if (!stackedBar.getIds().contains(projection.getId())) {
-            // stackedBar.getIds().add(projection.getId());
-            // stackedBar.getLabels().add(projection.getLibelle());
-            // data.add((double) 0);
-            // }
-            // }
 
             for (Gender gender : alGenders) {
                 for (ClaimPerGenderAndAgencePro projection : allResult) {
+                    Long spId = projection.getId() != null ? projection.getId() : 0L;
+                    int idx = stackedBar.getIds().indexOf(spId);
+                    if (idx < 0) {
+                        continue;
+                    }
                     if (projection.getGender() != null && projection.getGender().equals(gender)) {
-
-                        if (projection.getId() != null) {
-                            data.set(stackedBar.getIds().indexOf((projection.getId())),
-                                    projection.getTotal().doubleValue());
-                        }
-
+                        data.set(idx, data.get(idx) + projection.getTotal().doubleValue());
                     } else if (projection.getGender() == null && gender.equals(Gender.NON_DEFINI)) {
-                        // System.out.println("Suggestion result 2");
-                        // System.out.println(projection.getId());
-                        if (projection.getId() != null) {
-                            data.set(stackedBar.getIds().indexOf((projection.getId())),
-                                    projection.getTotal().doubleValue());
-                        }
+                        data.set(idx, data.get(idx) + projection.getTotal().doubleValue());
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -2959,7 +2999,6 @@ public class ReportServiceImpl implements ReportService {
                 for (int index = 0; index < stackedBar.getIds().size(); index++) {
                     data.add((double) 0);
                 }
-                data.add((double) 0);
             }
         } else {
             List<ClaimPerGenderAndAgencePrjt> allresult = suggestionRepository.countSuggestPerGenderAndAgence();
@@ -2974,14 +3013,12 @@ public class ReportServiceImpl implements ReportService {
             stackedBar.getIds().add((long) 0);
             stackedBar.getLabels().add("Non défini");
 
-            // List<Gender> alGenders = Arrays.asList(Gender.FEMME, Gender.HOMME,
-            // Gender.NON_DEFINI);
-
             for (Gender gender : alGenders) {
                 for (ClaimPerGenderAndAgencePrjt projection : allresult) {
                     if (gender.name().equals(projection.getGender())) {
-                        int position = stackedBar.getIds().indexOf(projection.getId());
-                        if (stackedBar.getIds().size() > position) {
+                        Long spId = projection.getId() != null ? projection.getId() : 0L;
+                        int position = stackedBar.getIds().indexOf(spId);
+                        if (position >= 0 && stackedBar.getIds().size() > position) {
                             data.set(position, projection.getTotal().doubleValue());
                         }
                     }
@@ -3024,20 +3061,22 @@ public class ReportServiceImpl implements ReportService {
                 .build();
         List<GravityLevel> allLevels = Arrays.asList(GravityLevel.GRAVE, GravityLevel.MOYEN, GravityLevel.MINEUR);
         Long total = (long) 0;
-        List<ServicePoint> allSPoints = spRepository.findAll();
     
         if (request != null) {
             List<ClaimPerObjLevelPro> allResult = claimRepository.countClaimByCriteriaAndByObjLevel(request,
                     ClaimType.CLAIM);
-            total = (long) allResult.size();
+            for (ClaimPerObjLevelPro projection : allResult) {
+                total += projection.getTotal();
+            }
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
-                int nbreClaimPerAgenceFilter = allResult.stream().filter(claim -> {
-                    return claim.getObjNiveau() == gravityLevel;
-                }).collect(Collectors.toList()).size();
+                long nbreClaimPerAgenceFilter = allResult.stream()
+                        .filter(claim -> claim.getObjNiveau() == gravityLevel)
+                        .mapToLong(ClaimPerObjLevelPro::getTotal)
+                        .sum();
                
                 pieChartDto.getDatas()
-                        .add(Utils.parseDouble(Utils.percentCalculator((long) nbreClaimPerAgenceFilter, total)));
+                        .add(Utils.parseDouble(Utils.percentCalculator(nbreClaimPerAgenceFilter, total)));
 
                 switch (gravityLevel) {
                     case GRAVE:
@@ -3052,10 +3091,6 @@ public class ReportServiceImpl implements ReportService {
                     default:
                         break;
                 }
-                // if (!isFind) {
-                // pieChartDto.getDatas().add((double) 0);
-                // }
-                // isFind = false;
             }
 
         } else {
@@ -3065,12 +3100,12 @@ public class ReportServiceImpl implements ReportService {
             total = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.CLAIM, ClaimStatus.TEMP_SAVED);
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
-                int nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
-                    return claim.getObjet().getRisqueLevel() == gravityLevel;
-                }).collect(Collectors.toList()).size();
+                long nbreClaimPerAgenceFilter = claims.stream()
+                        .filter(claim -> claim.getObjet() != null && claim.getObjet().getRisqueLevel() == gravityLevel)
+                        .count();
 
                 pieChartDto.getDatas()
-                        .add(Utils.parseDouble(Utils.percentCalculator((long) nbreClaimPerAgenceFilter, total)));
+                        .add(Utils.parseDouble(Utils.percentCalculator(nbreClaimPerAgenceFilter, total)));
 
                 switch (gravityLevel) {
                     case GRAVE:
@@ -3104,24 +3139,23 @@ public class ReportServiceImpl implements ReportService {
                 .build();
         List<GravityLevel> allLevels = Arrays.asList(GravityLevel.GRAVE, GravityLevel.MOYEN, GravityLevel.MINEUR);
         Long total = (long) 0;
-        List<ServicePoint> allSPoints = spRepository.findAll();
 
         if (request != null) {
             List<ClaimPerObjLevelPro> allResult = claimRepository.countClaimByCriteriaAndByObjLevel(request,
                     ClaimType.DENUNCIACION);
 
-            
             for (ClaimPerObjLevelPro projection : allResult) {
                 total += projection.getTotal();
             }
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
-                int nbreClaimPerAgenceFilter = allResult.stream().filter(claim -> {
-                    return claim.getObjNiveau() == gravityLevel;
-                }).collect(Collectors.toList()).size();
+                long nbreClaimPerAgenceFilter = allResult.stream()
+                        .filter(claim -> claim.getObjNiveau() == gravityLevel)
+                        .mapToLong(ClaimPerObjLevelPro::getTotal)
+                        .sum();
                
                 pieChartDto.getDatas()
-                        .add(Utils.parseDouble(Utils.percentCalculator((long) nbreClaimPerAgenceFilter, total)));
+                        .add(Utils.parseDouble(Utils.percentCalculator(nbreClaimPerAgenceFilter, total)));
 
                 switch (gravityLevel) {
                     case GRAVE:
@@ -3140,57 +3174,17 @@ public class ReportServiceImpl implements ReportService {
             }
 
         } else {
-            // List<ClaimPerObjLevelProjection> allResult =
-            // claimRepository.countClaimPerObjLevel(ClaimType.DENUNCIACION,
-            // spId);
-
-            // total =
-            // claimRepository.countByTypeAndStatusNotAndServicePointIn(ClaimType.CLAIM,
-            // ClaimStatus.TEMP_SAVED,
-            // allSPoints);
-
-            // for (GravityLevel gravityLevel : allLevels) {
-            // pieChartDto.getLabels().add(gravityLevel.name());
-            // for (ClaimPerObjLevelProjection projection : allResult) {
-            // if (projection.getObjNiveau().equals(gravityLevel.name())) {
-            // isFind = true;
-            // pieChartDto.getDatas()
-            // .add(Utils.parseDouble(Utils.percentCalculator(projection.getTotal(),
-            // total)));
-            // switch (gravityLevel) {
-            // case GRAVE:
-            // pieChartDto.getBackgroundColors().add(GRAVE_BG_COLOR);
-            // break;
-            // case MINEUR:
-            // pieChartDto.getBackgroundColors().add(MINEUR_BG_COLOR);
-            // break;
-            // case MOYEN:
-            // pieChartDto.getBackgroundColors().add(MOYEN_BG_COLOR);
-            // break;
-            // default:
-            // break;
-            // }
-            // }
-            // }
-
-            // if (!isFind) {
-            // pieChartDto.getDatas().add((double) 0);
-            // }
-            // isFind = false;
-            // }
-
-            // Alby
             List<Claim> claims = claimRepository.findByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION,
                     ClaimStatus.TEMP_SAVED);
             total = (long) claims.size();
             for (GravityLevel gravityLevel : allLevels) {
                 pieChartDto.getLabels().add(gravityLevel.name());
-                int nbreClaimPerAgenceFilter = claims.stream().filter(claim -> {
-                    return claim.getObjet().getRisqueLevel() == gravityLevel;
-                }).collect(Collectors.toList()).size();
+                long nbreClaimPerAgenceFilter = claims.stream()
+                        .filter(claim -> claim.getObjet() != null && claim.getObjet().getRisqueLevel() == gravityLevel)
+                        .count();
 
                 pieChartDto.getDatas()
-                        .add(Utils.parseDouble(Utils.percentCalculator((long) nbreClaimPerAgenceFilter, total)));
+                        .add(Utils.parseDouble(Utils.percentCalculator(nbreClaimPerAgenceFilter, total)));
 
                 switch (gravityLevel) {
                     case GRAVE:
@@ -3222,30 +3216,23 @@ public class ReportServiceImpl implements ReportService {
                 .build();
         List<GravityLevel> allLevels = Arrays.asList(GravityLevel.GRAVE, GravityLevel.MOYEN, GravityLevel.MINEUR);
         List<Double> data = new ArrayList<>();
-        List<ServicePoint> allSp = spRepository.findAll();
+        List<ServicePoint> allSp = agencesDuFiltre(request);
         if (request != null) {
             List<ClaimPerObjLevelAndSpPro> allResult = claimRepository.countClaimByCriteriaAndByObjLevelAndSp(request,
                     ClaimType.CLAIM);
-            // System.out.println("allResult");
-            // System.out.println(allResult);
             for (ServicePoint servicePoint : allSp) {
                 stackedBar.getIds().add(servicePoint.getId());
                 stackedBar.getLabels().add(servicePoint.getLibelle());
                 data.add((double) 0);
             }
-            // for (ClaimPerObjLevelAndSpPro projection : allResult) {
-            // if (!stackedBar.getIds().contains(projection.getSpId())) {
-            // stackedBar.getIds().add(projection.getSpId());
-            // stackedBar.getLabels().add(projection.getSpLib());
-            // data.add((double) 0);
-            // }
-            // }
 
             for (GravityLevel level : allLevels) {
                 for (ClaimPerObjLevelAndSpPro projection : allResult) {
                     if (level.equals(projection.getObjNiveau())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            data.set(idx, data.get(idx) + projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -3287,8 +3274,10 @@ public class ReportServiceImpl implements ReportService {
             for (GravityLevel gravityLevel : allLevels) {
                 for (ClaimPerObjLevelAndAgenceProjection projection : allresult) {
                     if (gravityLevel.name().equals(projection.getObjNiveau())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            data.set(idx, data.get(idx) + projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -3331,7 +3320,7 @@ public class ReportServiceImpl implements ReportService {
                 .build();
         List<GravityLevel> allLevels = Arrays.asList(GravityLevel.GRAVE, GravityLevel.MOYEN, GravityLevel.MINEUR);
         List<Double> data = new ArrayList<>();
-        List<ServicePoint> allSp = spRepository.findAll();
+        List<ServicePoint> allSp = agencesDuFiltre(request);
         if (request != null) {
             List<ClaimPerObjLevelAndSpPro> allResult = claimRepository.countClaimByCriteriaAndByObjLevelAndSp(request,
                     ClaimType.DENUNCIACION);
@@ -3341,19 +3330,14 @@ public class ReportServiceImpl implements ReportService {
                 stackedBar.getLabels().add(servicePoint.getLibelle());
                 data.add((double) 0);
             }
-            // for (ClaimPerObjLevelAndSpPro projection : allResult) {
-            // if (!stackedBar.getIds().contains(projection.getSpId())) {
-            // stackedBar.getIds().add(projection.getSpId());
-            // stackedBar.getLabels().add(projection.getSpLib());
-            // data.add((double) 0);
-            // }
-            // }
 
             for (GravityLevel level : allLevels) {
                 for (ClaimPerObjLevelAndSpPro projection : allResult) {
                     if (level.equals(projection.getObjNiveau())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            data.set(idx, data.get(idx) + projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -3394,8 +3378,10 @@ public class ReportServiceImpl implements ReportService {
             for (GravityLevel gravityLevel : allLevels) {
                 for (ClaimPerObjLevelAndAgenceProjection projection : allresult) {
                     if (gravityLevel.name().equals(projection.getObjNiveau())) {
-                        data.set(stackedBar.getIds().indexOf(projection.getSpId()),
-                                projection.getTotal().doubleValue());
+                        int idx = stackedBar.getIds().indexOf(projection.getSpId());
+                        if (idx >= 0) {
+                            data.set(idx, data.get(idx) + projection.getTotal().doubleValue());
+                        }
                     }
                 }
                 StackedBarDataset stackedBarDataset = StackedBarDataset
@@ -3483,20 +3469,31 @@ public class ReportServiceImpl implements ReportService {
                 break;
         }
     }
+    private LocalDateTime dateTraitementOuMesure(Claim claim) {
+        if (claim == null || claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
+            return null;
+        }
+        Solution lastSol = claim.getSolutions().get(claim.getSolutions().size() - 1);
+        if (lastSol == null) {
+            return null;
+        }
+        if (lastSol.getSatisfactionMeasure() != null && lastSol.getSatisfactionMeasure().getMeasureDateTime() != null) {
+            return lastSol.getSatisfactionMeasure().getMeasureDateTime();
+        }
+        return lastSol.getCreatedAt();
+    }
+
     @Override
     public StackedBar numberClaimTreatInDelaiOrNot(@Nullable FilterRequest request) {
         List<Claim> allClaims;
+        List<ClaimStatus> statutsTraites = Arrays.asList(
+                ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION, ClaimStatus.CLASSED);
 
         if (request != null) {
-
-            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
-                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
-                            ClaimStatus.CLASSED));
-
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request, statutsTraites);
         } else {
-            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
-                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED,
-                            ClaimStatus.CLASSED));
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, statutsTraites);
         }
         List<Objet> allObjets = oRepository.findAll();
         StackedBar stackedBar = StackedBar
@@ -3517,24 +3514,26 @@ public class ReportServiceImpl implements ReportService {
         LocalDateTime measureDate;
         LocalDateTime supposedFinalTreatmentDate;
         long delaiObj;
-        // for (int i = 0; i < 2 ; i++) {
         for (Claim claim : allClaims) {
             receiptDate = claim.getReceiptDateTime();
-            measureDate = claim.getSolutions().get((claim.getSolutions().size() - 1)).getSatisfactionMeasure()
-                    .getMeasureDateTime();
+            measureDate = dateTraitementOuMesure(claim);
+            if (receiptDate == null || measureDate == null || claim.getObjet() == null) {
+                continue;
+            }
+            int idx = stackedBar.getIds().indexOf(claim.getObjet().getId());
+            if (idx < 0) {
+                continue;
+            }
 
             delaiObj = claim.getObjet().getProcessingTime();
-            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
-            if (measureDate.isAfter(supposedFinalTreatmentDate)) { // il y a retard de traitement
-                dataNotInDelai.set(stackedBar.getIds().indexOf(claim.getObjet().getId()),
-                        dataNotInDelai.get(stackedBar.getIds().indexOf(claim.getObjet().getId())) + 1);
+            supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
+            if (measureDate.isAfter(supposedFinalTreatmentDate)) {
+                dataNotInDelai.set(idx, dataNotInDelai.get(idx) + 1);
             } else {
-                dataInDelai.set(stackedBar.getIds().indexOf(claim.getObjet().getId()),
-                        dataInDelai.get(stackedBar.getIds().indexOf(claim.getObjet().getId())) + 1);
+                dataInDelai.set(idx, dataInDelai.get(idx) + 1);
             }
 
         }
-        // if()
 
         StackedBarDataset stackedBarDataset = StackedBarDataset
                 .builder()
@@ -3552,8 +3551,6 @@ public class ReportServiceImpl implements ReportService {
                 .data(dataNotInDelai)
                 .build();
         stackedBar.getDatasets().add(stackedBarDataset2);
-
-        // }
 
         return stackedBar;
     }
@@ -3599,7 +3596,7 @@ public class ReportServiceImpl implements ReportService {
         //             .getMeasureDateTime();
 
         //     delaiObj = claim.getObjet().getProcessingTime();
-        //     supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
+        //     supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
         //     if (measureDate.isAfter(supposedFinalTreatmentDate)) { // il y a retard de traitement
         //         dataNotInDelai.set(stackedBar.getIds().indexOf(claim.getObjet().getId()),
         //                 dataNotInDelai.get(stackedBar.getIds().indexOf(claim.getObjet().getId())) + 1);
@@ -3633,6 +3630,300 @@ public class ReportServiceImpl implements ReportService {
         // return stackedBar;
 
         List<Claim> allClaims;
+        List<ClaimStatus> statutsTraites = Arrays.asList(
+                ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION, ClaimStatus.CLASSED);
+
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request, statutsTraites);
+        } else {
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, statutsTraites);
+        }
+        
+        List<String> months = Arrays.asList("Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc");
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(months)
+                .build();
+        
+        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Double> totalClaimsPerMonth = new ArrayList<>(Collections.nCopies(12, 0.0));
+        
+        LocalDateTime receiptDate;
+        LocalDateTime measureDate;
+        LocalDateTime supposedFinalTreatmentDate;
+        long delaiObj;
+        
+        for (Claim claim : allClaims) {
+            receiptDate = claim.getReceiptDateTime();
+            measureDate = dateTraitementOuMesure(claim);
+            if (receiptDate == null || measureDate == null || claim.getObjet() == null) {
+                continue;
+            }
+        
+            delaiObj = claim.getObjet().getProcessingTime();
+            supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
+        
+            int monthIndex = receiptDate.getMonthValue() - 1;
+        
+            if (monthIndex >= 0 && monthIndex < 12) {
+                totalClaimsPerMonth.set(monthIndex, totalClaimsPerMonth.get(monthIndex) + 1);
+        
+                if (measureDate.isBefore(supposedFinalTreatmentDate) || measureDate.isEqual(supposedFinalTreatmentDate)) {
+                    dataRespectingDelai.set(monthIndex, dataRespectingDelai.get(monthIndex) + 1);
+                }
+            }
+        }
+        
+        for (int i = 0; i < 12; i++) {
+            if (totalClaimsPerMonth.get(i) > 0) {
+                dataRespectingDelai.set(i, (dataRespectingDelai.get(i) / totalClaimsPerMonth.get(i)) * 100);
+            }
+        }
+        
+        StackedBarDataset datasetRespectingDelai = StackedBarDataset
+                .builder()
+                .label("Respect")
+                .backgroundColor(SERVICE_BG_POINT_COLOR)
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
+                .data(dataRespectingDelai)
+                .build();
+        
+        stackedBar.getDatasets().add(datasetRespectingDelai);
+        
+        return stackedBar;
+        
+    }
+
+    public StackedBar numberClaimTreatInDelaiOrNotByMonthByAgence(@Nullable FilterRequest request) {
+
+        List<Claim> allClaims;
+        List<ClaimStatus> statutsTraites = Arrays.asList(
+                ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
+                ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION, ClaimStatus.CLASSED);
+
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request, statutsTraites);
+        } else {
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, statutsTraites);
+        }
+        
+        List<ServicePoint> allAgences = agencesDuFiltre(request);
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(new ArrayList<>())
+                .build();
+        
+        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+        List<Double> totalClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+        
+        LocalDateTime receiptDate;
+        LocalDateTime measureDate;
+        LocalDateTime supposedFinalTreatmentDate;
+        long delaiObj;
+        
+        for (ServicePoint agence : allAgences) {
+            stackedBar.getIds().add(agence.getId());
+            stackedBar.getLabels().add(agence.getLibelle());
+        }
+        
+        for (Claim claim : allClaims) {
+            receiptDate = claim.getReceiptDateTime();
+            measureDate = dateTraitementOuMesure(claim);
+            if (receiptDate == null || measureDate == null || claim.getObjet() == null || claim.getServicePoint() == null) {
+                continue;
+            }
+        
+            delaiObj = claim.getObjet().getProcessingTime();
+            supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
+        
+            int agenceIndex = stackedBar.getIds().indexOf(claim.getServicePoint().getId());
+        
+            if (agenceIndex >= 0 && agenceIndex < allAgences.size()) {
+                totalClaimsPerAgence.set(agenceIndex, totalClaimsPerAgence.get(agenceIndex) + 1);
+        
+                if (measureDate.isBefore(supposedFinalTreatmentDate) || measureDate.isEqual(supposedFinalTreatmentDate)) {
+                    dataRespectingDelai.set(agenceIndex, dataRespectingDelai.get(agenceIndex) + 1);
+                }
+            }
+        }
+        
+        for (int i = 0; i < allAgences.size(); i++) {
+            if (totalClaimsPerAgence.get(i) > 0) {
+                double percentage = (dataRespectingDelai.get(i) / totalClaimsPerAgence.get(i)) * 100;
+                percentage = Math.round(percentage * 100.0) / 100.0;
+                dataRespectingDelai.set(i, percentage);
+            }
+        }
+
+        StackedBarDataset datasetRespectingDelai = StackedBarDataset
+                .builder()
+                .label("Respect")
+                .backgroundColor(SERVICE_BG_POINT_COLOR)
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
+                .data(dataRespectingDelai)
+                .build();
+        
+        stackedBar.getDatasets().add(datasetRespectingDelai);
+        
+        return stackedBar;
+        
+    }
+
+
+    public StackedBar numberDenunTreatInDelaiOrNotByMonth(@Nullable FilterRequest request) {
+        List<Claim> allClaims;
+
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+                    Arrays.asList(ClaimStatus.TREAT));
+        } else {
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
+                    Arrays.asList(ClaimStatus.TREAT));
+        }
+
+        // Préparer les mois de l'année pour l'affichage
+        List<String> months = Arrays.asList("Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc");
+        StackedBar stackedBar = StackedBar.builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(months)
+                .build();
+
+        // Initialiser les données pour chaque mois (nombre de réclamations respectant les délais et le total)
+        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Double> totalClaimsPerMonth = new ArrayList<>(Collections.nCopies(12, 0.0));
+
+        // Parcourir toutes les réclamations
+        for (Claim claim : allClaims) {
+            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()
+                    || claim.getReceiptDateTime() == null || claim.getObjet() == null
+                    ) {
+                continue;
+            }
+
+            LocalDateTime receiptDate = claim.getReceiptDateTime();
+            LocalDateTime treatmentDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getCreatedAt();
+            if (treatmentDate == null) {
+                continue;
+            }
+
+            long delaiObj = claim.getObjet().getProcessingTime();
+            LocalDateTime supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
+
+            int monthIndex = receiptDate.getMonthValue() - 1;
+
+            if (monthIndex >= 0 && monthIndex < 12) {
+                totalClaimsPerMonth.set(monthIndex, totalClaimsPerMonth.get(monthIndex) + 1);
+
+                if (treatmentDate.isBefore(supposedFinalTreatmentDate) || treatmentDate.isEqual(supposedFinalTreatmentDate)) {
+                    dataRespectingDelai.set(monthIndex, dataRespectingDelai.get(monthIndex) + 1);
+                }
+            }
+        }
+
+        // Calculer le pourcentage des réclamations traitées dans les délais par mois
+        for (int i = 0; i < 12; i++) {
+            if (totalClaimsPerMonth.get(i) > 0) {
+                dataRespectingDelai.set(i, (dataRespectingDelai.get(i) / totalClaimsPerMonth.get(i)) * 100);
+            }
+        }
+
+        // Créer le dataset pour les réclamations traitées dans les délais
+        StackedBarDataset datasetRespectingDelai = StackedBarDataset.builder()
+                .label("Respect")
+                .backgroundColor(SERVICE_BG_POINT_COLOR)
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
+                .data(dataRespectingDelai)
+                .build();
+
+        stackedBar.getDatasets().add(datasetRespectingDelai);
+
+        return stackedBar;
+    }
+
+    public StackedBar numberDenunTreatInDelaiOrNotByMonthByAgence(@Nullable FilterRequest request) {
+        List<Claim> allClaims;
+
+        if (request != null) {
+            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
+                    Arrays.asList(ClaimStatus.TREAT));
+        } else {
+            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
+                    Arrays.asList(ClaimStatus.TREAT));
+        }
+
+        List<ServicePoint> allAgences = agencesDuFiltre(request);
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(new ArrayList<>())
+                .build();
+
+        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+        List<Double> totalClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
+
+        for (ServicePoint agence : allAgences) {
+            stackedBar.getIds().add(agence.getId());
+            stackedBar.getLabels().add(agence.getLibelle());
+        }
+
+        for (Claim claim : allClaims) {
+            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()
+                    || claim.getReceiptDateTime() == null || claim.getObjet() == null
+                    || claim.getServicePoint() == null) {
+                continue;
+            }
+
+            LocalDateTime receiptDate = claim.getReceiptDateTime();
+            LocalDateTime treatmentDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getCreatedAt();
+            if (treatmentDate == null) {
+                continue;
+            }
+
+            long delaiObj = claim.getObjet().getProcessingTime();
+            LocalDateTime supposedFinalTreatmentDate = echeanceObjet.echeance(receiptDate, delaiObj);
+
+            int agenceIndex = stackedBar.getIds().indexOf(claim.getServicePoint().getId());
+
+            if (agenceIndex >= 0 && agenceIndex < allAgences.size()) {
+                totalClaimsPerAgence.set(agenceIndex, totalClaimsPerAgence.get(agenceIndex) + 1);
+
+                if (treatmentDate.isBefore(supposedFinalTreatmentDate) || treatmentDate.isEqual(supposedFinalTreatmentDate)) {
+                    dataRespectingDelai.set(agenceIndex, dataRespectingDelai.get(agenceIndex) + 1);
+                }
+            }
+        }
+
+        for (int i = 0; i < allAgences.size(); i++) {
+            if (totalClaimsPerAgence.get(i) > 0) {
+                double percentage = (dataRespectingDelai.get(i) / totalClaimsPerAgence.get(i)) * 100;
+                percentage = Math.round(percentage * 100.0) / 100.0;
+                dataRespectingDelai.set(i, percentage);
+            }
+        }
+
+        StackedBarDataset datasetRespectingDelai = StackedBarDataset
+                .builder()
+                .label("Respect")
+                .backgroundColor(SERVICE_BG_POINT_COLOR)
+                .borderColor(SERVICE_BORDER_POINT_COLOR)
+                .data(dataRespectingDelai)
+                .build();
+
+        stackedBar.getDatasets().add(datasetRespectingDelai);
+
+        return stackedBar;
+    }
+
+    public StackedBar tauxClaimSatisfactionByMonth(@Nullable FilterRequest request) {
+
+        List<Claim> allClaims;
 
         if (request != null) {
             allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
@@ -3643,396 +3934,40 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
                             ClaimStatus.CLASSED));
         }
-        
-        // Préparer les mois de l'année pour l'affichage
-        List<String> months = Arrays.asList("Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc");
-        StackedBar stackedBar = StackedBar
-                .builder()
-                .ids(new ArrayList<>())
-                .datasets(new ArrayList<>())
-                .labels(months)
-                .build();
-        
-        // Initialiser les données pour chaque mois (nombre de réclamations respectant les délais et le total)
-        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(12, 0.0));
-        List<Double> totalClaimsPerMonth = new ArrayList<>(Collections.nCopies(12, 0.0));
-        
-        LocalDateTime receiptDate;
-        LocalDateTime measureDate;
-        LocalDateTime supposedFinalTreatmentDate;
-        long delaiObj;
-        
-        // Parcourir toutes les réclamations
-        for (Claim claim : allClaims) {
-            // Vérifier si la réclamation a bien une solution et une mesure
-            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
-                continue; // Passer à la réclamation suivante si pas de solution
-            }
-        
-            // Récupérer la date de réception et la date de mesure
-            receiptDate = claim.getReceiptDateTime();
-            measureDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getSatisfactionMeasure().getMeasureDateTime();
-        
-            // Récupérer le délai de traitement de l'objet associé à la réclamation
-            delaiObj = claim.getObjet().getProcessingTime();
-            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
-        
-            // Récupérer l'index du mois correspondant
-            int monthIndex = receiptDate.getMonthValue() - 1;
-        
-            if (monthIndex >= 0 && monthIndex < 12) {
-                // Augmenter le nombre total de réclamations pour le mois
-                totalClaimsPerMonth.set(monthIndex, totalClaimsPerMonth.get(monthIndex) + 1);
-        
-                // Vérifier si la réclamation a été traitée dans les délais
-                if (measureDate.isBefore(supposedFinalTreatmentDate) || measureDate.isEqual(supposedFinalTreatmentDate)) {
-                    // Ajouter à la liste des réclamations respectant les délais
-                    dataRespectingDelai.set(monthIndex, dataRespectingDelai.get(monthIndex) + 1);
-                }
-            }
-        }
-        
-        // Calculer le pourcentage des réclamations traitées dans les délais par mois
-        for (int i = 0; i < 12; i++) {
-            if (totalClaimsPerMonth.get(i) > 0) {
-                dataRespectingDelai.set(i, (dataRespectingDelai.get(i) / totalClaimsPerMonth.get(i)) * 100);
-            }
-        }
-        
-        // Créer le dataset pour les réclamations traitées dans les délais
-        StackedBarDataset datasetRespectingDelai = StackedBarDataset
-                .builder()
-                .label("Respect")
-                .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
-                .borderColor(SERVICE_BORDER_POINT_COLOR)
-                .data(dataRespectingDelai)
-                .build();
-        
-        stackedBar.getDatasets().add(datasetRespectingDelai);
-        
-        return stackedBar;
-        
-    }
 
-
-    
-    public StackedBar numberClaimTreatInDelaiOrNotByMonthByAgence(@Nullable FilterRequest request) {
-
-        List<Claim> allClaims;
-
-        if (request != null) {
-            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
-                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
-                            ClaimStatus.CLASSED));
-        } else {
-             allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
-                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
-                            ClaimStatus.CLASSED));
-        }
-        
-        // Récupérer toutes les agences
-        List<ServicePoint> allAgences = spRepository.findAll();
-        StackedBar stackedBar = StackedBar
-                .builder()
-                .ids(new ArrayList<>())
-                .datasets(new ArrayList<>())
-                .labels(new ArrayList<>())
-                .build();
-        
-        // Initialiser les données pour chaque agence (nombre de réclamations respectant les délais et le total)
-        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
-        List<Double> totalClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
-        
-        LocalDateTime receiptDate;
-        LocalDateTime measureDate;
-        LocalDateTime supposedFinalTreatmentDate;
-        long delaiObj;
-        
-        // Parcourir toutes les agences
-        for (ServicePoint agence : allAgences) {
-            stackedBar.getIds().add(agence.getId());
-            stackedBar.getLabels().add(agence.getLibelle());
-        }
-        
-        // Parcourir toutes les réclamations
-        for (Claim claim : allClaims) {
-            // Vérifier si la réclamation a bien une solution et une mesure
-            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
-                continue; // Passer à la réclamation suivante si pas de solution
-            }
-        
-            // Récupérer la date de réception et la date de mesure
-            receiptDate = claim.getReceiptDateTime();
-            measureDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getSatisfactionMeasure().getMeasureDateTime();
-        
-            // Récupérer le délai de traitement de l'objet associé à la réclamation
-            delaiObj = claim.getObjet().getProcessingTime();
-            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
-        
-            // Récupérer l'index de l'agence correspondante
-            int agenceIndex = stackedBar.getIds().indexOf(claim.getServicePoint().getId());
-        
-            if (agenceIndex >= 0 && agenceIndex < allAgences.size()) {
-                // Augmenter le nombre total de réclamations pour l'agence
-                totalClaimsPerAgence.set(agenceIndex, totalClaimsPerAgence.get(agenceIndex) + 1);
-        
-                // Vérifier si la réclamation a été traitée dans les délais
-                if (measureDate.isBefore(supposedFinalTreatmentDate) || measureDate.isEqual(supposedFinalTreatmentDate)) {
-                    // Ajouter à la liste des réclamations respectant les délais
-                    dataRespectingDelai.set(agenceIndex, dataRespectingDelai.get(agenceIndex) + 1);
-                }
-            }
-        }
-        
-        // Calculer le pourcentage des réclamations traitées dans les délais par agence
-        for (int i = 0; i < allAgences.size(); i++) {
-            if (totalClaimsPerAgence.get(i) > 0) {
-                double percentage = (dataRespectingDelai.get(i) / totalClaimsPerAgence.get(i)) * 100;
-                // Arrondir à deux chiffres après la virgule
-                percentage = Math.round(percentage * 100.0) / 100.0;
-                dataRespectingDelai.set(i, percentage);
-            }
-        }
-
-        
-        // Créer le dataset pour les réclamations traitées dans les délais
-        StackedBarDataset datasetRespectingDelai = StackedBarDataset
-                .builder()
-                .label("Respect")
-                .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
-                .borderColor(SERVICE_BORDER_POINT_COLOR)
-                .data(dataRespectingDelai)
-                .build();
-        
-        stackedBar.getDatasets().add(datasetRespectingDelai);
-        
-        return stackedBar;
-        
-    }
-
-
-    //a voir
-    public StackedBar numberDenunTreatInDelaiOrNotByMonth(@Nullable FilterRequest request) {
-        List<Claim> allClaims;
-    
-        if (request != null) {
-            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
-            Arrays.asList(ClaimStatus.TREAT));
-        } else {
-            allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
-            Arrays.asList(ClaimStatus.TREAT));
-        }
-    
-        // Préparer les mois de l'année pour l'affichage
-        List<String> months = Arrays.asList("Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc");
-        StackedBar stackedBar = StackedBar.builder()
-                .ids(new ArrayList<>())
-                .datasets(new ArrayList<>())
-                .labels(months)
-                .build();
-    
-        // Initialiser les données pour chaque mois (nombre de réclamations respectant les délais et le total)
-        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(12, 0.0));
-        List<Double> totalClaimsPerMonth = new ArrayList<>(Collections.nCopies(12, 0.0));
-    
-        LocalDateTime receiptDate;
-        LocalDateTime treatmentDate;
-        LocalDateTime supposedFinalTreatmentDate;
-        long delaiObj;
-    
-        // Parcourir toutes les réclamations
-        for (Claim claim : allClaims) {
-            // Vérifier si la réclamation a des solutions
-            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
-                continue; // Passer à la réclamation suivante si pas de solution
-            }
-    
-            // Récupérer la date de réception et la date de traitement (via la dernière solution)
-            receiptDate = claim.getReceiptDateTime();
-            treatmentDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getCreatedAt(); // Date de traitement récupérée via la dernière solution
-    
-            // Récupérer le délai de traitement de l'objet associé à la réclamation
-            delaiObj = claim.getObjet().getProcessingTime();
-            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
-    
-            // Récupérer l'index du mois correspondant
-            int monthIndex = receiptDate.getMonthValue() - 1;
-    
-            if (monthIndex >= 0 && monthIndex < 12) {
-                // Augmenter le nombre total de réclamations pour le mois
-                totalClaimsPerMonth.set(monthIndex, totalClaimsPerMonth.get(monthIndex) + 1);
-    
-                // Vérifier si la réclamation a été traitée dans les délais
-                if (treatmentDate.isBefore(supposedFinalTreatmentDate) || treatmentDate.isEqual(supposedFinalTreatmentDate)) {
-                    // Ajouter à la liste des réclamations respectant les délais
-                    dataRespectingDelai.set(monthIndex, dataRespectingDelai.get(monthIndex) + 1);
-                }
-            }
-        }
-    
-        // Calculer le pourcentage des réclamations traitées dans les délais par mois
-        for (int i = 0; i < 12; i++) {
-            if (totalClaimsPerMonth.get(i) > 0) {
-                dataRespectingDelai.set(i, (dataRespectingDelai.get(i) / totalClaimsPerMonth.get(i)) * 100);
-            }
-        }
-    
-        // Créer le dataset pour les réclamations traitées dans les délais
-        StackedBarDataset datasetRespectingDelai = StackedBarDataset.builder()
-                .label("Respect")
-                .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
-                .borderColor(SERVICE_BORDER_POINT_COLOR)
-                .data(dataRespectingDelai)
-                .build();
-    
-        stackedBar.getDatasets().add(datasetRespectingDelai);
-    
-        return stackedBar;
-    }
-    
-    //a revoir
-    public StackedBar numberDenunTreatInDelaiOrNotByMonthByAgence(@Nullable FilterRequest request) {
-        List<Claim> allClaims;
-    
-        if (request != null) {
-            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
-                    Arrays.asList(ClaimStatus.TREAT));
-        } else {
-             allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
-            Arrays.asList(ClaimStatus.TREAT));
-        }
-    
-        // Récupérer toutes les agences
-        List<ServicePoint> allAgences = spRepository.findAll();
-        StackedBar stackedBar = StackedBar
-                .builder()
-                .ids(new ArrayList<>())
-                .datasets(new ArrayList<>())
-                .labels(new ArrayList<>())
-                .build();
-    
-        // Initialiser les données pour chaque agence (nombre de réclamations respectant les délais et le total)
-        List<Double> dataRespectingDelai = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
-        List<Double> totalClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
-    
-        LocalDateTime receiptDate;
-        LocalDateTime treatmentDate;
-        LocalDateTime supposedFinalTreatmentDate;
-        long delaiObj;
-    
-        // Parcourir toutes les agences
-        for (ServicePoint agence : allAgences) {
-            stackedBar.getIds().add(agence.getId());
-            stackedBar.getLabels().add(agence.getLibelle());
-        }
-    
-        // Parcourir toutes les réclamations
-        for (Claim claim : allClaims) {
-            // Vérifier si la réclamation a bien une solution
-            if (claim.getSolutions() == null || claim.getSolutions().isEmpty()) {
-                continue; // Passer à la réclamation suivante si pas de solution
-            }
-    
-            // Récupérer la date de réception et la date de traitement via la dernière solution
-            receiptDate = claim.getReceiptDateTime();
-            treatmentDate = claim.getSolutions().get(claim.getSolutions().size() - 1).getCreatedAt(); // Date de traitement
-    
-            // Récupérer le délai de traitement de l'objet associé à la réclamation
-            delaiObj = claim.getObjet().getProcessingTime();
-            supposedFinalTreatmentDate = receiptDate.plusDays(delaiObj);
-    
-            // Récupérer l'index de l'agence correspondante
-            int agenceIndex = stackedBar.getIds().indexOf(claim.getServicePoint().getId());
-    
-            if (agenceIndex >= 0 && agenceIndex < allAgences.size()) {
-                // Augmenter le nombre total de réclamations pour l'agence
-                totalClaimsPerAgence.set(agenceIndex, totalClaimsPerAgence.get(agenceIndex) + 1);
-    
-                // Vérifier si la réclamation a été traitée dans les délais
-                if (treatmentDate.isBefore(supposedFinalTreatmentDate) || treatmentDate.isEqual(supposedFinalTreatmentDate)) {
-                    // Ajouter à la liste des réclamations respectant les délais
-                    dataRespectingDelai.set(agenceIndex, dataRespectingDelai.get(agenceIndex) + 1);
-                }
-            }
-        }
-    
-        // Calculer le pourcentage des réclamations traitées dans les délais par agence
-        for (int i = 0; i < allAgences.size(); i++) {
-            if (totalClaimsPerAgence.get(i) > 0) {
-                double percentage = (dataRespectingDelai.get(i) / totalClaimsPerAgence.get(i)) * 100;
-                // Arrondir à deux chiffres après la virgule
-                percentage = Math.round(percentage * 100.0) / 100.0;
-                dataRespectingDelai.set(i, percentage);
-            }
-        }
-    
-        // Créer le dataset pour les réclamations traitées dans les délais
-        StackedBarDataset datasetRespectingDelai = StackedBarDataset
-                .builder()
-                .label("Respect")
-                .backgroundColor(SERVICE_BG_POINT_COLOR) // Assurez-vous que cette couleur est bien définie
-                .borderColor(SERVICE_BORDER_POINT_COLOR)
-                .data(dataRespectingDelai)
-                .build();
-    
-        stackedBar.getDatasets().add(datasetRespectingDelai);
-    
-        return stackedBar;
-    }
-    
-
-
-
-    
-    public StackedBar tauxClaimSatisfactionByMonth(@Nullable FilterRequest request) {
-    
-        List<Claim> allClaims;
-
-        if (request != null) {
-            allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request,
-                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
-                            ClaimStatus.CLASSED));
-        } else {
-           allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
-                    Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED, ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.LITIGATION,
-                            ClaimStatus.CLASSED));
-        }
-        
-       // Initialiser les données pour les 12 mois
         List<Double> satisfactionRates = new ArrayList<>(Collections.nCopies(12, 0.0));
         List<Integer> totalClaimsByMonth = new ArrayList<>(Collections.nCopies(12, 0));
         List<Integer> satisfiedClaimsByMonth = new ArrayList<>(Collections.nCopies(12, 0));
 
         for (Claim claim : allClaims) {
-            // Récupérer la date de la dernière mesure de satisfaction
-            LocalDateTime measureDate = claim.getSolutions()
-                    .get(claim.getSolutions().size() - 1)
-                    .getSatisfactionMeasure()
-                    .getMeasureDateTime();
+            LocalDateTime measureDate = dateTraitementOuMesure(claim);
+            if (measureDate == null) {
+                measureDate = claim.getReceiptDateTime();
+            }
+            if (measureDate == null) {
+                continue;
+            }
 
-            // Récupérer le mois de cette date (de 1 à 12)
-            int month = measureDate.getMonthValue() - 1; // Indexé à 0 pour correspondre aux listes
+            int month = measureDate.getMonthValue() - 1;
+            if (month < 0 || month >= 12) {
+                continue;
+            }
 
-            // Incrémenter le total des réclamations pour ce mois
             totalClaimsByMonth.set(month, totalClaimsByMonth.get(month) + 1);
 
-            // Vérifier le statut de la réclamation et incrémenter les satisfaites si applicable
             if (claim.getStatus() == ClaimStatus.SATISFIED) {
                 satisfiedClaimsByMonth.set(month, satisfiedClaimsByMonth.get(month) + 1);
             }
         }
 
-        // Calculer le taux de satisfaction pour chaque mois
         for (int i = 0; i < 12; i++) {
             if (totalClaimsByMonth.get(i) > 0) {
                 double satisfactionRate = ((double) satisfiedClaimsByMonth.get(i) / totalClaimsByMonth.get(i)) * 100;
-                // Arrondir à deux chiffres après la virgule
                 satisfactionRate = Math.round(satisfactionRate * 100.0) / 100.0;
                 satisfactionRates.set(i, satisfactionRate);
             }
         }
 
-        // Créer le graphique avec les données de taux de satisfaction
         StackedBar stackedBar = StackedBar
                 .builder()
                 .ids(new ArrayList<>())
@@ -4043,22 +3978,17 @@ public class ReportServiceImpl implements ReportService {
         StackedBarDataset satisfactionDataset = StackedBarDataset
                 .builder()
                 .label("Taux de satisfaction")
-                .backgroundColor(SATISFIED_BG_COLOR) // Assurez-vous que cette couleur est bien définie
+                .backgroundColor(SATISFIED_BG_COLOR)
                 .data(satisfactionRates)
                 .build();
 
-        // Ajouter le dataset au graphique
         stackedBar.getDatasets().add(satisfactionDataset);
 
         return stackedBar;
-
-                
     }
 
-
-    
     public StackedBar tauxClaimSatisfactionByMonthByAgence(@Nullable FilterRequest request) {
-    
+
         List<Claim> allClaims;
 
         if (request != null) {
@@ -4071,99 +4001,88 @@ public class ReportServiceImpl implements ReportService {
                             ClaimStatus.CLASSED));
         }
 
-        // Récupérer toutes les agences
-        List<ServicePoint> allAgences = spRepository.findAll();
-        
-        // Initialiser les données pour chaque agence
+        List<ServicePoint> allAgences = agencesDuFiltre(request);
+
         List<Double> satisfactionRatesPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0.0));
         List<Integer> totalClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0));
         List<Integer> satisfiedClaimsPerAgence = new ArrayList<>(Collections.nCopies(allAgences.size(), 0));
 
-        // Parcourir toutes les réclamations
+        StackedBar stackedBar = StackedBar
+                .builder()
+                .ids(new ArrayList<>())
+                .datasets(new ArrayList<>())
+                .labels(new ArrayList<>())
+                .build();
+
+        for (ServicePoint agence : allAgences) {
+            stackedBar.getIds().add(agence.getId());
+            stackedBar.getLabels().add(agence.getLibelle());
+        }
+
         for (Claim claim : allClaims) {
-            // Récupérer l'agence de la réclamation
             ServicePoint agence = claim.getServicePoint();
+            if (agence == null || agence.getId() == null) {
+                continue;
+            }
 
-            // Trouver l'index de l'agence dans la liste des agences
-            int index = allAgences.indexOf(agence);
+            int index = stackedBar.getIds().indexOf(agence.getId());
+            if (index < 0) {
+                continue;
+            }
 
-            // Incrémenter le total des réclamations pour cette agence
             totalClaimsPerAgence.set(index, totalClaimsPerAgence.get(index) + 1);
 
-            // Vérifier le statut de la réclamation et incrémenter les satisfaites si applicable
             if (claim.getStatus() == ClaimStatus.SATISFIED) {
                 satisfiedClaimsPerAgence.set(index, satisfiedClaimsPerAgence.get(index) + 1);
             }
         }
 
-        // Calculer le taux de satisfaction pour chaque agence
         for (int i = 0; i < allAgences.size(); i++) {
             if (totalClaimsPerAgence.get(i) > 0) {
                 double satisfactionRate = ((double) satisfiedClaimsPerAgence.get(i) / totalClaimsPerAgence.get(i)) * 100;
-                // Arrondir à deux chiffres après la virgule
                 satisfactionRate = Math.round(satisfactionRate * 100.0) / 100.0;
                 satisfactionRatesPerAgence.set(i, satisfactionRate);
             }
         }
 
-        // Créer le graphique avec les données de taux de satisfaction par agence
-        StackedBar stackedBar = StackedBar
-                .builder()
-                .ids(new ArrayList<>())
-                .datasets(new ArrayList<>())
-                .labels(new ArrayList<>()) // Les noms des agences seront dans les labels
-                .build();
-
-        // Remplir les données du graphique avec les agences et leurs taux de satisfaction
-        for (int i = 0; i < allAgences.size(); i++) {
-            stackedBar.getIds().add(allAgences.get(i).getId());
-            stackedBar.getLabels().add(allAgences.get(i).getLibelle());
-        }
-
-        // Créer le dataset pour le taux de satisfaction par agence
         StackedBarDataset satisfactionDataset = StackedBarDataset
                 .builder()
                 .label("Taux de satisfaction par agence")
-                .backgroundColor(SATISFIED_BG_COLOR) // Assurez-vous que cette couleur est bien définie
+                .backgroundColor(SATISFIED_BG_COLOR)
                 .data(satisfactionRatesPerAgence)
                 .build();
 
-        // Ajouter le dataset au graphique
         stackedBar.getDatasets().add(satisfactionDataset);
 
         return stackedBar;
-
-                
     }
-
-
 
     @Override
     public LineChart evolutionSatisfactionByYear(@Nullable FilterRequest request) {
         List<ClaimStatus> allSatisfaction = Arrays.asList(ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                 ClaimStatus.PARTIAL_SATISFIED);
-        List<Claim> allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
-        LocalDate currentDate = LocalDate.now();
-        List<String> last12Months = new ArrayList<>();
-        List<String> last12MonthsEn = new ArrayList<>();
-        List<Month> last12M = new ArrayList<>();
-        DateFormatSymbols symbols = new DateFormatSymbols(Locale.FRENCH);
-        for (int i = 0; i < 12; i++) {
-            last12M.add(currentDate.minus(Period.ofMonths(i)).getMonth());
-            last12MonthsEn.add(currentDate.minus(Period.ofMonths(i)).getMonth().toString());
-            last12Months.add(symbols.getMonths()[currentDate.minusMonths(i).getMonthValue() - 1]);
-        }
-        Collections.reverse(last12Months);
-        Collections.reverse(last12M);
-        Collections.reverse(last12MonthsEn);
-
-        // List<String> months = Arrays.asList("Janvier", "Février", "Mars", "Avril",
-        // "Mai", "Juin", "Juillet", "Août",
-        // "Septembre", "Octobre", "Novembre", "Décembre");
+        List<Claim> allClaims;
         if (request != null) {
             allClaims = claimRepository.findClaimByCriteriaAndTypeAndStatus(request, allSatisfaction);
         } else {
             allClaims = claimRepository.findByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM, allSatisfaction);
+        }
+
+        LocalDate currentDate = LocalDate.now();
+        List<String> last12Months = new ArrayList<>();
+        List<YearMonth> last12YearMonths = new ArrayList<>();
+        DateFormatSymbols symbols = new DateFormatSymbols(Locale.FRENCH);
+        if (request != null && request.getYear() != null) {
+            for (int m = 1; m <= 12; m++) {
+                last12YearMonths.add(YearMonth.of(request.getYear().intValue(), m));
+                last12Months.add(symbols.getMonths()[m - 1]);
+            }
+        } else {
+            for (int i = 11; i >= 0; i--) {
+                LocalDate d = currentDate.minusMonths(i);
+                last12YearMonths.add(YearMonth.from(d));
+                last12Months.add(symbols.getMonths()[d.getMonthValue() - 1]);
+            }
         }
 
         LineChart lineChart = LineChart
@@ -4173,50 +4092,49 @@ public class ReportServiceImpl implements ReportService {
                 .data(new ArrayList<>())
                 .build();
 
-        List<Double> dataSatisfied = new ArrayList<>();
-        List<Double> dataUnSatisfied = new ArrayList<>();
-        List<Double> dataPartial = new ArrayList<>();
-        for (int i = 0; i < 12; i++) {
+        List<Double> dataSatisfied = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Double> dataUnSatisfied = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Double> dataPartial = new ArrayList<>(Collections.nCopies(12, 0.0));
 
-            dataSatisfied.add((double) 0);
-            dataUnSatisfied.add((double) 0);
-            dataPartial.add((double) 0);
-        }
-        int thisYear = LocalDateTime.now().getYear();
-        LocalDateTime measureDate = null;
         for (Claim claim : allClaims) {
-            measureDate = claim.getSolutions().get((claim.getSolutions().size() - 1))
-                    .getSatisfactionMeasure()
-                    .getMeasureDateTime();
-            if (thisYear == measureDate.getYear()) {
-                // int statisfactionMonthPosition = measureDate.getMonth().getValue();
+            LocalDateTime measureDate = dateTraitementOuMesure(claim);
+            if (measureDate == null) {
+                measureDate = claim.getReceiptDateTime();
+            }
+            if (measureDate == null) {
+                continue;
+            }
+            int idx = last12YearMonths.indexOf(YearMonth.from(measureDate));
+            if (idx < 0 && request != null
+                    && (request.getReceiveStart() != null || request.getReceiveEnd() != null)) {
+                for (int i = 0; i < last12YearMonths.size(); i++) {
+                    if (last12YearMonths.get(i).getMonth() == measureDate.getMonth()) {
+                        idx = i;
+                        break;
+                    }
+                }
+            }
+            if (idx >= 0) {
                 switch (claim.getStatus()) {
                     case SATISFIED:
-                        dataSatisfied.set(last12MonthsEn.indexOf(measureDate.getMonth().toString()),
-                                dataSatisfied.get(last12MonthsEn.indexOf(measureDate.getMonth().toString())) + 1);
+                        dataSatisfied.set(idx, dataSatisfied.get(idx) + 1);
                         break;
                     case UNSATISFIED:
-                        dataUnSatisfied.set(last12MonthsEn.indexOf(measureDate.getMonth().toString()),
-                                dataSatisfied.get(last12MonthsEn.indexOf(measureDate.getMonth().toString())) + 1);
+                        dataUnSatisfied.set(idx, dataUnSatisfied.get(idx) + 1);
                         break;
-
                     case PARTIAL_SATISFIED:
-                        dataPartial.set(last12MonthsEn.indexOf(measureDate.getMonth().toString()),
-                                dataSatisfied.get(last12MonthsEn.indexOf(measureDate.getMonth().toString())) + 1);
+                        dataPartial.set(idx, dataPartial.get(idx) + 1);
                         break;
-
                     default:
                         break;
                 }
             }
-
         }
         LineDataset dataset1 = LineDataset
                 .builder()
                 .label("Satisfait")
                 .data(dataSatisfied)
-                .backgroundColor((SATISFIED_BG_COLOR))
-
+                .backgroundColor(SATISFIED_BG_COLOR)
                 .borderColor(SATISFIED_BG_COLOR)
                 .build();
         lineChart.getData().add(dataset1);
@@ -4226,7 +4144,7 @@ public class ReportServiceImpl implements ReportService {
                 .label("Non satisfait")
                 .data(dataUnSatisfied)
                 .backgroundColor(UNSATISFIED_BG_COLOR)
-                .borderColor((UNSATISFIED_BG_COLOR))
+                .borderColor(UNSATISFIED_BG_COLOR)
                 .build();
 
         lineChart.getData().add(dataset2);
@@ -4235,12 +4153,11 @@ public class ReportServiceImpl implements ReportService {
                 .builder()
                 .label("Partiellement satisfait")
                 .data(dataPartial)
-                .backgroundColor((PARTIAL_SATISFIED_BG_COLOR))
-                .borderColor((PARTIAL_SATISFIED_BG_COLOR))
+                .backgroundColor(PARTIAL_SATISFIED_BG_COLOR)
+                .borderColor(PARTIAL_SATISFIED_BG_COLOR)
                 .build();
 
         lineChart.getData().add(dataset3);
-        // period
 
         return lineChart;
     }
@@ -4249,108 +4166,105 @@ public class ReportServiceImpl implements ReportService {
     public LineChart evolutionClaimDenunSuggestbyYear(@Nullable FilterRequest request) {
         LocalDate currentDate = LocalDate.now();
         List<String> last12Months = new ArrayList<>();
-        List<String> last12MonthsEn = new ArrayList<>();
-        List<Month> last12M = new ArrayList<>();
+        List<YearMonth> last12YearMonths = new ArrayList<>();
         DateFormatSymbols symbols = new DateFormatSymbols(Locale.FRENCH);
-        for (int i = 0; i < 12; i++) {
-            last12M.add(currentDate.minus(Period.ofMonths(i)).getMonth());
-            last12MonthsEn.add(currentDate.minus(Period.ofMonths(i)).getMonth().toString());
-            last12Months.add(symbols.getMonths()[currentDate.minusMonths(i).getMonthValue() - 1]);
+        if (request != null && request.getYear() != null) {
+            for (int m = 1; m <= 12; m++) {
+                last12YearMonths.add(YearMonth.of(request.getYear().intValue(), m));
+                last12Months.add(symbols.getMonths()[m - 1]);
+            }
+        } else {
+            for (int i = 11; i >= 0; i--) {
+                LocalDate d = currentDate.minusMonths(i);
+                last12YearMonths.add(YearMonth.from(d));
+                last12Months.add(symbols.getMonths()[d.getMonthValue() - 1]);
+            }
         }
-        Collections.reverse(last12Months);
-        Collections.reverse(last12M);
-        Collections.reverse(last12MonthsEn);
 
-        int thisYear = currentDate.getYear();
         LineChart lineChart = LineChart
                 .builder()
                 .ids(new ArrayList<>())
                 .labels(last12Months)
                 .data(new ArrayList<>())
                 .build();
-        List<Double> dataC = new ArrayList<>();
-        List<Double> dataD = new ArrayList<>();
-        List<Double> dataS = new ArrayList<>();
-        for (int i = 0; i < 12; i++) {
-
-            dataC.add((double) 0);
-            dataD.add((double) 0);
-            dataS.add((double) 0);
-        }
-        LocalDateTime start = null;
-        LocalDateTime end = null;
+        List<Double> dataC = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Double> dataD = new ArrayList<>(Collections.nCopies(12, 0.0));
+        List<Double> dataS = new ArrayList<>(Collections.nCopies(12, 0.0));
 
         if (request != null) {
-            if ((request.getReceiveStart() != null && request.getReceiveEnd() != null) || request.getYear() != null) {
-                List<Claim> allC = claimRepository
-                        .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.CLAIM);
-                for (Claim claim : allC) {
-                    dataC.set(last12MonthsEn.indexOf(claim.getReceiptDateTime().getMonth().toString()),
-                            dataC.get(last12MonthsEn.indexOf(claim.getReceiptDateTime().getMonth().toString())) + 1);
+            boolean hasExplicitDateFilter = request.getReceiveStart() != null
+                    || request.getReceiveEnd() != null
+                    || request.getYear() != null;
+            List<Claim> allC = claimRepository
+                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.CLAIM);
+            for (Claim claim : allC) {
+                if (claim.getReceiptDateTime() == null) {
+                    continue;
                 }
-                List<Claim> allD = claimRepository.countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(
-                        request, ClaimType.DENUNCIACION);
-                for (Claim denun : allD) {
-                    dataD.set(last12MonthsEn.indexOf(denun.getReceiptDateTime().getMonth().toString()),
-                            dataD.get(last12MonthsEn.indexOf(denun.getReceiptDateTime().getMonth().toString())) + 1);
-                }
-                if (request.getObjets() != null && request.getObjets().isEmpty()) {
-                    List<Suggestion> allS = suggestionRepository.countSuggestByCriteriaAndPeriode(request);
-                    for (Suggestion suggestion : allS) {
-                        dataS.set(last12MonthsEn.indexOf(suggestion.getReceiptDateTime().getMonth().toString()),
-                                dataS.get(last12MonthsEn.indexOf(suggestion.getReceiptDateTime().getMonth().toString()))
-                                        + 1);
-                    }
-                }
-            } else {
-                List<Claim> allC = claimRepository
-                        .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.CLAIM);
-                for (Claim claim : allC) {
-                    if (claim.getReceiptDateTime().getYear() == (thisYear)) {
-                        dataC.set(last12MonthsEn.indexOf(claim.getReceiptDateTime().getMonth().toString()),
-                                dataC.get(
-                                        last12MonthsEn.indexOf(claim.getReceiptDateTime().getMonth().toString())) + 1);
-                    }
-
-                }
-                List<Claim> allD = claimRepository.countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(
-                        request, ClaimType.DENUNCIACION);
-                for (Claim denun : allD) {
-                    if (denun.getReceiptDateTime().getYear() == (thisYear)) {
-                        dataD.set(last12MonthsEn.indexOf(denun.getReceiptDateTime().getMonth().toString()),
-                                dataD.get(last12MonthsEn.indexOf(denun.getReceiptDateTime().getMonth().toString()))
-                                        + 1);
-                    }
-                }
-                List<Suggestion> allS = suggestionRepository.countSuggestByCriteriaAndPeriode(request);
-                if (request.getObjets() != null && request.getObjets().isEmpty()) {
-                    for (Suggestion suggestion : allS) {
-                        if (suggestion.getReceiptDateTime().getYear() == (thisYear)) {
-                            dataS.set(last12MonthsEn.indexOf(suggestion.getReceiptDateTime().getMonth().toString()),
-                                    dataS.get(last12MonthsEn
-                                            .indexOf(suggestion.getReceiptDateTime().getMonth().toString()))
-                                            + 1);
+                int idx = last12YearMonths.indexOf(YearMonth.from(claim.getReceiptDateTime()));
+                if (idx < 0 && hasExplicitDateFilter) {
+                    for (int i = 0; i < last12YearMonths.size(); i++) {
+                        if (last12YearMonths.get(i).getMonth() == claim.getReceiptDateTime().getMonth()) {
+                            idx = i;
+                            break;
                         }
+                    }
+                }
+                if (idx >= 0) {
+                    dataC.set(idx, dataC.get(idx) + 1);
+                }
+            }
+            List<Claim> allD = claimRepository.countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(
+                    request, ClaimType.DENUNCIACION);
+            for (Claim denun : allD) {
+                if (denun.getReceiptDateTime() == null) {
+                    continue;
+                }
+                int idx = last12YearMonths.indexOf(YearMonth.from(denun.getReceiptDateTime()));
+                if (idx < 0 && hasExplicitDateFilter) {
+                    for (int i = 0; i < last12YearMonths.size(); i++) {
+                        if (last12YearMonths.get(i).getMonth() == denun.getReceiptDateTime().getMonth()) {
+                            idx = i;
+                            break;
+                        }
+                    }
+                }
+                if (idx >= 0) {
+                    dataD.set(idx, dataD.get(idx) + 1);
+                }
+            }
+            if (request.getObjets() == null || request.getObjets().isEmpty()) {
+                List<Suggestion> allS = suggestionRepository.countSuggestByCriteriaAndPeriode(request);
+                for (Suggestion suggestion : allS) {
+                    if (suggestion.getReceiptDateTime() == null) {
+                        continue;
+                    }
+                    int idx = last12YearMonths.indexOf(YearMonth.from(suggestion.getReceiptDateTime()));
+                    if (idx < 0 && hasExplicitDateFilter) {
+                        for (int i = 0; i < last12YearMonths.size(); i++) {
+                            if (last12YearMonths.get(i).getMonth() == suggestion.getReceiptDateTime().getMonth()) {
+                                idx = i;
+                                break;
+                            }
+                        }
+                    }
+                    if (idx >= 0) {
+                        dataS.set(idx, dataS.get(idx) + 1);
                     }
                 }
             }
         } else {
-            String monthStr = "";
-            int i = 0;
-            for (Month month : last12M) {
-                monthStr = month.getValue() < 10 ? "0" + month.getValue() : month.getValue() + "";
+            for (int i = 0; i < last12YearMonths.size(); i++) {
+                YearMonth ym = last12YearMonths.get(i);
+                LocalDateTime start = ym.atDay(1).atStartOfDay();
+                LocalDateTime end = ym.atEndOfMonth().atTime(23, 59, 59);
 
-                start = LocalDateTime.parse(thisYear + "-" + monthStr + "-01T00:00:00");
-                end = LocalDateTime
-                        .parse(thisYear + "-" + monthStr + "-" + month.length(currentDate.isLeapYear()) + "T23:59:59");
-
-                dataC.set(i, (double) claimRepository.countByTypeAndIsDeletedFalseAndStatusNotAndReceiptDateTimeBetween(ClaimType.CLAIM,
-                        ClaimStatus.TEMP_SAVED, start, end));
+                dataC.set(i, (double) claimRepository.countByTypeAndIsDeletedFalseAndStatusNotAndReceiptDateTimeBetween(
+                        ClaimType.CLAIM, ClaimStatus.TEMP_SAVED, start, end));
                 dataD.set(i, (double) claimRepository.countByTypeAndIsDeletedFalseAndStatusNotAndReceiptDateTimeBetween(
                         ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED, start, end));
                 dataS.set(i, (double) suggestionRepository
                         .countByStatusNotAndReceiptDateTimeBetween(ClaimStatus.TEMP_SAVED, start, end));
-                i++;
             }
         }
         LineDataset lineDataset1 = LineDataset
@@ -4363,7 +4277,7 @@ public class ReportServiceImpl implements ReportService {
         lineChart.getData().add(lineDataset1);
         LineDataset lineDataset2 = LineDataset
                 .builder()
-                .backgroundColor((DENUN_BG_COLOR))
+                .backgroundColor(DENUN_BG_COLOR)
                 .borderColor(DENUN_BG_COLOR)
                 .data(dataD)
                 .label("Dénonciations")
@@ -4371,7 +4285,7 @@ public class ReportServiceImpl implements ReportService {
         lineChart.getData().add(lineDataset2);
         LineDataset lineDataset3 = LineDataset
                 .builder()
-                .backgroundColor((SUGGEST_BG_COLOR))
+                .backgroundColor(SUGGEST_BG_COLOR)
                 .borderColor(SUGGEST_BG_COLOR)
                 .data(dataS)
                 .label("Suggestions")
@@ -4390,9 +4304,10 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION))
                     .size();
-            request.setEtats(null);
+            FilterRequest sansEtats = FilterRequest.copieDe(request);
+            sansEtats.setEtats(null);
             totalClaims = claimRepository
-                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.CLAIM).size();
+                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(sansEtats, ClaimType.CLAIM).size();
         } else {
             totalTreatClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.CLAIM,
                     Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
@@ -4405,7 +4320,6 @@ public class ReportServiceImpl implements ReportService {
         } else {
             return (double) 0;
         }
-
     }
 
     @Override
@@ -4416,12 +4330,13 @@ public class ReportServiceImpl implements ReportService {
             totalTreatClaims = claimRepository.countClaimByCriteriaAndTypeAndStatusIn(request, ClaimType.DENUNCIACION,
                     Arrays.asList(ClaimStatus.TREAT))
                     .size();
-            request.setEtats(null);
+            FilterRequest sansEtats = FilterRequest.copieDe(request);
+            sansEtats.setEtats(null);
             totalClaims = claimRepository
-                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.DENUNCIACION)
+                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(sansEtats, ClaimType.DENUNCIACION)
                     .size();
         } else {
-             totalTreatClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
+            totalTreatClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusIn(ClaimType.DENUNCIACION,
                     Arrays.asList(ClaimStatus.TREAT));
             totalClaims = claimRepository.countByTypeAndIsDeletedFalseAndStatusNot(ClaimType.DENUNCIACION, ClaimStatus.TEMP_SAVED);
         }
@@ -4431,7 +4346,6 @@ public class ReportServiceImpl implements ReportService {
         } else {
             return (double) 0;
         }
-
     }
 
     @Override
@@ -4446,83 +4360,35 @@ public class ReportServiceImpl implements ReportService {
         List<ObjectPerYear> allResultat = claimRepository.countClaimByCriteriaAndYearAndSp(request, ClaimType.CLAIM);
         List<Double> data = new ArrayList<>();
         List<Integer> allYear = new ArrayList<>();
-        List<ServicePoint> allSp = spRepository.findAll();
-        if (request != null) {
-            for (ServicePoint sPoint : allSp) {
-                stackedBar.getLabels().add(sPoint.getLibelle());
-                stackedBar.getIds().add(sPoint.getId());
-                data.add((double) 0);
+        List<ServicePoint> allSp = agencesDuFiltre(request);
+        for (ServicePoint sPoint : allSp) {
+            stackedBar.getLabels().add(sPoint.getLibelle());
+            stackedBar.getIds().add(sPoint.getId());
+            data.add((double) 0);
+        }
+        for (ObjectPerYear objY : allResultat) {
+            if (!allYear.contains(objY.getYear())) {
+                allYear.add(objY.getYear());
             }
+        }
+        for (Integer year : allYear) {
             for (ObjectPerYear objY : allResultat) {
-                if (!allYear.contains(objY.getYear())) {
-                    allYear.add(objY.getYear());
-                }
-                // if (!stackedBar.getIds().contains(objY.getSpId())) {
-                // stackedBar.getLabels().add(objY.getSpLib());
-                // stackedBar.getIds().add(objY.getSpId());
-                // data.add((double) 0);
-                // }
-            }
-            for (Integer year : allYear) {
-                for (ObjectPerYear objY : allResultat) {
-                    if (year.equals(objY.getYear())) {
-                        data.set(stackedBar.getIds().indexOf(objY.getSpId()), objY.getTotal().doubleValue());
+                if (year.equals(objY.getYear())) {
+                    int idx = stackedBar.getIds().indexOf(objY.getSpId());
+                    if (idx >= 0) {
+                        data.set(idx, objY.getTotal().doubleValue());
                     }
                 }
-
-                StackedBarDataset stackedBarDataset = StackedBarDataset
-                        .builder()
-                        .label(year + "")
-                        .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
-                        // .borderColor(CLAIM_BG_COLOR)
-                        .data(data)
-                        .build();
-                stackedBar.getDatasets().add(stackedBarDataset);
-                data = new ArrayList<>();
-                for (int i = 0; i < stackedBar.getIds().size(); i++) {
-
-                    data.add((double) 0);
-                }
-
             }
 
-        } else {
-
-            for (ServicePoint sPoint : allSp) {
-                stackedBar.getLabels().add(sPoint.getLibelle());
-                stackedBar.getIds().add(sPoint.getId());
-                data.add((double) 0);
-            }
-
-            for (ObjectPerYear objY : allResultat) {
-                if (!allYear.contains(objY.getYear())) {
-                    allYear.add(objY.getYear());
-                }
-            }
-            // System.out.println(allYear);
-            for (Integer year : allYear) {
-                for (ObjectPerYear objY : allResultat) {
-                    if (year.equals(objY.getYear())) {
-                        data.set(stackedBar.getIds().indexOf(objY.getSpId()), objY.getTotal().doubleValue());
-                    }
-                }
-
-                StackedBarDataset stackedBarDataset = StackedBarDataset
-                        .builder()
-                        .label(year + "")
-                        .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
-                        // .borderColor(CLAIM_BG_COLOR)
-                        .data(data)
-                        .build();
-                stackedBar.getDatasets().add(stackedBarDataset);
-                data = new ArrayList<>();
-                for (ServicePoint sPoint : allSp) {
-
-                    data.add((double) 0);
-                }
-
-            }
-
+            StackedBarDataset stackedBarDataset = StackedBarDataset
+                    .builder()
+                    .label(year + "")
+                    .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
+                    .data(data)
+                    .build();
+            stackedBar.getDatasets().add(stackedBarDataset);
+            data = new ArrayList<>(Collections.nCopies(stackedBar.getIds().size(), 0.0));
         }
 
         return stackedBar;
@@ -4541,86 +4407,35 @@ public class ReportServiceImpl implements ReportService {
                 ClaimType.DENUNCIACION);
         List<Double> data = new ArrayList<>();
         List<Integer> allYear = new ArrayList<>();
-        List<ServicePoint> allSp = spRepository.findAll();
-        if (request != null) {
-            for (ServicePoint sPoint : allSp) {
-                stackedBar.getLabels().add(sPoint.getLibelle());
-                stackedBar.getIds().add(sPoint.getId());
-                data.add((double) 0);
+        List<ServicePoint> allSp = agencesDuFiltre(request);
+        for (ServicePoint sPoint : allSp) {
+            stackedBar.getLabels().add(sPoint.getLibelle());
+            stackedBar.getIds().add(sPoint.getId());
+            data.add((double) 0);
+        }
+        for (ObjectPerYear objY : allResultat) {
+            if (!allYear.contains(objY.getYear())) {
+                allYear.add(objY.getYear());
             }
+        }
+        for (Integer year : allYear) {
             for (ObjectPerYear objY : allResultat) {
-                if (!allYear.contains(objY.getYear())) {
-                    allYear.add(objY.getYear());
-                }
-                // if (!stackedBar.getIds().contains(objY.getSpId())) {
-                // stackedBar.getLabels().add(objY.getSpLib());
-                // stackedBar.getIds().add(objY.getSpId());
-                // data.add((double) 0);
-                // }
-            }
-            for (Integer year : allYear) {
-                for (ObjectPerYear objY : allResultat) {
-                    if (year.equals(objY.getYear())) {
-                        data.set(stackedBar.getIds().indexOf(objY.getSpId()), objY.getTotal().doubleValue());
+                if (year.equals(objY.getYear())) {
+                    int idx = stackedBar.getIds().indexOf(objY.getSpId());
+                    if (idx >= 0) {
+                        data.set(idx, objY.getTotal().doubleValue());
                     }
                 }
-
-                StackedBarDataset stackedBarDataset = StackedBarDataset
-                        .builder()
-                        .label(year + "")
-                        .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
-                        // .borderColor(CLAIM_BG_COLOR)
-                        .data(data)
-                        .build();
-                stackedBar.getDatasets().add(stackedBarDataset);
-                data = new ArrayList<>();
-                for (int i = 0; i < stackedBar.getIds().size(); i++) {
-
-                    data.add((double) 0);
-                }
-
             }
 
-        } else {
-
-            for (ServicePoint sPoint : allSp) {
-                stackedBar.getLabels().add(sPoint.getLibelle());
-                stackedBar.getIds().add(sPoint.getId());
-                data.add((double) 0);
-            }
-
-            for (ObjectPerYear objY : allResultat) {
-                if (!allYear.contains(objY.getYear())) {
-                    allYear.add(objY.getYear());
-                }
-            }
-            if (!allYear.isEmpty()) {
-                // System.out.println(allYear.size());
-                for (Integer year : allYear) {
-                    for (ObjectPerYear objY : allResultat) {
-                        if (year.equals(objY.getYear())) {
-                            data.set(stackedBar.getIds().indexOf(objY.getSpId()), objY.getTotal().doubleValue());
-                        }
-                    }
-                    // System.out.println(data);
-                    StackedBarDataset stackedBarDataset = StackedBarDataset
-                            .builder()
-                            .label(year + "")
-                            .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
-                            // .borderColor(CLAIM_BG_COLOR)
-                            .data(data)
-                            .build();
-                    stackedBar.getDatasets().add(stackedBarDataset);
-                    // System.out.println( stackedBar.getDatasets());
-                    data = new ArrayList<>();
-                    for (ServicePoint sPoint : allSp) {
-
-                        data.add((double) 0);
-                    }
-
-                }
-            }
-
+            StackedBarDataset stackedBarDataset = StackedBarDataset
+                    .builder()
+                    .label(year + "")
+                    .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
+                    .data(data)
+                    .build();
+            stackedBar.getDatasets().add(stackedBarDataset);
+            data = new ArrayList<>(Collections.nCopies(stackedBar.getIds().size(), 0.0));
         }
 
         return stackedBar;
@@ -4631,14 +4446,20 @@ public class ReportServiceImpl implements ReportService {
         int totalSuggestTreat = 0;
 
         if (request != null) {
-            List<Suggestion> allResult = suggestionRepository.countSuggestByCriteriaAndPeriode(request);
-            for (Suggestion suggestion : allResult) {
-                if (suggestion.getStatus().equals(ClaimStatus.TREAT)) {
+            if (request.getObjets() != null && !request.getObjets().isEmpty()) {
+                return 0.0;
+            }
+            FilterRequest sansEtats = FilterRequest.copieDe(request);
+            sansEtats.setEtats(null);
+            List<Suggestion> allResult = suggestionRepository.countSuggestByCriteriaAndPeriode(sansEtats);
+            List<Suggestion> filteredTreat = suggestionRepository.countSuggestByCriteriaAndPeriode(request);
+            for (Suggestion suggestion : filteredTreat) {
+                if (suggestion.getStatus() == ClaimStatus.TREAT) {
                     totalSuggestTreat++;
                 }
             }
 
-            if (allResult.size() != 0) {
+            if (!allResult.isEmpty()) {
                 return Utils.parseDouble((double) totalSuggestTreat / allResult.size());
             } else {
                 return (double) 0;
@@ -4648,7 +4469,7 @@ public class ReportServiceImpl implements ReportService {
             List<Suggestion> allResult = suggestionRepository.findByStatusInAndIsDeletedFalse(Arrays.asList(ClaimStatus.TREAT));
             List<Suggestion> suggestNotTempSaved = suggestionRepository.findByStatusNotAndIsDeletedFalse(ClaimStatus.TEMP_SAVED);
 
-            if (suggestNotTempSaved.size() != 0) {
+            if (!suggestNotTempSaved.isEmpty()) {
                 return Utils.parseDouble((double) allResult.size() / suggestNotTempSaved.size());
             } else {
                 return (double) 0;
@@ -4674,16 +4495,18 @@ public class ReportServiceImpl implements ReportService {
                     Arrays.asList(ClaimStatus.TREAT, ClaimStatus.SATISFIED, ClaimStatus.UNSATISFIED,
                             ClaimStatus.PARTIAL_SATISFIED, ClaimStatus.CLASSED, ClaimStatus.LITIGATION))
                     .size();
-            request.setEtats(null);
+            FilterRequest sansEtats = FilterRequest.copieDe(request);
+            sansEtats.setEtats(null);
             totalDenuns = claimRepository
-                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.DENUNCIACION)
+                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(sansEtats, ClaimType.DENUNCIACION)
                     .size();
             totalClaims = claimRepository
-                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(request, ClaimType.CLAIM).size();
-            if (request.getObjets() != null && request.getObjets().isEmpty()) {
-                List<Suggestion> allResult = suggestionRepository.countSuggestByCriteriaAndPeriode(request);
-                for (Suggestion suggestion : allResult) {
-                    if (suggestion.getStatus().equals(ClaimStatus.TREAT)) {
+                    .countClaimByCriteriaAndTypeAndStatusNotAndReceiptDateTimeBetween(sansEtats, ClaimType.CLAIM).size();
+            if (request.getObjets() == null || request.getObjets().isEmpty()) {
+                List<Suggestion> allResult = suggestionRepository.countSuggestByCriteriaAndPeriode(sansEtats);
+                List<Suggestion> filteredSuggestions = suggestionRepository.countSuggestByCriteriaAndPeriode(request);
+                for (Suggestion suggestion : filteredSuggestions) {
+                    if (suggestion.getStatus() == ClaimStatus.TREAT) {
                         totalSuggestTreat++;
                     }
                 }
@@ -4708,12 +4531,11 @@ public class ReportServiceImpl implements ReportService {
             totalObj = totalDenuns + totalClaims + suggestNotTempSaved.size();
             totalTreatObj = totalTreatDenun + totalTreatClaims + allTreatResult.size();
         }
-        if (totalObj != 0) { 
+        if (totalObj != 0) {
             return ((double) totalTreatObj / totalObj);
         } else {
             return 0;
         }
-
     }
 
     @Override
@@ -4728,81 +4550,35 @@ public class ReportServiceImpl implements ReportService {
         List<ObjectPerYear> allResultat = suggestionRepository.countSuggestByCriteriaAndYearAndSp(request);
         List<Double> data = new ArrayList<>();
         List<Integer> allYear = new ArrayList<>();
-        List<ServicePoint> allSp = spRepository.findAll();
-        if (request != null) {
-            for (ServicePoint sPoint : allSp) {
-                stackedBar.getLabels().add(sPoint.getLibelle());
-                stackedBar.getIds().add(sPoint.getId());
-                data.add((double) 0);
+        List<ServicePoint> allSp = agencesDuFiltre(request);
+        for (ServicePoint sPoint : allSp) {
+            stackedBar.getLabels().add(sPoint.getLibelle());
+            stackedBar.getIds().add(sPoint.getId());
+            data.add((double) 0);
+        }
+        for (ObjectPerYear objY : allResultat) {
+            if (!allYear.contains(objY.getYear())) {
+                allYear.add(objY.getYear());
             }
+        }
+        for (Integer year : allYear) {
             for (ObjectPerYear objY : allResultat) {
-                if (!allYear.contains(objY.getYear())) {
-                    allYear.add(objY.getYear());
-                }
-                // if (!stackedBar.getIds().contains(objY.getSpId())) {
-                // stackedBar.getLabels().add(objY.getSpLib());
-                // stackedBar.getIds().add(objY.getSpId());
-                // data.add((double) 0);
-                // }
-            }
-            for (Integer year : allYear) {
-                for (ObjectPerYear objY : allResultat) {
-                    if (year.equals(objY.getYear())) {
-                        data.set(stackedBar.getIds().indexOf(objY.getSpId()), objY.getTotal().doubleValue());
+                if (year.equals(objY.getYear())) {
+                    int idx = stackedBar.getIds().indexOf(objY.getSpId());
+                    if (idx >= 0) {
+                        data.set(idx, objY.getTotal().doubleValue());
                     }
                 }
-
-                StackedBarDataset stackedBarDataset = StackedBarDataset
-                        .builder()
-                        .label(year + "")
-                        .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
-                        // .borderColor(CLAIM_BG_COLOR)
-                        .data(data)
-                        .build();
-                stackedBar.getDatasets().add(stackedBarDataset);
-                data = new ArrayList<>();
-                for (int i = 0; i < stackedBar.getIds().size(); i++) {
-
-                    data.add((double) 0);
-                }
-
-            }
-        } else {
-
-            for (ServicePoint sPoint : allSp) {
-                stackedBar.getLabels().add(sPoint.getLibelle());
-                stackedBar.getIds().add(sPoint.getId());
-                data.add((double) 0);
             }
 
-            for (ObjectPerYear objY : allResultat) {
-                if (!allYear.contains(objY.getYear())) {
-                    allYear.add(objY.getYear());
-                }
-            }
-
-            for (Integer year : allYear) {
-                for (ObjectPerYear objY : allResultat) {
-                    if (year.equals(objY.getYear())) {
-                        data.set(stackedBar.getIds().indexOf(objY.getSpId()), objY.getTotal().doubleValue());
-                    }
-                }
-
-                StackedBarDataset stackedBarDataset = StackedBarDataset
-                        .builder()
-                        .label(year + "")
-                        .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
-                        // .borderColor(CLAIM_BG_COLOR)
-                        .data(data)
-                        .build();
-                stackedBar.getDatasets().add(stackedBarDataset);
-                data = new ArrayList<>();
-                for (ServicePoint sPoint : allSp) {
-
-                    data.add((double) 0);
-                }
-
-            }
+            StackedBarDataset stackedBarDataset = StackedBarDataset
+                    .builder()
+                    .label(year + "")
+                    .backgroundColor(Utils.generateRandomColor(1).get(0).toBgString())
+                    .data(data)
+                    .build();
+            stackedBar.getDatasets().add(stackedBarDataset);
+            data = new ArrayList<>(Collections.nCopies(stackedBar.getIds().size(), 0.0));
         }
         return stackedBar;
     }
@@ -4812,7 +4588,7 @@ public class ReportServiceImpl implements ReportService {
         StackedBar stackedClaim = this.evolutionClaimBySpAndYear(request);
         StackedBar stackedDenun = this.evolutionDenunBySpAndYear(request);
         StackedBar stackedSuggest = null;
-        if (request != null && request.getObjets() != null && request.getObjets().isEmpty()) {
+        if (request != null && (request.getObjets() == null || request.getObjets().isEmpty())) {
             stackedSuggest = this.evolutionSuggestBySpAndYear(request);
         } else if (request == null) {
             stackedSuggest = this.evolutionSuggestBySpAndYear(null);

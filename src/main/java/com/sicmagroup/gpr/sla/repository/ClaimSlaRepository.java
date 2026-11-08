@@ -31,7 +31,8 @@ import com.sicmagroup.gpr.sla.dto.SlaRows.StatsRow;
 public interface ClaimSlaRepository extends JpaRepository<ClaimSla, Long> {
 
     String SCOPE = "(:all = true or s.servicePointId in :spIds or s.affectedToId = :uid "
-            + "or s.transmittedToId = :uid or s.collectorId = :collectorUid)";
+            + "or s.transmittedToId = :uid or (s.collectorId = :collectorUid and (s.servicePointId is null "
+            + "or s.servicePointId in (select u.servicePoint.id from User u where u.id = :collectorUid))))";
 
     // --- Lecture d'un compteur -------------------------------------------------------------------------------
 

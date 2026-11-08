@@ -95,9 +95,9 @@ public class SlaController {
         return ok(Map.of("count", n, "enabled", true));
     }
 
-    /** Indicateurs et rapports de respect des délais (périmètre de l'utilisateur) : rapports, Pilote, DE. */
+    /** Indicateurs et rapports de respect des délais (périmètre de l'utilisateur) : rapports, H6, RA, Pilote, DE. */
     @GetMapping("/stats")
-    @RolesAllowed({ "H11", "PILOTE", "DE" })
+    @RolesAllowed({ "H11", "H6", "RA", "PILOTE", "DE" })
     public ResponseEntity<ApiResponseDto> stats(@RequestParam(required = false) String type,
             @RequestParam(required = false) String from, @RequestParam(required = false) String to) {
         if (!config.enabled()) {
