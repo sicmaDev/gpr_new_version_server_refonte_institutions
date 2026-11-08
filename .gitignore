@@ -48,3 +48,7 @@ outils-tests/shots/
 # Rapports de plantage de Git Bash
 *.stackdump
 outils-tests/telechargements/
+
+# Documents internes : jamais en ligne
+/*.md
+outils-tests/*.md
