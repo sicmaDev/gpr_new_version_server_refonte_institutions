@@ -23,6 +23,17 @@ import com.sicmagroup.gpr.domain.enumeration.ClaimType;
 
 public interface SuggestionRepository extends JpaRepository<Suggestion, Long>, SuggestionRepositoryCustom {
 
+    // Export pour l'IA (adresses /api/v1/ai/export-*), repris de l'ancienne version GPR.
+    @Query("SELECT s FROM Suggestion s " +
+            "WHERE (:updatedAfter IS NULL OR s.updatedAt > :updatedAfter) " +
+            "AND (:updatedBefore IS NULL OR s.updatedAt <= :updatedBefore) " +
+            "ORDER BY s.updatedAt ASC, s.id ASC")
+    org.springframework.data.domain.Page<Suggestion> findReportingSuggestions(
+            @Param("updatedAfter") java.time.LocalDateTime updatedAfter,
+            @Param("updatedBefore") java.time.LocalDateTime updatedBefore,
+            org.springframework.data.domain.Pageable pageable);
+
+
     List<Suggestion> findByIsDeletedTrue();
     List<Suggestion> findAllByIsDeletedFalse();
     List<Suggestion> findByStatus(ClaimStatus status);

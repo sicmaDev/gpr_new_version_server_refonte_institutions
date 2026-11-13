@@ -30,6 +30,18 @@ import com.sicmagroup.gpr.domain.enumeration.SolutionStatus;
 
 public interface        ClaimRepository extends JpaRepository<Claim, Long>, ClaimRepositoryCustom {
 
+        // Export pour l'IA (adresses /api/v1/ai/export-*), repris de l'ancienne version GPR.
+        @Query("SELECT c FROM Claim c " +
+                        "WHERE c.type IN :types " +
+                        "AND (:updatedAfter IS NULL OR c.updatedAt > :updatedAfter) " +
+                        "AND (:updatedBefore IS NULL OR c.updatedAt <= :updatedBefore) " +
+                        "ORDER BY c.updatedAt ASC, c.id ASC")
+        org.springframework.data.domain.Page<Claim> findReportingClaims(@Param("types") java.util.List<com.sicmagroup.gpr.domain.enumeration.ClaimType> types,
+                        @Param("updatedAfter") java.time.LocalDateTime updatedAfter,
+                        @Param("updatedBefore") java.time.LocalDateTime updatedBefore,
+                        org.springframework.data.domain.Pageable pageable);
+
+
         Optional<Claim> findByCode(String code);
         Optional<Claim> findByCodeClient(String codeClient);
 

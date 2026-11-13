@@ -27,5 +27,15 @@ public class ClaimAudioResponse {
     private ExtraContentResponse extra;
     private String path;
     private byte[] data;
+
+    // Transcription IA enregistrée pour cet audio (vide si l'audio n'a pas été transcrit).
+    private boolean transcriptionAdded;
+    private String transcriptionRaw;
+    private String transcriptionCorrected;
+    private String transcriptionStatus;
+    private String transcriptionModel;
+    private String transcriptionLanguage;
+    private Double transcriptionDuration;
+    private String segmentsJson;
     
 }

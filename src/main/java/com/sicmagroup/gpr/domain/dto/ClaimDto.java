@@ -93,6 +93,17 @@ public class ClaimDto {
     // Bloc SLA (renseigné seulement quand le SLA est activé)
     private SlaInfo sla;
 
+    // Analyse IA faite à l'enregistrement (valeurs brutes du Core IA).
+    private String aiSummary;
+    private String aiSentiment;
+    private String aiUrgency;
+    private String aiKeywords;
+    private String aiSuggestedCategory;
+    private String aiSuggestedMotif;
+    private String aiRaisonnementClassification;
+    private String aiRaisonnementUrgence;
+    private String correlationId;
+
     public String convertDate(LocalDateTime dateTime){
         
         return Utils.convertLocalDateTimeToString(dateTime);

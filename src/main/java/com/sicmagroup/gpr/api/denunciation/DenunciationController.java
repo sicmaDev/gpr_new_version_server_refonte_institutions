@@ -109,6 +109,7 @@ import lombok.RequiredArgsConstructor;
 public class DenunciationController {
     private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
     private final ClaimServiceImpl service;
+    private final com.sicmagroup.gpr.service.ia.RattachementAnalyseIa rattachementIa;
     private final SuggestionServiceImpl suggestionServiceImpl;
     private final ModelMapper modelMapper;
     private final ServicePointServiceImpl spServiceImpl;
@@ -490,7 +491,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                             .audios(audios)
                             .remoteAddress(request2.getRemoteAddr()).build();
 
-                    Claim claim = service.saveClaim(saveRequest, ClaimType.DENUNCIACION);
+                    Claim claim = rattachementIa.rattacher(service.saveClaim(saveRequest, ClaimType.DENUNCIACION), denunRequest2.getCorrelationId());
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
@@ -544,7 +545,7 @@ public ResponseEntity<ApiResponseDto> getAllClaimBasedOnStatus(@PathVariable Cla
                             .audios(audios)
                             .remoteAddress(request2.getRemoteAddr()).build();
 
-                    Claim claim = service.saveTempClaim(saveRequest, ClaimType.DENUNCIACION);
+                    Claim claim = rattachementIa.rattacher(service.saveTempClaim(saveRequest, ClaimType.DENUNCIACION), denunRequest2.getCorrelationId());
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)

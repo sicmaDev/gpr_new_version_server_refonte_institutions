@@ -12,6 +12,17 @@ import com.sicmagroup.gpr.domain.model.HistoriqueAffectation;
 
 @Repository
 public interface HistoriqueAffectationRepository extends JpaRepository<HistoriqueAffectation, Long> {
+
+    // Export pour l'IA (adresses /api/v1/ai/export-*), repris de l'ancienne version GPR.
+    @Query("SELECT h FROM HistoriqueAffectation h " +
+           "WHERE (:updatedAfter IS NULL OR h.updatedAt > :updatedAfter) " +
+           "AND (:updatedBefore IS NULL OR h.updatedAt <= :updatedBefore) " +
+           "ORDER BY h.updatedAt ASC, h.id ASC")
+    org.springframework.data.domain.Page<HistoriqueAffectation> findReportingAffectations(
+            @Param("updatedAfter") java.time.LocalDateTime updatedAfter,
+            @Param("updatedBefore") java.time.LocalDateTime updatedBefore,
+            org.springframework.data.domain.Pageable pageable);
+
     
     List<HistoriqueAffectation> findByReclamationIdOrderByDateAffectationDesc(Long claimId);
     

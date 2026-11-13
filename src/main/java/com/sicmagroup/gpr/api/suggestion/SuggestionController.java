@@ -64,6 +64,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class SuggestionController {
 
     private final SuggestionServiceImpl service;
+    private final com.sicmagroup.gpr.service.ia.RattachementAnalyseIa rattachementIa;
     private final ModelMapper modelMapper;
     private final ClaimAudioServiceImpl claimAudioServiceImpl;
     private final AuthenticationServiceImpl authService;
@@ -214,7 +215,7 @@ public class SuggestionController {
                         .build();
                 try {
                     PiecesJointes.valider(files, audios);
-                    Suggestion suggestion = service.saveSuggestion(suggestionAddRequest, ClaimStatus.SAVED);
+                    Suggestion suggestion = rattachementIa.rattacher(service.saveSuggestion(suggestionAddRequest, ClaimStatus.SAVED), suggestionRequest.getCorrelationId());
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
@@ -275,7 +276,7 @@ public class SuggestionController {
                         .build();
                 try {
                     PiecesJointes.valider(files, audios);
-                    Suggestion suggestion = service.tempSaveSuggestion(suggestionAddRequest, ClaimStatus.TEMP_SAVED);
+                    Suggestion suggestion = rattachementIa.rattacher(service.tempSaveSuggestion(suggestionAddRequest, ClaimStatus.TEMP_SAVED), suggestionRequest.getCorrelationId());
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)

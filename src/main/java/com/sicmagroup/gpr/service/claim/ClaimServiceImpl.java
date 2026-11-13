@@ -1003,6 +1003,9 @@ public class ClaimServiceImpl implements ClaimService {
                 .commentaire(commantaire)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
+                .isAiProposed(request.getIsAiProposed())
+                .aiReasoning(request.getAiReasoning())
+                .aiSelectedSolution(request.getAiSelectedSolution())
                 .build();
         System.out.println("Here 5 ");
         System.out.println(request);

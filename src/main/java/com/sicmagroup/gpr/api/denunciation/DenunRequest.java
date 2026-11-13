@@ -34,6 +34,8 @@ public class DenunRequest {
     private Long languageId;
     private Long collectorId;
     private String content;
+    // Numéro de l'analyse IA faite pendant la saisie : le serveur y reprend lui-même le résultat.
+    private String correlationId;
     private ClaimStatus status;
     private String receiptDateTime;
     private String createdAt;

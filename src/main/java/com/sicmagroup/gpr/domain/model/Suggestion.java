@@ -122,6 +122,32 @@ public class Suggestion {
     @Lob
     @Column(columnDefinition = "MEDIUMTEXT")
 	private String delete_reason;
-    
-    
+
+    // Analyse IA à l'enregistrement (mêmes colonnes que l'ancienne version GPR).
+    @Column(name = "ai_summary", columnDefinition = "TEXT")
+    private String aiSummary;
+
+    @Column(name = "ai_sentiment")
+    private String aiSentiment;
+
+    @Column(name = "ai_urgency")
+    private String aiUrgency;
+
+    @Column(name = "ai_keywords", columnDefinition = "TEXT")
+    private String aiKeywords;
+
+    @Column(name = "ai_suggested_category")
+    private String aiSuggestedCategory;
+
+    @Column(name = "ai_suggested_motif")
+    private String aiSuggestedMotif;
+
+    @Column(name = "ai_raisonnement_classification", columnDefinition = "TEXT")
+    private String aiRaisonnementClassification;
+
+    @Column(name = "ai_raisonnement_urgence", columnDefinition = "TEXT")
+    private String aiRaisonnementUrgence;
+
+    @Column(name = "correlation_id", length = 100)
+    private String correlationId;
 }

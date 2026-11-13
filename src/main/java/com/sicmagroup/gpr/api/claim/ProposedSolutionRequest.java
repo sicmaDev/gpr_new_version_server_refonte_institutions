@@ -17,4 +17,8 @@ public class ProposedSolutionRequest {
     private String commentaire;
     private boolean isExisting;
     private Long existingId;
+    // Renseignés quand l'agent a appliqué une solution proposée par l'IA.
+    private Boolean isAiProposed;
+    private String aiReasoning;
+    private String aiSelectedSolution;
 }

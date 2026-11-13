@@ -104,6 +104,7 @@ public class ClaimController {
     private final com.sicmagroup.gpr.sla.service.EcheanceObjet echeanceObjet;
 
     private final ClaimServiceImpl service;
+    private final com.sicmagroup.gpr.service.ia.RattachementAnalyseIa rattachementIa;
     private final SuggestionServiceImpl suggestionServiceImpl;
     private final ModelMapper modelMapper;
     private final ExternalRecourseServiceImpl externalRecourseServiceImpl;
@@ -642,8 +643,8 @@ public class ClaimController {
                             .audios(audios)
                             .remoteAddress(request.getRemoteAddr()).build();
 
-                    Claim claim = service.saveClaim(saveRequest,
-                            ClaimType.CLAIM);
+                    Claim claim = rattachementIa.rattacher(service.saveClaim(saveRequest,
+                            ClaimType.CLAIM), claimRequest2.getCorrelationId());
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)
@@ -701,8 +702,8 @@ public class ClaimController {
                             .audios(audios)
                             .remoteAddress(request.getRemoteAddr()).build();
 
-                    Claim claim = service.saveTempClaim(saveRequest,
-                            ClaimType.CLAIM);
+                    Claim claim = rattachementIa.rattacher(service.saveTempClaim(saveRequest,
+                            ClaimType.CLAIM), claimRequest2.getCorrelationId());
                     apiResponseDto = ApiResponseDto
                             .builder()
                             .status(true)

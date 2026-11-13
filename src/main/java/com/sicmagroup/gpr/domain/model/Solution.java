@@ -70,4 +70,14 @@ public class Solution {
     private LocalDateTime updatedAt;
     @OneToOne(mappedBy = "solution")
     private ExistingSolution existingSolution;
+
+    // Solution venue d'une proposition de l'IA (mêmes colonnes que l'ancienne version GPR).
+    @jakarta.persistence.Column(name = "is_ai_proposed")
+    private Boolean isAiProposed;
+
+    @jakarta.persistence.Column(name = "ai_reasoning", columnDefinition = "TEXT")
+    private String aiReasoning;
+
+    @jakarta.persistence.Column(name = "ai_selected_solution", columnDefinition = "TEXT")
+    private String aiSelectedSolution;
 }

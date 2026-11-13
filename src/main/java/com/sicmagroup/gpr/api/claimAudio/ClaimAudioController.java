@@ -49,6 +49,21 @@ public class ClaimAudioController {
 
     }
 
+    /** Enregistre la transcription IA d'un audio (texte obtenu par /api/v1/ia/transcription). */
+    @org.springframework.web.bind.annotation.PutMapping(value = "/{id}/transcription")
+    public ResponseEntity<ApiResponseDto> enregistrerTranscription(@PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestBody TranscriptionAudioRequest request) {
+        try {
+            ClaimAudio audio = service.enregistrerTranscription(id, request);
+            return ResponseEntity.ok(ApiResponseDto.builder().status(true)
+                    .content(java.util.Map.of("id", audio.getId(), "transcriptionAdded", audio.isTranscriptionAdded()))
+                    .build());
+        } catch (FileNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponseDto.builder().status(false)
+                    .content(ErrorResponse.builder().message("Audio introuvable").title("NOT FOUND").build()).build());
+        }
+    }
+
     @DeleteMapping(value = "/{id}")
     public ResponseEntity<ApiResponseDto> deleteAudio(@PathVariable Long id) {
         ApiResponseDto apiResponseDto;

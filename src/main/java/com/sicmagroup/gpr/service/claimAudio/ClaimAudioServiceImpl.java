@@ -121,6 +121,31 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
 
     }
 
+    /** Enregistre la transcription IA d'un audio. Les champs absents de la demande ne sont pas modifiés. */
+    public ClaimAudio enregistrerTranscription(Long id, com.sicmagroup.gpr.api.claimAudio.TranscriptionAudioRequest r)
+            throws FileNotFoundException {
+        ClaimAudio audio = repository.findById(id)
+                .orElseThrow(() -> new FileNotFoundException("File not found with id " + id));
+        if (r.getTranscriptionRaw() != null) audio.setTranscriptionRaw(r.getTranscriptionRaw());
+        if (r.getTranscriptionCorrected() != null) audio.setTranscriptionCorrected(r.getTranscriptionCorrected());
+        if (r.getTranscriptionModel() != null) audio.setTranscriptionModel(limiter(r.getTranscriptionModel(), 150));
+        if (r.getTranscriptionStatus() != null) audio.setTranscriptionStatus(limiter(r.getTranscriptionStatus(), 40));
+        if (r.getTranscriptionLanguage() != null) audio.setTranscriptionLanguage(limiter(r.getTranscriptionLanguage(), 20));
+        if (r.getTranscriptionDuration() != null) audio.setTranscriptionDuration(r.getTranscriptionDuration());
+        if (r.getSegmentsJson() != null) audio.setSegmentsJson(r.getSegmentsJson());
+        if (r.getSpeakersJson() != null) audio.setSpeakersJson(r.getSpeakersJson());
+        if (r.getTranscriptionError() != null) audio.setTranscriptionError(r.getTranscriptionError());
+        if (r.getTranscriptionAdded() != null) audio.setTranscriptionAdded(r.getTranscriptionAdded());
+        java.time.Instant maintenant = java.time.Instant.now();
+        if (audio.getTranscriptionCreatedAt() == null) audio.setTranscriptionCreatedAt(maintenant);
+        audio.setTranscriptionUpdatedAt(maintenant);
+        return repository.save(audio);
+    }
+
+    private static String limiter(String s, int max) {
+        return s.length() <= max ? s : s.substring(0, max);
+    }
+
     @Override
     public void deleteAudio(Long id, User connectedUser) throws Exception {
         ClaimAudio audio = repository.findById(id)
@@ -192,6 +217,14 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
                         .path(audio.getPath())
                         .size(audio.getSize())
                         .data(loadAsResource(audio).getContentAsByteArray())
+                        .transcriptionAdded(audio.isTranscriptionAdded())
+                        .transcriptionRaw(audio.getTranscriptionRaw())
+                        .transcriptionCorrected(audio.getTranscriptionCorrected())
+                        .transcriptionStatus(audio.getTranscriptionStatus())
+                        .transcriptionModel(audio.getTranscriptionModel())
+                        .transcriptionLanguage(audio.getTranscriptionLanguage())
+                        .transcriptionDuration(audio.getTranscriptionDuration())
+                        .segmentsJson(audio.getSegmentsJson())
                         .build();
                 responses.add(claimAudioResponse);
             } catch (IOException e) {
@@ -221,6 +254,14 @@ public class ClaimAudioServiceImpl implements ClaimAudioService {
                         .path(audio.getPath())
                         .size(audio.getSize())
                         .data(loadAsResource(audio).getContentAsByteArray())
+                        .transcriptionAdded(audio.isTranscriptionAdded())
+                        .transcriptionRaw(audio.getTranscriptionRaw())
+                        .transcriptionCorrected(audio.getTranscriptionCorrected())
+                        .transcriptionStatus(audio.getTranscriptionStatus())
+                        .transcriptionModel(audio.getTranscriptionModel())
+                        .transcriptionLanguage(audio.getTranscriptionLanguage())
+                        .transcriptionDuration(audio.getTranscriptionDuration())
+                        .segmentsJson(audio.getSegmentsJson())
                         .build();
                 responses.add(claimAudioResponse);
             } catch (IOException e) {

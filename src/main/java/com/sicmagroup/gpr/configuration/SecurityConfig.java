@@ -117,6 +117,13 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/denunciation/treatDenun/**")
                                                 .hasAnyAuthority("H2", "H3", "H4")
                                                 .requestMatchers("/api/v1/denunciation/list/**").hasAuthority("H1")
+                                                // Export des dossiers pour l'IA : ouvert sans connexion, comme dans
+                                                // l'ancienne version GPR (décision du 12/11/2026)
+                                                .requestMatchers("/api/v1/ai/**").permitAll()
+                                                // Reporting IA : mêmes droits que le menu Rapports
+                                                .requestMatchers("/api/v1/ia/rapports/**").hasAnyAuthority("H11", "PILOTE", "DE")
+                                                // IA : relais vers le Core IA, toute personne connectée
+                                                .requestMatchers("/api/v1/ia/**").authenticated()
                                                 // ALERT
                                                 .requestMatchers("/api/v1/alert/**")
                                                 .hasAnyAuthority("H13",  "DE", "PILOTE")

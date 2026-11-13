@@ -178,6 +178,66 @@ public class Claim {
     @JoinColumn(name = "converted_by_id")
     private User convertedBy;
 
+    // Analyse IA à l'enregistrement (mêmes colonnes que l'ancienne version GPR).
+    @Column(name = "ai_raisonnement_classification", columnDefinition = "TEXT")
+    private String aiRaisonnementClassification;
+
+    @Column(name = "ai_raisonnement_urgence", columnDefinition = "TEXT")
+    private String aiRaisonnementUrgence;
+
+    @Column(name = "ai_suggested_category")
+    private String aiSuggestedCategory;
+
+    @Column(name = "ai_suggested_motif")
+    private String aiSuggestedMotif;
+
+    @Column(name = "ai_urgency")
+    private String aiUrgency;
+
+    @Column(name = "ai_summary", columnDefinition = "TEXT")
+    private String aiSummary;
+
+    @Column(name = "ai_sentiment")
+    private String aiSentiment;
+
+    @Column(name = "ai_keywords", columnDefinition = "TEXT")
+    private String aiKeywords;
+
+    @Column(name = "correlation_id", length = 100)
+    private String correlationId;
+
+    // Retour de l'agent sur l'IA au traitement (mêmes colonnes que l'ancienne version GPR).
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "ai_feedback_status", length = 20)
+    private com.sicmagroup.gpr.domain.enumeration.AiFeedbackStatus aiFeedbackStatus;
+
+    @Column(name = "ai_final_category")
+    private String aiFinalCategory;
+
+    @Column(name = "ai_final_motif")
+    private String aiFinalMotif;
+
+    @Column(name = "ai_final_urgency")
+    private String aiFinalUrgency;
+
+    @Column(name = "ai_retained_solution", columnDefinition = "TEXT")
+    private String aiRetainedSolution;
+
+    @Column(name = "ai_feedback_agent_id")
+    private Long aiFeedbackAgentId;
+
+    @Column(name = "ai_feedback_justification", columnDefinition = "TEXT")
+    private String aiFeedbackJustification;
+
+    @Column(name = "ai_feedback_satisfaction_status", length = 40)
+    private String aiFeedbackSatisfactionStatus;
+
+    @Column(name = "ai_feedback_date")
+    private LocalDateTime aiFeedbackDate;
+
+    @Column(name = "ai_quality_score")
+    private Integer aiQualityScore;
+
     @Override
     public boolean equals(Object obj){
         if(this == obj)
