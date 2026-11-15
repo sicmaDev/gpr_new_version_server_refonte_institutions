@@ -258,6 +258,22 @@ public class IaRapportsController {
         return ok(conversations.clearConversations(qui.getName()));
     }
 
+    // ---------------------------------------------------------------- Périmètre (badge du copilote)
+
+    /**
+     * Périmètre réellement appliqué aux questions de la personne (le même que dans questionEncadree) :
+     * toute l'institution, ou les agences auxquelles ses réponses sont limitées.
+     */
+    @GetMapping("/perimetre")
+    public ResponseEntity<Map<String, Object>> perimetre() {
+        List<Long> agences = perimetre.agencesImposeesOuNull();
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("global", agences == null);
+        p.put("agences", agences == null ? List.of()
+                : pointsDeService.findAllById(agences).stream().map(ServicePoint::getLibelle).toList());
+        return ok(p);
+    }
+
     // ---------------------------------------------------------------- Graphiques épinglés
 
     @GetMapping("/epingles")
