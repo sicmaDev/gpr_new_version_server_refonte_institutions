@@ -1280,6 +1280,12 @@ public class ClaimServiceImpl implements ClaimService {
 
         satisfactionMeasure.setSolution(solution);
 
+        // Mesure faite par le client lui-même depuis le site web : aucun utilisateur GPR n'est l'auteur.
+        // L'historique et le journal notent alors « Client » (l'écran affiche « Mesurée depuis le site web »).
+        String auteurNom = measurer != null ? measurer.getFirstandlastname() : "Client";
+        String auteurEmail = measurer != null ? measurer.getEmail() : null;
+        Long auteurId = measurer != null ? measurer.getId() : 0L;
+
         List<User> pilotes = authServiceImpl.getUsersByRoles(Arrays.asList(Role.PILOTE));
         // Définir le texte principal en fonction du statut
         String mainMessage;
@@ -1334,13 +1340,13 @@ public class ClaimServiceImpl implements ClaimService {
             try {
                 mailService.sendMail(pilotes.get(0).getEmail(), "Notification de satisfaction client - GPR", messageHtml, null);
                 claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), ClaimEventType.MAIL_SENT_AGENT,
-                        measurer.getFirstandlastname(), measurer.getEmail(), "Pilote Principal " +pilotes.get(0).getFirstandlastname() + "|" + pilotes.get(0).getEmail());
+                        auteurNom, auteurEmail, "Pilote Principal " +pilotes.get(0).getFirstandlastname() + "|" + pilotes.get(0).getEmail());
                 Log successLog = Log.builder()
                     .libelle("Mail notification mesure de satisfaction réclamation")
                     .content("Success mail notification mesure de satisfaction réclamation")
                     .createdAt(LocalDateTime.now())
                     .type(LogType.INFO)
-                    .userId(measurer.getId())
+                    .userId(auteurId)
                     .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                     .target(LogTarget.APP)
                     .build();
@@ -1372,14 +1378,14 @@ public class ClaimServiceImpl implements ClaimService {
                 : status == SatisfactionStatus.UNSATISFIED ? ClaimEventType.UNSATISFIED
                 : ClaimEventType.PARTIAL_SATISFIED;
         claimEventServiceImpl.log(claim.getId(), claim.getCodeClient(), claim.getType(), satisfactionEventType,
-                measurer.getFirstandlastname(), measurer.getEmail(), commentaire);
+                auteurNom, auteurEmail, commentaire);
         Log actionLog = Log
                 .builder()
                 .libelle("Mesure de satisfaction")
-                .content("La satisfaction de la solution proposée pour la " + (claim.getType().equals(ClaimType.DENUNCIACION) ? "Dénonciation" : "Réclamation").toLowerCase() + " " + Utils.displayCode(claim.getCodeClient(), claim.getCode()) + " a été mesurée par " + measurer.getFirstandlastname() + " avec le statut " + (status == SatisfactionStatus.SATISFIED ? "satisfait" : status == SatisfactionStatus.UNSATISFIED ? "insatisfait" : "partiellement satisfait") + ".")
+                .content("La satisfaction de la solution proposée pour la " + (claim.getType().equals(ClaimType.DENUNCIACION) ? "Dénonciation" : "Réclamation").toLowerCase() + " " + Utils.displayCode(claim.getCodeClient(), claim.getCode()) + " a été mesurée " + (measurer != null ? "par " + auteurNom : "par le client depuis le site web") + " avec le statut " + (status == SatisfactionStatus.SATISFIED ? "satisfait" : status == SatisfactionStatus.UNSATISFIED ? "insatisfait" : "partiellement satisfait") + ".")
                 .createdAt(LocalDateTime.now())
                 .type(LogType.INFO)
-                .userId(measurer.getId())
+                .userId(auteurId)
                 .userIpAddress(Utils.getClientIpAddress(httpServletRequest))
                 .target(claim.getType().equals(ClaimType.CLAIM) ? LogTarget.CLAIM : LogTarget.DENUNCIACION)
                 .build();
